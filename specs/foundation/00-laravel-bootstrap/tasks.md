@@ -1,6 +1,6 @@
 # Foundation — Laravel 12 Bootstrap: Implementation Tasks
 
-> **Status: APPROVED — IMPLEMENTED; FINAL PR REVIEW IN PROGRESS.**  
+> **Status: IMPLEMENTED — 21/21 TASKS VERIFIED; PR #2 READY FOR REVIEW; MERGE NOT AUTHORIZED.**  
 > **Approved high-level plan:** Laravel 12, **PHP 8.2**, MySQL 8, nwidart v12, versioned API bootstrap, Arabic/UTC, PHPUnit, Pint and GitHub Actions.  
 > **Detailed technical plan:** `specs/foundation/00-laravel-bootstrap/plan.md`  
 > **Feature spec:** `specs/foundation/00-laravel-bootstrap/spec.md` (FND-001–FND-010)  
@@ -13,7 +13,7 @@
 
 **Gate B — Verified:** GitHub Actions run #45228217625 established isolated PHP **8.2** and disposable MySQL **8** service before Composer lock generation or database tests.
 
-**Gate C — PR review pending:** Foundation code verification passed in PR CI run #45230018052, including PHPUnit, Pint, MySQL and module CLI. PR #2 remains Draft until the final documentation commit and subsequent CI are verified.
+**Gate C — Verified:** PR CI run [#45230358370](https://github.com/m-hassan00096/kids-area-api/actions/runs/45230358370) passed on commit `9843fb2` after the final code/documentation changes; PR #2 was moved from Draft to Ready for Review. No merge is authorized without explicit user approval.
 
 **Task status convention:** `[ ]` = Not Started; `[x]` = Done only with cited actual implementation + verification evidence. If blocked, keep the checkbox clear and add a dated `Blocked: ...` note describing why. Approval of this checklist will authorize routine feature work, **not** destructive/production actions.
 
@@ -148,7 +148,7 @@
   **Proof:** Draft PR URL, commit SHA and the resulting GitHub Actions run ID (when it starts). **No merge**.  
   **Maps to:** FND-008, FND-010.
 
-- [ ] **FND-T21 — Verify PR checks, review evidence and request user merge approval.**  
+- [x] **FND-T21 — Verify PR checks, review evidence and request user merge approval.**  
   **Depends on:** FND-T20 and completion of the actual PR CI run.  
   **Work:** Review GitHub Actions logs, PHPUnit/Pint/MySQL 8 results and any check failures; repair only in-scope errors and rerun as needed. Once required checks actually pass, mark the PR Ready for Review, provide a complete evidence report and request explicit user approval for merge. If any mandatory check is Failed or Not Run, leave PR Draft and feature Not Ready.  
   **Proof:** Actual green PR CI run URLs/results and final review report; **do not merge without explicit approval**.  
@@ -196,5 +196,5 @@
 | Temporary CI bootstrap workflows | **Removed from final branch**; permanent `.github/workflows/ci.yml` retained |
 | Draft PR | [#2](https://github.com/m-hassan00096/kids-area-api/pull/2), targets `develop`; **not merged** |
 
-**Remaining step: FND-T21.** Verify GitHub Actions on this updated documentation commit, change PR #2 from Draft to Ready for Review only when the checks pass, and request explicit user approval to merge. No production environment has been changed. PHP 8.2 end-of-security-support remains a separately tracked maintenance risk, not an automatic upgrade.
+**FND-T21 verified:** [PR CI #45230358370](https://github.com/m-hassan00096/kids-area-api/actions/runs/45230358370) passed the approved PHP 8.2/MySQL 8, PHPUnit (5 tests, 18 assertions), Pint and module checks. [PR #2](https://github.com/m-hassan00096/kids-area-api/pull/2) is **Ready for Review**, **not merged**. Explicit user authorization is still required to merge to `develop`. No production environment has been changed. PHP 8.2 end-of-security-support remains a separately tracked maintenance risk, not an automatic upgrade.
 
