@@ -1,0 +1,76 @@
+name: Foundation temporary PHP 8.2 Composer lock bootstrap
+
+on:
+  push:
+    branches:
+      - feature/foundation-laravel12-bootstrap
+    paths:
+      - 'composer.json'
+      - '.github/workflows/foundation-bootstrap-lock.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate and verify lock on real PHP 8.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, dom, simplexml, pdo_mysql, intl, bcmath, curl, zip, fileinfo
+          coverage: none
+      - name: Resolve approved dependency graph on PHP 8.2
+        run: |
+          php -v
+          composer --version
+          composer update --no-interaction --prefer-dist --no-progress --no-audit
+          composer validate --strict
+          composer check-platform-reqs
+      - name: Record resolved framework versions
+        run: |
+          composer show laravel/framework
+          composer show nwidart/laravel-modules
+          composer show wikimedia/composer-merge-plugin
+          composer show phpunit/phpunit
+          composer show laravel/pint
+      - uses: actions/upload-artifact@v4
+        with:
+          name: composer-lock-from-php82
+          path: composer.lock
+          if-no-files-found: error
+          retention-days: 3
+
+  commit-lock:
+    name: Commit only Composer lock from isolated artifact
+    needs: generate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/foundation-laravel12-bootstrap
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: composer-lock-from-php82
+          path: .
+      - name: Verify generated lock and expected branch
+        run: |
+          test "$GITHUB_REF" = "refs/heads/feature/foundation-laravel12-bootstrap"
+          test -s composer.lock
+          jq -e '.packages[] | select(.name == "laravel/framework" and (.version | startswith("v12.")))' composer.lock >/dev/null
+          jq -e '.packages[] | select(.name == "nwidart/laravel-modules" and (.version | startswith("v12.")))' composer.lock >/dev/null
+          jq -e '.packages[] | select(.name == "wikimedia/composer-merge-plugin")' composer.lock >/dev/null
+          git fetch origin feature/foundation-laravel12-bootstrap
+          test "$(git rev-parse origin/feature/foundation-laravel12-bootstrap)" = "$GITHUB_SHA"
+      - name: Commit lock file without executing dependencies with write token
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add composer.lock
+          git commit -m "build(foundation): lock reviewed dependencies on PHP 8.2"
+          git push origin HEAD:feature/foundation-laravel12-bootstrap
