@@ -119,13 +119,13 @@
 - [ ] **FND-T16 — Create GitHub Actions CI for develop PRs.**  
   **Depends on:** FND-T07, FND-T13–T15.  
   **Work:** Add `.github/workflows/ci.yml` triggered on `pull_request` to `develop`; setup PHP **8.2**, required extensions, ephemeral **MySQL 8** service, safe CI credentials, dependency install from lock, isolated migrations, `php artisan test` and `vendor/bin/pint --test`. Cache only safe dependencies; do not put secrets in repo.  
-  **Proof:** Workflow YAML inspection plus **actual GitHub Actions run ID**, logs and conclusions.  
+  **Proof:** Workflow YAML inspected and committed on the branch, with PHP 8.2/MySQL 8 service and mandatory commands configured. **Actual PR-run proof is collected in FND-T21 after opening the Draft PR.**  
   **Maps to:** FND-007, FND-008.
 
 - [ ] **FND-T17 — Run all mandatory checks and fix failures in scope.**  
   **Depends on:** FND-T13–T16.  
-  **Work:** Run `php -v`, `composer validate --strict`, `composer check-platform-reqs`, `php artisan test`, `vendor/bin/pint --test` and required DB/CI checks. Correct code or setup errors within the approved scope without weakening valid tests.  
-  **Proof:** Record each command as `Passed` / `Failed` / `Not Run` with environment and result; do not mark complete with any required failure or unrun check.  
+  **Work:** Run `php -v`, `composer validate --strict`, `composer check-platform-reqs`, `php artisan test`, `vendor/bin/pint --test` and required DB checks in a verified PHP 8.2 / MySQL 8 execution environment **before PR**. Correct code or setup errors within the approved scope without weakening valid tests. **PR-triggered CI runs only after FND-T20 and is verified in FND-T21.**  
+  **Proof:** Record each pre-PR command as `Passed` / `Failed` / `Not Run` with environment and result. CI remains `Not Run` until FND-T21; do not claim the feature is Ready for Review.  
   **Maps to:** FND-001–FND-008, FND-010.
 
 ## 5. Final safety check and human handoff
@@ -142,11 +142,17 @@
   **Proof:** Reviewed `tasks.md` and PR report reflecting actual Git and CI.  
   **Maps to:** FND-010.
 
-- [ ] **FND-T20 — Open PR for explicit approval, do not merge.**  
+- [ ] **FND-T20 — Open Draft PR to trigger GitHub Actions; do not merge.**  
   **Depends on:** FND-T17–T19.  
-  **Work:** Open a PR from `feature/foundation-laravel12-bootstrap` to `develop` with dependency graph, migrations, check results, file list and risks. If mandatory verification is not complete, use a **Draft PR** and mark Feature **Not Ready**.  
-  **Proof:** PR link, CI status and explicit request for user approval; **no merge** without that approval.  
-  **Maps to:** FND-010.
+  **Work:** Open a **Draft PR** from `feature/foundation-laravel12-bootstrap` to `develop` with dependency graph, migrations, pre-PR check results, file list and risks. This triggers the first true PR-targeted CI workflow. The feature remains **Not Ready** while CI is pending.  
+  **Proof:** Draft PR URL, commit SHA and the resulting GitHub Actions run ID (when it starts). **No merge**.  
+  **Maps to:** FND-008, FND-010.
+
+- [ ] **FND-T21 — Verify PR checks, review evidence and request user merge approval.**  
+  **Depends on:** FND-T20 and completion of the actual PR CI run.  
+  **Work:** Review GitHub Actions logs, PHPUnit/Pint/MySQL 8 results and any check failures; repair only in-scope errors and rerun as needed. Once required checks actually pass, mark the PR Ready for Review, provide a complete evidence report and request explicit user approval for merge. If any mandatory check is Failed or Not Run, leave PR Draft and feature Not Ready.  
+  **Proof:** Actual green PR CI run URLs/results and final review report; **do not merge without explicit approval**.  
+  **Maps to:** FND-007, FND-008, FND-010.
 
 ## 6. Required review decisions before execution
 
@@ -169,8 +175,8 @@
 | FND-005 — Routing | T12, T14 | No duplicate `/api/v1` and no added business route |
 | FND-006 — Configuration | T08, T18 | Secret hygiene and safe configuration review |
 | FND-007 — Testing | T13–T17 | Actual PHPUnit and Pint pass |
-| FND-008 — CI | T16, T17 | GitHub Actions workflow **and successful run** on a PR to `develop` |
+| FND-008 — CI | T16, T20, T21 | GitHub Actions workflow **and successful run** on a PR to `develop` |
 | FND-009 — Scope | T04–T06, T12, T18 | No out-of-scope modules, auth endpoints or background workers |
-| FND-010 — Review | T17–T20 | Complete verified report, PR and explicit human merge approval |
+| FND-010 — Review | T17–T21 | Complete verified report, PR and explicit human merge approval |
 
 **Current implementation state: NOT STARTED.** All checkboxes intentionally remain empty; no source code, dependencies, app migrations, tests or CI have been executed by creating these planning files.
