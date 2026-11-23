@@ -292,13 +292,13 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 
 - **Backend:** Laravel **12**, RESTful JSON API under `/api/v1`.
 - **Architecture:** A single Laravel **modular monolith**, organized by business responsibility with `nwidart/laravel-modules`. Modules share one database and deployment.
-- **Database:** **To be selected during backend architecture planning**; do not assume MySQL or PostgreSQL is approved yet.
+- **Database:** MySQL **8** / InnoDB, as approved in the Backend Architecture and Database Standards.
 - **Frontend:** Separate application **later**; technology and UI details are outside the current backend phase.
 - **Authentication:** Laravel Sanctum; the browser authentication strategy will be finalized in the architecture document.
 - **Authorization:** Spatie Laravel Permission integrated with Laravel's backend policies/gates.
 - **Shared selects:** One central Select Registry and endpoint (`GET /api/v1/selects?selects=...`) following the proven pattern in the `printingApi` reference repository. Business modules register their own allowed select providers; providers enforce permissions and return `value`/`label` options.
 - **Localization:** Arabic (`ar`) as both default and fallback in V1; translation keys for system-owned text, stable English technical identifiers, and a future-ready translation structure.
-- **Specifications:** GitHub Spec Kit workflow with this overview as the product-level source of truth. Architecture, API/database standards, and individual module specs will own implementation details.
+- **Specifications & delivery:** GitHub-first, manual module-first workflow. Approved module references live in `docs/03-modules/<module>.md`; directly authored feature `spec.md`, `plan.md` and `tasks.md` live in `specs/<module>/<feature>/`. No Spec Kit CLI or separate project constitution.
 - **Implementation:** Prefer Laravel Form Requests, Resources, Policies, Eloquent, focused Actions/Services, database transactions, appropriate locking, exact money types, and automated feature tests. Avoid abstraction without a clear business purpose.
 
 **Deliberately avoided:** Microservices, per-module databases, a separate nursery subsystem, workflow engines, unnecessary repositories/interfaces, and a complete accounting suite. Exact module boundaries, API contracts, schemas, pricing precision, attendance matching, and exception handling belong in architecture and module specs.
@@ -322,4 +322,4 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 
 ---
 
-> **Document purpose:** This is the agreed project-level business overview and V1 scope boundary, not a database design or implementation plan. Keep it focused; detailed tables, endpoints, edge cases, concurrency handling, and task lists belong in the backend architecture, standards, and per-module Spec Kit documents. Update it only when a project-wide business decision changes.
+> **Document purpose:** This is the agreed project-level business overview and V1 scope boundary, not a database design or implementation plan. Keep it focused; detailed tables, endpoints, edge cases, concurrency handling, and task lists belong in the backend architecture, relevant standards, module references, and approved feature documents. Update it only when a project-wide business decision changes.
