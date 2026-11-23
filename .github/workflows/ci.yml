@@ -67,8 +67,14 @@ jobs:
         run: php artisan test
       - name: Check Laravel Pint
         run: vendor/bin/pint --test
+      - name: Verify modular package CLI and no business modules
+        run: |
+          php artisan module:list --no-ansi
+          test -d Modules
+          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' -print -quit)"
       - name: Ensure business modules and out-of-scope artifacts were not generated
         run: |
+          test -z "$(git ls-files .env)"
           test ! -e app/Models/User.php
           test ! -e database/migrations/0001_01_01_000000_create_users_table.php
           test ! -e database/migrations/0001_01_01_000002_create_jobs_table.php
