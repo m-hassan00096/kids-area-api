@@ -55,7 +55,7 @@ jobs:
           composer validate --strict
       - name: Install locked dependencies
         run: |
-          composer install --no-interaction --prefer-dist --no-progress --no-audit
+          composer install --no-interaction --prefer-dist --no-progress
           composer check-platform-reqs
       - name: Set up isolated application key
         run: |
