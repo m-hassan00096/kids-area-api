@@ -1,6 +1,6 @@
 # Foundation — Laravel 12 Bootstrap: Feature Specification
 
-> **Status:** Approved for technical planning  
+> **Status:** Approved and implemented on feature branch; final PR review pending  
 > **Approved PHP version:** **PHP 8.2** (replaces the earlier 8.3 proposal)  
 > **Delivery mode:** GitHub-first, feature branch from `develop`  
 > **Feature location:** `specs/foundation/00-laravel-bootstrap/`  

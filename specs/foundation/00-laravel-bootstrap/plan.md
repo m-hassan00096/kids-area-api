@@ -1,10 +1,10 @@
 # Foundation — Laravel 12 Bootstrap: Technical Plan
 
-> **Status:** Detailed technical elaboration of the approved high-level plan; pending user review with `tasks.md` before implementation.  
+> **Status:** Approved and implemented on the Foundation feature branch; final PR verification and manual merge decision pending.  
 > **PHP runtime / CI:** **8.2.x**; no automatic PHP 8.3 or Laravel 13 upgrade.  
 > **Scope:** `specs/foundation/00-laravel-bootstrap/spec.md` (FND-001–FND-010).  
 > **Branch:** `feature/foundation-laravel12-bootstrap` from `develop`.  
-> **No implementation yet:** This document is not evidence that any package has been installed, lock file generated, migration executed or test run.
+> **Execution evidence:** PHP 8.2 Composer lock generation succeeded in GitHub Actions run #45229235644. Latest code CI passed in run #45230018052 (PHP 8.2, MySQL 8, five PHPUnit tests, Pint, module CLI). See `tasks.md` for evidence.
 
 ## 1. Approach and boundaries
 
@@ -137,6 +137,6 @@ Baseline workflow:
 ## 10. Review/approval gates and handoff
 
 - The **high-level technical approach and the listed Laravel/Modules/PHPUnit/Pint dependencies are approved** by the user with PHP 8.2 compatibility as a condition.
-- This detailed plan is written for review with `tasks.md`. **Do not start code generation, dependency installation, Composer plugin activation, migration execution, GitHub Actions setup or deployment** until the tasks are reviewed and the required plugin/runner safeguards approved.
+- The detailed plan and `tasks.md`, including the scoped Composer plugin allowlist, have been **approved**. Implementation has been performed on the feature branch; no production deployment or merge is authorized.
 - The owning `tasks.md` has independently verifiable acceptance checks tied to **FND-001 through FND-010**. Mark statuses as `Not Started`, `Blocked`, or `Done (verified)`; never pre-check tasks.
 - PR to `develop` only after running required checks; merge only with explicit user approval.
