@@ -390,7 +390,7 @@ This is **one read-only Core registry/aggregator**, not a separate business modu
 **Contract details:**
 
 - `data` is an **array**, in requested-key order, of objects with `label` (the stable English **select key**) and `options` (an array of `{value, label}` objects).
-- `options[].label` is the user-visible **Arabic** option name. `value` is a numeric record ID or an approved stable technical string (for example, a permission name); the owning provider/feature spec defines which type is used.
+- `options[].label` is the user-visible display value from its owning source: stored user-entered names as-is, the database `alias_name` for role/permission labels, or localized fixed system labels. It is **not necessarily Arabic** if a stored name was entered in another language. `value` is a numeric record ID or an approved stable technical string (for example, a permission name); the owning provider/feature spec defines which type is used.
 - Empty eligible sets return `"options": []` for the requested key; they do not silently disappear.
 - Successful lookup responses always return `"message": ""`.
 - Provider read permissions apply even when the caller can open a general create/edit form. The registry must not become an authorization bypass.
@@ -617,8 +617,9 @@ Use **PHPUnit Feature tests** for the HTTP contract and domain-integrity tests i
 | `docs/02-standards/error-handling-standards.md` | Central exception mapping, error codes/logging and internal error hygiene |
 | `docs/02-standards/permissions-standards.md` | Staff roles, guard configuration, permission definitions, audit of authorization changes |
 | `docs/02-standards/localization-standards.md` | Arabic translation keys, fixed-label localization and future locales |
-| `docs/02-standards/ai-workflow-rules.md` | Codex, Spec Kit, implementation workflow and verification reporting |
-| `specs/<feature-number>-<slug>/` | Approved feature-level API payloads, decisions, plan, acceptance criteria and tasks |
+| `docs/02-standards/ai-workflow-rules.md` | GitHub-first delivery, approval gates, verification, optional AI tooling and reporting |
+| `docs/03-modules/<module>.md` | Approved module-wide rules and responsibilities |
+| `specs/<module>/<feature>/` | Approved feature-level API payloads, decisions, plan, acceptance criteria and tasks |
 
 **Change rule:** Update this file **only when the common cross-module HTTP/API contract changes**. An individual endpoint, price, permission or database table belongs in the owning feature spec unless it changes an approved shared convention.
 
