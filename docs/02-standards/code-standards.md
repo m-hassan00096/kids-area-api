@@ -3,7 +3,7 @@
 > **Status:** Approved coding conventions for V1; implementation not started.  
 > **Location:** `docs/02-standards/code-standards.md`  
 > **Scope:** Laravel 12 backend only; one Kids Area location, one MySQL 8 database, API-first hybrid modular monolith.  
-> **Related documents:** [Project Overview](../00-overview/project-overview.md), [Backend Architecture](../01-architecture/backend-architecture.md), the relevant standards in this directory, and the active Spec Kit feature specification.
+> **Related documents:** [Project Overview](../00-overview/project-overview.md), [Backend Architecture](../01-architecture/backend-architecture.md), the relevant standards in this directory, and the active approved feature specification.
 
 ## 1. Purpose & Principles
 
@@ -68,11 +68,11 @@ Modules/
 docs/
 ├── 00-overview/
 ├── 01-architecture/
-└── 02-standards/
+├── 02-standards/
+└── 03-modules/            # Approved module references
 
 tests/                       # Cross-module integration tests
-specs/                       # Spec Kit feature specifications
-.specify/                    # Spec Kit configuration/memory
+specs/                       # Directly authored specs/<module>/<feature>/
 ```
 
 ### Typical module layout: Sessions
@@ -352,9 +352,9 @@ vendor/bin/pint --test
 
 ## 13. Feature Workflow & Definition of Done
 
-**Implementation workflow:** follow the agreed **Spec Kit per-feature** sequence and the approved implementation roadmap: Foundation → core data/Identity → activities/café catalogue → Finance/POS → Sessions → subscriptions/attendance → Workforce/Payroll → Reports. A module may be delivered in several features and phases.
+**Implementation workflow:** follow the approved **manual module-first, GitHub-first feature workflow** and the approved implementation roadmap: Foundation → core data/Identity → activities/café catalogue → Finance/POS → Sessions → subscriptions/attendance → Workforce/Payroll → Reports. A module may be delivered in several features and phases.
 
-For a feature, read the project overview, backend architecture, **relevant** standards and approved feature `spec.md` / `plan.md` / `tasks.md` first. If the feature lacks an essential business rule (especially money, user permissions or subscription timing), stop and resolve that decision before coding.
+For a feature, read the owning `docs/03-modules/<module>.md` reference (when present), the project overview, backend architecture, **relevant** standards and approved feature `spec.md` / `plan.md` / `tasks.md` before implementation. If the feature lacks an essential business rule (especially money, user permissions or subscription timing), stop and resolve that decision before coding.
 
 **Definition of Done — applicable checks:**
 
@@ -368,7 +368,7 @@ For a feature, read the project overview, backend architecture, **relevant** sta
 - [ ] Pint check passes; PR to `develop` passes required CI checks.
 - [ ] Schema/seeders (if affected) are reversible/repeatable where relevant; no destructive changes to deployed history without a reviewed plan.
 - [ ] No application queue, background Job, Redis, cron or scheduled business operation was introduced.
-- [ ] Documentation and Spec Kit tasks are updated **only where the approved requirement or implementation status warrants it**.
+- [ ] Documentation and feature `tasks.md` are updated **only where the approved requirement or verified implementation status warrants it**.
 - [ ] Any unavailable test, environment restriction or unresolved risk is reported accurately.
 
 ## 14. Boundaries & Related Standards
@@ -383,8 +383,9 @@ For a feature, read the project overview, backend architecture, **relevant** sta
 | `docs/02-standards/error-handling-standards.md` | Exception mapping, error payload details, safe reporting |
 | `docs/02-standards/permissions-standards.md` | Roles, permission naming/assignment, authentication guard and enforcement details |
 | `docs/02-standards/localization-standards.md` | Translation keys, Arabic labels, formatting, future-language boundaries |
-| `docs/02-standards/ai-workflow-rules.md` | AI/Codex instructions, reading order, Spec Kit implementation and reporting |
-| `specs/<feature-number>-<slug>/` | Active Spec Kit feature specification, technical plan and executable tasks |
+| `docs/02-standards/ai-workflow-rules.md` | GitHub-first delivery, approval gates, safety, verification, optional AI tooling and reporting |
+| `docs/03-modules/<module>.md` | Canonical approved module-wide rules and ownership |
+| `specs/<module>/<feature>/` | Directly authored feature specification, technical plan and executable tasks |
 
 **Change rule:** Update this standards file only when a **cross-module coding convention** changes. Changes to business behavior, HTTP contracts, table design, permissions or feature steps belong to their designated source-of-truth documents.
 
