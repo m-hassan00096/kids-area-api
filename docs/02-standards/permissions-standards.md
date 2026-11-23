@@ -525,7 +525,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Cache/commit overlap | No known stale grant persists due to pre-commit invalidation and a racing reader |
 | Seeder re-run | Repeated runs yield no duplicates; existing aliases, role grants and active state unchanged |
 | New deployment permission | Added to catalog but not implicitly granted to current roles |
-| Alias display | ``name` remains technical; `alias_name` returned unchanged as `aliasName` and Select label |
+| Alias display | `name` remains technical; `alias_name` returned unchanged as `aliasName` and Select label |
 | Audit write | Actual RBAC change logs actor, target and minimal before/after |
 | Audit atomicity | Failed mandatory audit write rolls back the sensitive change |
 | Audit read | Separate permission required; ordinary reads do not generate audit changes |
