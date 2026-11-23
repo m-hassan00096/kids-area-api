@@ -19,7 +19,7 @@ The architecture optimizes for **straightforward reception workflows**, correct 
 4. **Use one authoritative source per fact:** No independent copies of collections or balances. Financial movements, invoices, attendance facts, and timer segments have explicit ownership.
 5. **Avoid runtime dependencies unavailable in V1:** No queue driver, queued jobs, Redis, Horizon, cron/scheduler dependency, WebSocket server, or always-running application worker.
 6. **Enforce authorization and protect history:** Security lives in the API, not only in future client UI. Historical financial records remain reconstructable.
-7. **Keep business specifics in feature specifications:** The architecture defines boundaries and invariants; individual Spec Kit plans own precise tables, endpoints, edge cases, and algorithms.
+7. **Keep business specifics in feature specifications:** The architecture defines boundaries and invariants; approved feature plans own precise tables, endpoints, edge cases, and algorithms.
 
 ## 2. Technology Stack & Runtime Constraints
 
@@ -68,13 +68,13 @@ kids-area-api/
 ├── docs/
 │   ├── 00-overview/
 │   ├── 01-architecture/
-│   └── 02-standards/
+│   ├── 02-standards/
+│   └── 03-modules/
 ├── lang/ar/
 ├── lang/en/                  # optional future-language scaffolding
 ├── routes/
 ├── tests/                     # cross-module integration tests
-├── specs/                     # Spec Kit feature specifications
-└── .specify/                  # Spec Kit templates/configuration/constitution
+└── specs/                     # Directly authored specs/<module>/<feature>/
 ```
 
 Typical module:
@@ -147,7 +147,7 @@ A failed receipt, invoice, movement, or state transition means **the entire clos
 - **One MySQL 8 InnoDB database.** Each module owns its migrations and data models; migrations are ordered so referenced tables exist before their foreign keys.
 - Use Laravel conventional **unsigned BIGINT IDs** (`id`, `foreignId`) unless a documented specific requirement calls for a different key.
 - Enforce essential foreign keys within and across modules (`subscriptions.child_id`, `subscriptions.group_id`, `staff_attendance.employee_id`, `payments.invoice_id`, etc.). Do not add speculative foreign keys or loose generic polymorphic links where a safer explicit relation is possible.
-- Monetary amounts use **DECIMAL** with appropriate scale (e.g., `DECIMAL(15,2)` for settled EGP amounts); calculations use exact decimal arithmetic / integer minor units where appropriate. Rounding and minute-precision policy belong in the respective feature specifications.
+- Monetary amounts use **`DECIMAL(12,2)`** for settled EGP amounts, as required by Database Standards; calculations use exact decimal arithmetic / integer minor units where appropriate. Rounding and minute-precision policy belong in the respective feature specifications.
 - Use `NOT NULL`, unique constraints, meaningful check/application invariants, and indexes reflecting actual filters and join paths. Database constraints supplement—not replace—application validation.
 - Historic financial, attendance, contract, and time evidence should not disappear due to cascading deletes. Prefer restrictive foreign keys, status transitions, and explicit reversible corrections over destructive deletion. Soft delete is not a substitute for a financial audit trail.
 - Store server-authoritative instants as UTC; use explicit time zones when interpreting scheduled class times or calendar months in the Egyptian operating context.
@@ -319,32 +319,38 @@ Every business feature requires tests appropriate to its risk. A change is not c
 
 - Use **MySQL 8** in CI integration/concurrency tests; SQLite alone is not an adequate substitute for testing InnoDB row locks and foreign keys.
 - **GitHub Actions runs on pull requests targeting `develop`.** Its required checks include dependency installation, migrations/test fixtures, and automated tests. Apply branch-protection/ruleset required status checks when GitHub permissions and plan allow them; until then treat passing CI as a manual merge gate.
-- A feature PR includes the Spec Kit specification/plan/tasks as relevant, production code, automated tests, migration notes, and manual validation of business flows. No merge with failing relevant tests.
+- A feature PR includes the approved feature specification/plan/tasks as relevant, production code, automated tests, migration notes, and manual validation of business flows. No merge with failing relevant tests.
 - Keep secrets in protected GitHub/hosting settings; never in repository configuration or example responses.
 
-## 15. Spec Kit Workflow & Development Branches
+## 15. GitHub-First, Module-First Feature Workflow & Development Branches
 
-**Canonical product overview:** `docs/00-overview/project-overview.md`  
+**Business overview:** `docs/00-overview/project-overview.md`  
 **Architecture:** this document  
-**Project constitution (next artifact):** `.specify/memory/constitution.md`  
-**Cross-cutting standards (subsequently):** `docs/02-standards/`  
-**Feature documents:** Spec Kit-managed `specs/<feature-number>-<slug>/` paths.
+**Cross-cutting standards:** `docs/02-standards/`, including `ai-workflow-rules.md`  
+**Approved module references:** `docs/03-modules/<module>.md`  
+**Manually authored feature documents:** `specs/<module>/<feature>/spec.md`, `plan.md` and `tasks.md`.
 
-Development sequence for each feature:
+The current delivery mode is **direct GitHub editing**. Neither Spec Kit CLI, `.specify/` nor a separate project constitution is part of the adopted workflow. Codex, Laravel Boost and `AGENTS.md` are optional future tooling, not prerequisites.
+
+Approved feature sequence:
 
 ```text
-Approved project-wide principles
-  -> Feature spec (`spec.md`: requirements, scenarios, acceptance criteria)
-  -> Implementation plan (`plan.md`: module impact, schemas, APIs, trade-offs)
-  -> Tasks (`tasks.md`: small ordered delivery steps)
-  -> Implement and test
-  -> Pull request to develop + passing MySQL 8 CI + review
-  -> Approved merge
+Approved module reference (when applicable)
+  -> Approved feature spec (requirements and acceptance criteria)
+  -> Approved technical plan (affected modules, schema, APIs, risks and tests)
+  -> Reviewed implementation tasks
+  -> Feature branch created from develop
+  -> Implement, verify and update tasks.md with actual evidence
+  -> Open PR to develop; review required tests and risks
+  -> Merge only with explicit user approval
 ```
 
-- Split large modules into **independently reviewable features**, each with its own spec, plan, tasks, tests, and separate PR where useful. A module can be visited in more than one delivery phase.
-- `feature/*` starts from `develop`; `develop` integrates completed reviewed work; `main` represents a stable, separately approved release. Production deployments are not automatically triggered by merges to `develop`.
-- The `.specify/memory/constitution.md` document will state mandatory governance gates, including module ownership, accurate money/timer state, secure Arabic-first API conventions, tests, and the **no queue/job/redis/cron** constraint.
+- Split complex modules into reviewable features. A tiny, unambiguous fix can use a proportionate process without three new documents, with appropriate regression testing.
+- `feature/*` branches start from `develop`. `develop` integrates reviewed changes, while `main` is a separately approved stable release line; merging to `develop` is not authorization to deploy to production.
+- A committed test, migration or source file is **not evidence that it ran**. Record `Passed`, `Failed` or `Not Run` truthfully. Do not mark a feature Ready for Review until mandatory checks have actually passed.
+- A Draft PR can share unfinished work, but does not mean it is Ready for Review.
+- Destructive operations, production changes, new packages, changes to business rules/architecture and out-of-scope work require separate approval under `docs/02-standards/ai-workflow-rules.md`.
+- **No automatic merge to `develop`**, even when CI succeeds.
 
 ## 16. Approved Implementation Roadmap
 
@@ -374,4 +380,4 @@ Do not invent these rules at architecture level; settle them when the owning fea
 - Frontend-origin-aware Sanctum authentication mode, session expiry, and secure browser transport.
 - Hosting-specific backup retention, restoration drills, and safe deployment/rollback procedure.
 
-Any later change to a **project-wide approved architectural decision** must be reviewed here and, where applicable, in the project constitution before features rely on it.
+Any later change to a **project-wide approved architectural decision** must be approved and reflected here and in any affected standards, module references and feature documents before features rely on it.
