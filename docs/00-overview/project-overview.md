@@ -294,7 +294,7 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 - **Architecture:** A single Laravel **modular monolith**, organized by business responsibility with `nwidart/laravel-modules`. Modules share one database and deployment.
 - **Database:** MySQL **8** / InnoDB, as approved in the Backend Architecture and Database Standards.
 - **Frontend:** Separate application **later**; technology and UI details are outside the current backend phase.
-- **Authentication:** Laravel Sanctum; the browser authentication strategy will be finalized in the architecture document.
+- **Authentication:** Laravel Sanctum **stateful Cookie/Session** is the approved staff-browser approach; actual frontend origin, cookie/CSRF/CORS values and the implementation plan are finalized when the frontend is deployed.
 - **Authorization:** Spatie Laravel Permission integrated with Laravel's backend policies/gates.
 - **Shared selects:** One central Select Registry and endpoint (`GET /api/v1/selects?selects=...`) following the proven pattern in the `printingApi` reference repository. Business modules register their own allowed select providers; providers enforce permissions and return `value`/`label` options.
 - **Localization:** Arabic (`ar`) as both default and fallback in V1; translation keys for system-owned text, stable English technical identifiers, and a future-ready translation structure.
