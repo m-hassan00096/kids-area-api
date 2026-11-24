@@ -37,7 +37,7 @@ The architecture optimizes for **straightforward reception workflows**, correct 
 | Deployment | Shared Hosting / cPanel; web root restricted to Laravel `public` |
 | CI | GitHub Actions on pull requests targeting `develop`, exercising MySQL 8 |
 | Background processing | **Disallowed in V1:** queues, queued jobs, Redis, scheduled/cron tasks |
-| Frontend | Separate later phase; authentication transport to be finalized when its deployment origin is known |
+| Frontend | Separate later phase; **Sanctum stateful Cookie/Session is approved** for staff browser auth; actual origin/domain settings remain to be configured |
 
 Composer dependencies are version-locked through `composer.lock`. New libraries must justify their purpose, PHP-extension requirements, shared-hosting compatibility, and maintenance cost.
 
@@ -206,7 +206,7 @@ Providers enforce authorization and accept only approved parameters/filters. The
 
 ## 7. Authentication, Authorization & Identity Separation
 
-- **Laravel Sanctum** handles API authentication. The SPA cookie vs. token strategy is deferred until the later frontend origin/deployment design is known; do not assume tokens are always the right browser strategy.
+- **Laravel Sanctum stateful Cookie/Session** is the approved browser-authentication transport. The later frontend deployment determines actual cookie-domain/CSRF/CORS settings, not the transport type. Use 12-hour session inactivity, appropriate session revocation and secure HTTPS browser credentials as detailed in the Identity and API standards.
 - **Every operator has an individual login**; shared reception/cashier accounts are not allowed. Account disablement immediately blocks protected operations under the selected authentication mechanism.
 - A **User** is an Identity entity with permissions; an **Employee** is an HR entity with jobs, contracts, shifts, and payroll. Linking user to employee is optional in either direction where it makes business sense.
 - Children and guardians do **not** require sign-in accounts in V1.
@@ -377,7 +377,7 @@ Do not invent these rules at architecture level; settle them when the owning fea
 - Subscription receipt/obligation modeling and policy for overpayments, cancellations, and adjustments.
 - Exact idempotency key scope/retention, source-reference uniqueness, refund/partial refund reversals, and invoice numbering.
 - Large-report export size thresholds and the chosen synchronous Excel/PDF libraries.
-- Frontend-origin-aware Sanctum authentication mode, session expiry, and secure browser transport.
+- Frontend-origin-aware configuration for the **already approved** Sanctum Cookie/Session mode (actual domains, CSRF/CORS settings, session backing store, and revocation implementation); 12-hour idle expiry is approved.
 - Hosting-specific backup retention, restoration drills, and safe deployment/rollback procedure.
 
 Any later change to a **project-wide approved architectural decision** must be approved and reflected here and in any affected standards, module references and feature documents before features rely on it.
