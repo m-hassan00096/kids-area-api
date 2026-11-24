@@ -29,7 +29,7 @@ This document specifies **how PHP code is organized and written** across Kids Ar
 | Database | **MySQL 8 / InnoDB**, one database |
 | Persistence | Eloquent and Laravel Query Builder |
 | API | Versioned JSON routes under `/api/v1` |
-| Authentication | Laravel Sanctum; **cookie vs. token transport is deferred** until the frontend origin/deployment is specified |
+| Authentication | Laravel Sanctum **stateful Cookie/Session** approved; exact origin/cookie settings belong to the Auth deployment plan |
 | Authorization | Spatie Laravel Permission plus Laravel Policies/Gates |
 | Operating language | Arabic (`ar`) for system-owned messages and labels; future-language ready |
 | Currency | EGP; exact decimal money operations, no floating-point money accounting |
@@ -327,7 +327,7 @@ vendor/bin/pint --test
 - Enforce authentication and permission checks at the backend. Sensitive read endpoints and exports require authorization as much as writes.
 - No unapproved `Gate::before` role bypass or per-user role assignment rule is introduced merely by this code standard; design those details in Permissions Standards and Identity features.
 - Identity user account and Employee business record remain separate with optional association.
-- Use Laravel password hashing, validated inputs, safe query binding and CSRF protection **as appropriate to the authentication transport later selected**; rate-limit login and sensitive endpoints.
+- Use Laravel password hashing, validated inputs, safe query binding and **CSRF protection for the approved Sanctum Cookie/Session browser flow**; rate-limit login and sensitive endpoints. Implement and test 12-hour session inactivity and previous-session revocation as specified by Identity/Auth.
 - API messages and user-facing fixed labels are **Arabic** using Laravel translation keys. Technical permission names, database keys and enum identifiers remain English and stable.
 - Keep sensitive data out of Application Logs, Audit Logs and error responses: passwords, cookies, tokens, private child/guardian details, staff salary data, full payment credentials, stack traces and SQL dumps.
 - Application Logs record unexpected operational faults; **selective centralized Audit Logs** record important business-sensitive changes only (actor, timestamp, reason where required, relevant before/after values). Neither replaces the Financial Movements ledger or timer-segment history.
