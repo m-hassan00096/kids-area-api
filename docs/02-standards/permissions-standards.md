@@ -22,7 +22,7 @@ This document governs **how staff access is defined, stored, assigned, validated
 - Permission-cache coherence, synchronous RBAC audits, appropriate security logs and test requirements.
 - Defense at route, Policy, Select Provider, Resource and Action boundaries.
 
-**Not defined here:** complete role-to-permission mapping per feature, exact administrative endpoints, initial bootstrap credential delivery, account recovery procedure, every permission's authorization sensitivity class, the later frontend authentication transport, or global business state rules. These belong to the Identity/RBAC or relevant module feature specifications.
+**Not defined here:** exact feature-level request/Resource payloads, installed package/migration details, initial bootstrap credential-delivery implementation, approved manual recovery runbook, every permission's authorization sensitivity class, deployment-specific cookie/CORS settings, or global business state rules. The approved Identity-wide business decisions and Cookie/Session transport are recorded in [Identity Module Reference](../03-modules/identity.md); technical details belong to the feature specifications.
 
 **V1 non-goals:** multi-tenancy, Spatie Teams, multi-role accounts, direct user grants, implicit administrator wildcard, role/permission translation tables, user impersonation, real-time permission synchronization, Redis, queues, jobs, cron, polling, WebSockets and custom RBAC engines.
 
@@ -36,11 +36,11 @@ This document governs **how staff access is defined, stored, assigned, validated
 | 4 | **Last Manager Protection** | No update may remove the last viable administrative management path; use common InnoDB locking and atomic checks |
 | 5 | **Configurable Roles, Fixed Catalog** | Authorized users may create/configure custom roles; cannot invent technical permissions |
 | 6 | **Module-Owned Definitions, Central Seeding** | Each module declares needed permissions; Identity aggregates and seeds them idempotently |
-| 7 | **Single `web` Guard + Sanctum** | Spatie role/permission guard is `web`; API authentication uses `auth:sanctum`; Cookie vs Bearer deferred |
+| 7 | **Single `web` Guard + Sanctum Cookie** | Spatie guard is `web`; protected APIs use `auth:sanctum`; the approved browser transport is stateful Cookie/Session with CSRF; exact frontend origins remain deployment-specific |
 | 8 | **Native Spatie Cache + Fresh Authorization** | Use package mutation methods, correct post-commit cache handling and fresh account/role checks |
 | 9 | **Complete RBAC Audit** | Audit all actual access-management changes; restrictive audit-read permission; sensitive changes atomic with audit |
 | 10 | **Additive, Non-Destructive Seeders** | Initial installation sets approved defaults; subsequent routine seeding only adds missing definitions and never overwrites customized role grants or aliases |
-| 11 | **Deactivate, Do Not Delete** | No hard deletion of roles via V1 application UI; `roles.is_active` controls eligibility |
+| 11 | **Protected Seeded Roles + Conditional Custom-Role Delete** | Seeded `manager`/`reception` cannot be disabled or deleted; custom roles may be disabled, and hard-deleted only if assigned to zero Users (including inactive Users) |
 | 12 | **RBAC Security Matrix + PHPUnit Tests** | Core Identity plus module authorization tests, realistic MySQL 8 concurrency/cache/audit regression in CI |
 | 13 | **Database + Application Single Role** | `syncRoles()` in protected Actions plus a validated, compatible unique constraint on Spatie's role-assignment pivot |
 
@@ -52,10 +52,10 @@ This document governs **how staff access is defined, stored, assigned, validated
 - An `Employee` is a distinct HR entity; optionally link an Employee and User only where the feature requires it. A contract or job title does **not** automatically grant system permissions.
 - Children and guardians have no required sign-in accounts in V1.
 - Every operator must have an **individual login**; no shared cashier/reception accounts.
-- Seed starting roles with the stable technical names `manager` and `reception`. New authorized custom roles may be added later without expanding the permission catalog.
+- Seed starting roles with the stable technical names `manager` and `reception`; **neither can be deactivated or deleted**. New authorized custom roles may be added later without expanding the permission catalog. **More than one staff User may have the `manager` role.**
 - Each staff User has **at most one** assigned role in persisted state. A User intended to operate protected APIs must have **exactly one** role and it must be active.
 - There is no cross-location/tenant permission scope in V1. Row-level visibility still applies to protected personal/financial records.
-- Ensure explicit account-active status under the Identity schema (e.g., an approved `users.is_active` boolean), with login and request-time enforcement. Exact user-table migration is decided in the Identity feature spec.
+- Ensure explicit account-active status under the Identity schema (`users.is_active`), with login and request-time enforcement. New Users are active by default. **User ID 1 is a protected founding account:** no one may delete/deactivate it; only its owner may make permitted updates, and own password changes require Profile/current password. Conditional hard deletion of other unused Users is allowed only without important business/historical dependencies. Exact user-table migration is decided in the Identity feature spec.
 
 **Technical roles are not job titles.** Never assume that a user may close a session solely because they are named "Reception", hold the `reception` role, or have a related HR employee record.
 
@@ -182,19 +182,21 @@ UNIQUE (model_type, model_id)
 | Assign/change a User's Role | One role only via authorized `syncRoles()` in an Action and transaction |
 | Assign role marked inactive | **Rejected** |
 | Grant direct permission to User | **Rejected / unsupported** |
-| Activate/deactivate a Role | Allowed if authorized and Last Manager Protection passes |
-| Delete Role via application | **Never in V1**; deactivate instead |
+| Activate/deactivate a Role | Allowed for **custom roles only**, if authorized and Last Manager Protection passes; seeded roles stay active |
+| Delete Role via application | **Custom roles only**, with `identity.roles.delete`, **only if no Users are assigned**, including inactive Users; seeded `manager`/`reception` cannot be deleted |
 | Modify seeded Manager grants | Permission-controlled and subject to Last Manager Protection; no automatic bypass |
 | Reassign staff from inactive Role | Explicit action by an authorized manager, never implicit |
 | Read RBAC audit events | Separate permission and Resource scoping |
 
-**Privilege-escalation safety**
+**Approved administrative capability scope and safeguards**
 
-- Permission to access an RBAC management endpoint does **not** automatically authorize every target role, permission set or new assignment.
-- A Role management or User assignment Action must verify the actor is authorized for **this change**, especially self-modification, assignment of high-impact permissions, and edits to the `manager` role.
-- Do not allow an operator to indirectly grant themselves forbidden capabilities, bypass restrictions on sensitive roles or undermine Last Manager Protection merely by editing a role or assigning themselves another role.
-- **The exact policy for who may edit high-impact grants, who may modify their own role, and which capabilities are privileged is deferred to the approved Identity/RBAC feature spec.** Do not invent broad unconditional edit rights.
-- Use Policies/Gates plus the owning Actions. Authorization of a general endpoint is not a substitute for checking the requested target and state.
+- **Users:** `identity.users.view`, `identity.users.create`, `identity.users.update`, and independent `identity.users.delete`. `identity.users.update` covers user data, role, activation and password reset for **another** account through the same `PUT /users/{user}`. Password remains unchanged if omitted/empty. Self password changes always use Profile with current password.
+- **Roles:** independent `identity.roles.index`, `identity.roles.store`, `identity.roles.show`, `identity.roles.update`, `identity.roles.delete`; `identity.roles.update` includes all predefined Role Permission grants/revocations and custom-role activation.
+- **Grants are intentionally broad:** the holder of `identity.roles.update` may grant/revoke **any existing technical catalogue Permission**, including one they do not personally possess. There is **no additional per-permission dominance restriction**, but no unapproved implicit manager bypass either.
+- **Account targets are intentionally broad:** the holder of `identity.users.update` may edit another Manager just like other Users, **except User ID 1**. No generic higher-role target restriction is added. Changing a User's own password through Users PUT remains prohibited.
+- **User ID 1:** nobody else may update it, regardless of permissions or Role; nobody may deactivate or delete it (including itself). The owner may perform otherwise authorized ordinary updates and can change its password only through Profile/current password. Last Manager Protection still applies to self role changes.
+- **Last viable admin protection remains mandatory** for every affected role/User/grant mutation; no permission authorizes deleting/stranding the final viable access-management path.
+- Validate real target/state conditions in Policies and Actions, use safe audit, and treat these high-impact capabilities as powerful permissions to assign deliberately.
 - Role `name` uniqueness/valid syntax must be validated, including the `web` guard; reject reserved names and collisions as specified by the Identity feature spec.
 - Validate new aliases for acceptable length, nonempty content and safe display; do not automatically translate them.
 
@@ -226,7 +228,7 @@ Spatie does **not** enforce a custom `roles.is_active` flag by default. A disabl
 
 **No `Gate::before()` super-admin shortcut.** The `manager` role is subject to normal explicit Spatie permission membership, Policies and business rules.
 
-- An initial `manager` role is seeded with explicitly approved permissions.
+- An initial `manager` role is seeded with **all approved first-install technical permissions explicitly**. Multiple Users may hold `manager`; role-name membership is not an authorization bypass.
 - A new technical permission does **not** automatically attach to `manager` in a running installation. Granting it is a reviewed, auditable deployment/admin decision.
 - A Manager without `finance.refunds.create` must not refund; a Manager who has it still cannot refund more than is refundable.
 - A successful `can()` is not a replacement for Policy record visibility, current state, or Action invariants.
@@ -235,7 +237,7 @@ Spatie does **not** enforce a custom `roles.is_active` flag by default. A disabl
 
 **Approved:** never allow a committed change to leave **zero viable administrators capable of managing staff access**.
 
-A viable manager (under the V1 starting-role policy) must have:
+A viable manager (under the V1 starting-role policy; **not the only Manager User**) must have:
 
 1. A usable, active staff User account, not disabled/deleted.
 2. Exactly one role, active and assigned to the User.
@@ -264,12 +266,12 @@ The exact minimal critical permission set, plus whether a future custom role may
 
 **Important:** Last Manager Protection is a safety invariant, **not** a super-user mechanism. A person without the required current authorization cannot modify administrative access merely because they are the last Manager.
 
-### 8.2 Initial bootstrap and recovery
+### 8.2 Initial bootstrap and manual recovery
 
-- Initial setup creates the approved `manager` role, relevant permissions and a **controlled first administrative User** through a reviewed, secure provisioning flow.
-- Do not embed hardcoded credentials, publish temporary passwords in seeders, or assume that seeding RBAC definitions also creates a safe real-world operator account.
-- Recovery after lost credentials or corruption is an **explicit operational break-glass procedure** to be approved and audited in the Identity feature specification; do not introduce a hidden API bypass or silent Manager reset.
-- A management Role deactivation may be requested only when the last-manager invariant remains true; preserve role/assignment history.
+- Seeders create the approved `manager`/`reception` roles, fixed catalogue and reviewed first-install grants; a **separate secure, one-time Artisan command** creates the founding administrative User. It must confirm that the protected first account actually has **`users.id=1`** and fail safely if the ID is occupied or the account is already provisioned.
+- No demo/hardcoded credentials in code or seeders; running seeders again must not change credentials or grants.
+- If all administrative credentials are lost, the technical owner handles **controlled manual server-side recovery** with secure password hashing and documented audit evidence. **No automated emergency recovery command, public Forgot Password endpoint or hidden Manager-reset API** is part of V1.
+- `manager` and `reception` are always active and cannot be deleted/deactivated. The invariant also protects any last viable administrative grant path from being removed.
 
 ## 9. Sanctum, Guard and Authorization in Modules
 
@@ -279,7 +281,7 @@ Use **`auth:sanctum`** to authenticate API requests, with Spatie roles and permi
 - Ensure the staff User and any custom Spatie Role/Permission models resolve the `web` guard consistently (e.g., documented `$guard_name` / default guard handling as supported by the installed package).
 - Configure `config/permission.php` consistently, and register Spatie middleware aliases in Laravel 12 where needed.
 - Do not create duplicate technical permission rows under both `api` and `web` for the same staff system.
-- **Guard choice does not settle Sanctum transport.** SPA Cookie/Session vs Bearer-token details, CSRF/419 behavior and frontend origin are deferred to the frontend/auth feature plan.
+- **Sanctum browser transport is approved as stateful Cookie/Session**, not Bearer-token SPA authentication. Use CSRF, session regeneration/invalidation, 12-hour inactivity expiry, and the approved JSON error mapping. Exact cookie domain, allowed frontend origins, session store and CSRF `419` implementation details are decided and tested in the Auth feature plan.
 
 **Illustrative route (not a finalized endpoint definition):**
 
@@ -355,7 +357,7 @@ The outer `label` is the **technical Select key**. For role options, `value` may
 1. Collect the approved technical permission catalog from the owning modules.
 2. Create the missing permissions with `guard_name=web` and a meaningful `alias_name`.
 3. Create the seeded `manager` and `reception` roles with `guard_name=web`, `alias_name` and `is_active=true`.
-4. Apply an **explicitly approved** initial role-to-permission mapping for a fresh installation.
+4. Apply an **explicitly approved** initial role-to-permission mapping for a fresh installation: `manager` receives all approved at-install technical permissions, while `reception` receives only the approved day-to-day operational set. Do not imply automatic future grants.
 5. Provision the initial administrative User through its independently secured bootstrap flow. Do not seed plaintext/demo credentials into production.
 
 **Every later routine deploy/reseed**
@@ -387,20 +389,18 @@ Permission::firstOrCreate(
 
 This shows a **single definition**, not an approved automatic assignment to `manager` or `reception`.
 
-## 12. Deactivation, Historical Integrity and Role Lifecycle
+## 12. Activation, Conditional Deletion and Historical Integrity
 
-**Approved: Deactivation Instead of Deletion** in V1.
+**Approved: protected seeded roles and controlled hard deletion of unassigned custom roles.**
 
-- No user-facing API/management action hard-deletes roles, including custom roles; use `roles.is_active=false` to deactivate.
-- Active-role checks must reject an already authenticated employee's **next protected request** when their assigned role is disabled.
-- Inactive roles are **not eligible for new user assignments**, but may appear in authorized role-management/history views.
-- Deactivating a role with assigned users is permitted only with authorization, an explicit impact warning/confirmation in the eventual UI, audit and Last Manager Protection. Existing users keep their references but cannot use protected APIs until reactivated/reassigned.
-- Reactivation is an explicit audited operation, subject to permission checks; it restores only currently granted permissions, not past grants.
-- Do not auto-reassign users to `reception` or another role when their role is disabled.
-- `softDeletes()` is not needed on `roles` merely to model inactive state. Do not hard-delete historical user assignments or RBAC audit records as a cleanup shortcut.
-- Role `name` remains stable through its lifecycle; `alias_name` can be updated with authorization and audit.
-- Spatie pivots represent **current** assignment state, not a complete history. The approved RBAC audit supplies before/after evidence for changes.
-- Any future retention/privacy purge is a separate approved operational/privacy procedure, not a standard "delete role" button.
+- Seeded `manager` and `reception` are **always active** and cannot be deleted or deactivated, even when no Users are currently assigned.
+- Custom roles may be deactivated/reactivated by an authorized actor using `identity.roles.update`, subject to Last Manager Protection. A deactivated role cannot be newly assigned and its currently assigned Users lose protected access on subsequent requests; **do not auto-reassign them**.
+- Hard deletion through `identity.roles.delete` is permitted **only** for a custom role with **no assigned Users at all**, including inactive accounts. A linked role fails with `409 Conflict`. Use FK/lock-safe enforcement so creation/assignment cannot race the delete. Deleting a role may clear its role-permission pivots but **must not delete underlying Permission definitions**.
+- Custom-role reactivation restores only the currently granted permissions, not historical or implicit grants. `roles.is_active` and stable technical name remain guarded by the owning Action.
+- **User hard deletion** is permitted with `identity.users.delete` only for a non-founding account without important historical/operational links; otherwise disable the account. User ID 1 is never deletable or deactivatable. Preserve financial, attendance, cashier and administrative history; do not use cascading deletes to erase protected business facts.
+- A historical audit event for account creation alone is not an unconditional deletion blocker. Preserve interpretable actor/target event snapshots without retaining credentials. The detailed audit-FK/deletion plan must be tested before implementation.
+- Keep `role.name` technical/stable and `alias_name` editable under authorization. Spatie pivots describe **current** role/permission state, not historical grants; the append-only audit retains before/after evidence.
+- A future privacy purge/anonymization procedure is separate from V1 CRUD and cannot silently erase protected records.
 
 ## 13. Complete RBAC Audit and Security Logging
 
@@ -411,7 +411,7 @@ This shows a **single definition**, not an approved automatic assignment to `man
 - Creation of roles, role display-alias edit, activation/deactivation.
 - Addition/removal/replacement of a role's permission assignments.
 - Assignment/replacement of a user's single role.
-- Enable/disable of staff accounts or access-related user state.
+- Enable/disable of staff accounts or access-related user state, permitted hard deletion of unused Users or custom Roles, and password changes (event metadata **only**, never values/hashes).
 - Explicit migration/seeding access grants or security-sensitive administrative changes where a human/system actor needs attribution.
 - The Last Manager Protection-sensitive changes, whether successful or blocked, with blocked attempts considered for **separate security logs**, not fake successful audit entries.
 
@@ -434,7 +434,7 @@ This shows a **single definition**, not an approved automatic assignment to `man
 3. Preserve the **technical identifiers** in history even if display aliases are later edited.
 4. RBAC audit records are **append-only** in normal app flows; authorized users may read them with a dedicated capability, illustrative `identity.audit.view`, but do not edit/delete the records through the dashboard.
 5. Apply query limits/pagination and data minimization to audit listing and exports; do not reveal private unrelated staff data through broad includes.
-6. Ordinary GET and `can()` checks are **not audit events**. Suspicious/denied access-management attempts may create **selective security logs** in line with Error Handling Standards, but must **not** be recorded as if a role actually changed.
+6. Ordinary GET, `can()`, successful routine Login and Logout are **not administrative change-audit events**. Suspicious or denied access-management/authentication attempts may create **selective security logs** under Error Handling Standards, but must **not** appear as successful change audits.
 7. Do not use the audit log instead of Spatie's current role pivots, and do not use error logs as change history.
 8. Cache refreshes/logging of permission-cache diagnostics do not represent successful role/permission changes.
 9. Test rollback of a sensitive mutation when mandatory audit persistence fails, plus successful before/after history for each RBAC mutation category.
@@ -517,7 +517,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Record scoping | Unauthorized sensitive record `404` as specified; feature permission `403` |
 | Select Registry | Unknown key `422`; any forbidden key `403` with **no partial options** |
 | Role management | Only authorized actor can manage each eligible Role/permission set |
-| Privilege escalation | Self-modification, indirect grants and protected admin role edits cannot bypass approved policy |
+| Administrative grants | `identity.roles.update` may grant any predefined Permission (including not personally held); `identity.users.update` may manage other Managers except User ID 1; test Last Manager safeguards |
 | Last Manager | Cannot disable, reassign or remove essential permissions from last viable administrator |
 | True concurrency | Two independently overlapping MySQL transactions cannot remove two final Managers |
 | Admin-grant race | Concurrent role permission removals honor the same serialization invariant |
@@ -529,7 +529,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Audit write | Actual RBAC change logs actor, target and minimal before/after |
 | Audit atomicity | Failed mandatory audit write rolls back the sensitive change |
 | Audit read | Separate permission required; ordinary reads do not generate audit changes |
-| Deactivation/no deletion | App cannot delete role; inactive roles not assignable; historical info remains |
+| Conditional deletion | Seeded roles cannot be deleted/deactivated; only unused custom roles and historically unlinked non-founding Users may be hard-deleted, preserving audit and protected history |
 | API shape | Safe Arabic failures, `camelCase`, status/codes, empty messages where required |
 
 **Implementation/testing rules**
@@ -547,7 +547,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 
 - [ ] Use **Laravel 12** and compatible installed versions of Sanctum, Spatie and nwidart.
 - [ ] Identity owns the one canonical User model; Staff User and HR Employee remain separate.
-- [ ] Use `auth:sanctum`; keep Cookie/Bearer decision deferred.
+- [ ] Use `auth:sanctum` with approved stateful Sanctum Cookie/Session transport, CSRF and 12-hour idle expiry; configure actual frontend origins in Auth plan.
 - [ ] Keep all Role/Permission `guard_name` values `web`.
 - [ ] Extend native `roles`/`permissions` with `alias_name` and `roles.is_active`, preserving existing relationships.
 - [ ] Verify and add compatible single-role database uniqueness; no Teams in V1.
@@ -559,8 +559,8 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 - [ ] Use no `Gate::before()` admin bypass; all capabilities explicit.
 - [ ] Active User/Role verified at login and on each protected request with **fresh state**.
 - [ ] Protect the **last viable administrator** under common lock/transaction on every relevant mutation.
-- [ ] Validate high-impact role edits and self-privilege escalation in record-level policies/actions.
-- [ ] No role hard-delete operation in V1; use audited activation/deactivation.
+- [ ] Enforce User ID 1 protection, owner-only permitted updates, nondeletable/nondeactivatable state, own password change via Profile, and safe authorized grants with Last Manager Protection.
+- [ ] Keep seeded roles active and nondeletable; permit audited hard deletion of only custom Roles with zero User assignments (including inactive accounts), plus conditional deletion of historically unlinked non-founding Users.
 - [ ] Permissions and aliases never replace technical names in authorization.
 - [ ] Register and test Spatie middleware guards/aliases for actual installed Laravel version.
 - [ ] Use native Spatie mutation methods, fresh roles and safe post-commit cache coherence.
@@ -576,13 +576,13 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 **Identity/RBAC feature specification still must define:**
 
 1. Exact technical permission list and its owner module; initial `manager`/`reception` assignments.
-2. Precise approval rules for creating custom roles, granting high-risk permissions, editing the Manager role and changing one's own role.
-3. Minimal essential access-management capabilities for Last Manager Protection; secure first-admin bootstrap and break-glass/recovery procedure.
+2. Exact request/Policy enforcement for the **already approved** broad `identity.roles.update` catalogue-grant scope, Users CRUD scope, and protected User ID 1; confirm target changes with audits and Last Manager Protection.
+3. Minimal essential access-management capabilities for Last Manager Protection; secure one-time first-admin bootstrap at User ID 1 and a documented **manual technical recovery** runbook (no extra recovery command).
 4. Request/Resource/Action contracts for users, roles, role assignments, audits and account status; no endpoints invented in this standards file.
 5. Actual Spatie package version and published table structure; index/migration plan, guard settings, model class/trait and Teams configuration.
 6. Exact locking serialization strategy and MySQL test harness for parallel mutations; approved failure messages/machine codes.
 7. Cache-driver configuration, post-commit invalidation, operational recovery for uncertain change state.
-8. Future Sanctum Cookie/Session vs Bearer token transport and its CSRF/session-expiry details.
+8. Exact deployment origin, secure Cookie/CSRF/CORS configuration, `419` mapping, session store and cross-session revocation for the **approved Sanctum Cookie/Session transport**.
 9. Which administrative changes require a reason or additional confirmation; audit retention/access implementation.
 
 **Related-document ownership**
@@ -596,12 +596,12 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | [Error Handling Standards](error-handling-standards.md) | 401/403/404/409/422/500/503 behavior, safe logs, request IDs |
 | [Localization Standards](localization-standards.md) | Stored `alias_name` display, translation boundaries and frontend labels |
 | **This document** | Cross-module identity permissions, guards, roles, cache, audit, seeders, tests |
-| Identity/RBAC feature spec | Concrete role/permission assignments, policy details, endpoints, bootstrap/recovery |
+| Identity/RBAC feature spec | Concrete role/permission assignments, selected target-state/Policy details, endpoints, bootstrap/manual recovery |
 | Owning module feature specs | Individual permissions, record constraints and regression tests |
 
 **Review/approval boundary**
 
 - This is a **normative cross-module V1 standard**, not an implemented migration, middleware or automated test suite.
-- Do not transplant Tabaa/printing-specific roles (`designer`, `production_supervisor`, `delivery`), Laravel 13 assumptions, `alias` naming, or cookie-only SPA authentication into Kids Area.
-- Any change allowing multiple roles, direct User permissions, Teams, hard-delete of roles, automatic manager bypass, multilingual alias storage or background permission sync requires a separate design review and updated related standards.
+- Do not transplant Tabaa/printing-specific roles (`designer`, `production_supervisor`, `delivery`), Laravel 13 assumptions, `alias` naming, or **unreviewed cookie configuration copied from another SPA**. Kids Area explicitly approved Sanctum Cookie/Session; actual origins and CSRF behavior are specified for this deployment.
+- Any change allowing multiple roles **per User**, direct User permissions, Teams, **deleting assigned or seeded roles**, automatic manager bypass, multilingual alias storage or background permission sync requires a separate design review and updated related standards. **Multiple Users holding `manager` and deletion of unassigned custom roles are already approved.**
 - New role/permission definitions and security-sensitive exceptions require an explicit feature or architecture decision, not an accidental implementation shortcut.

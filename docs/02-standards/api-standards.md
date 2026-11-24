@@ -26,7 +26,7 @@ The backend is a **Laravel 12 API-first hybrid modular monolith** using `nwidart
 | Filter/search/sort/include | `spatie/laravel-query-builder` with endpoint-specific allowlists |
 | Shared dropdowns | `GET /api/v1/selects?selects=...`, a `data` **array of {label, options}** |
 | Select authorization | **All-or-nothing**: unauthorized key => 403; unknown key => 422 |
-| Authentication | Laravel Sanctum; **session/cookie vs. Bearer token deferred** until frontend deployment is specified |
+| Authentication | Laravel Sanctum **stateful Cookie/Session** for the browser; HTTPS, CSRF, 12-hour idle expiry; exact frontend domains/CORS settings are deployment-specific |
 | Authorization | Spatie Laravel Permission + Policies/Gates on the backend |
 | Retry protection | `Idempotency-Key` **required for financial/sensitive replay-risk commands**, not every POST |
 | Money | Exact decimal **strings**, EGP only |
@@ -163,7 +163,7 @@ Content-Type: application/json
 }
 ```
 
-This rule does not require prematurely choosing Cookie/Session or Bearer token transport.
+Sanctum Cookie/Session is now the approved browser transport. This envelope rule remains unchanged and does not require a Bearer token in successful responses.
 
 ### 4.4 Standard validation error
 
@@ -224,7 +224,7 @@ Content-Type: application/json
 | Request rate-limited | `429` |
 | Unexpected server failure | `500` |
 
-If browser session/CSRF transport is later selected, its session-expiry/CSRF error mapping (including Laravel's usual `419` when applicable) must be decided and centrally implemented in that auth-specific plan. Avoid adding session-specific assumptions now.
+**Sanctum Cookie/Session is approved.** Laravel-handled CSRF/token mismatch responses (typically `419`) and expired authentication sessions must have the safe standard API JSON error envelope. The precise `419` mapping, session-expiry distinctions and test cases are finalized in the Authentication feature spec against the installed Laravel 12 implementation. Do not emit HTML errors to `/api/*`.
 
 ## 5. Form Requests, Actions, Resources & Exception Boundaries
 
@@ -450,23 +450,21 @@ Every API **duration** is represented as **nonnegative integer seconds** unless 
 
 The example illustrates serialization only; final pricing and rounding/segment rules are defined in Sessions specs. The frontend may display `4200` as `01:10:00` but must not supply its own elapsed clock reading as the authoritative duration. Live UI timers are derived from server state and timestamps rather than continuous database updates.
 
-## 10. Laravel Sanctum Authentication — Transport Deferred
+## 10. Laravel Sanctum Authentication — Stateful Cookie/Session Approved
 
-**Approved:** Laravel Sanctum is the authentication foundation. **Not yet approved:** whether the future frontend uses Sanctum stateful Cookie/Session authentication or an applicable Bearer-token strategy.
+**Approved:** Staff browser authentication uses **Laravel Sanctum stateful Cookie/Session**, rather than browser Bearer-token authentication. This is a project-specific decision; exact production frontend origins and cookie domain values are set during the Auth feature/deployment plan, not assumed from another app.
 
-Until frontend location and deployment requirements are known:
+- Protected staff APIs use `auth:sanctum` and the normal backend role/permission/Policy checks with Spatie `web` guard; each operator has an **individual login**, never a shared cashier account.
+- Login uses unique username/password; email is optional. The browser first acquires CSRF state through the installed Sanctum flow (`GET /sanctum/csrf-cookie`, outside `/api/v1`) and sends session/CSRF credentials as configured.
+- Regenerate the session identifier after successful Login and invalidate the current session/CSRF state at Logout. Approved inactivity lifetime is **12 hours (720 minutes)**; a merely open idle tab does not extend it.
+- An active session is not authority to access a disabled account, disabled/missing role, or a revoked permission. Enforce current state on each subsequently protected request; password changes revoke the affected User's prior sessions. Exact multi-session revocation and active-request treatment belong to the Auth plan.
+- Successful login/logout have `"message": ""` in the approved JSON envelope. Unauthenticated API requests return safe `401` JSON without redirects, and authenticated but forbidden/inactive access returns `403`.
+- Five failed login attempts per one minute trigger one-minute throttling (`429`) without permanent account lock; use non-enumerating Arabic credential errors. Passwords require at least eight characters, are securely hashed and never returned/logged. Profile self-change requires the current password; Users PUT may reset another account's password with `identity.users.update` and no old password. No public Forgot Password/reset-by-email/SMS flow exists.
+- In production use HTTPS, secure session cookie flags and suitable SameSite settings, explicit stateful domains, credentials-aware CORS and CSRF protection. Do not expose credentials, cookies, session IDs or secrets in logs or JSON.
+- Define and test session expiry, CSRF `419` JSON rendering, CORS preflight, actual cookie domain/subdomain scope, configured session storage and browser credential mode in the Authentication feature plan. A cPanel-compatible session backend is required; no Redis or worker process dependency.
+- Further Identity-specific rules (first Manager via one-time Artisan command, User ID 1 protection and Users/Role permissions) are in [Identity Module Reference](../03-modules/identity.md) and Permissions Standards.
 
-- Protected staff endpoints use `auth:sanctum` and the normal backend role/permission/Policy checks.
-- Every operator has an **individual login**; shared reception/cashier accounts are forbidden.
-- Account deactivation and relevant permission changes must prevent unauthorized **subsequent requests**; the Identity/Permissions specification determines the precise implementation and session/token invalidation behavior.
-- Successful login and logout use the approved JSON envelope with `"message": ""`.
-- Unauthorized API access returns **`401` JSON**, not a browser HTML login redirect; authenticated but forbidden access returns `403`.
-- Rate-limit login and other sensitive endpoints, hash passwords, and avoid revealing account existence unnecessarily through error messages.
-- Use HTTPS in production; never return or log passwords, authentication cookies, bearer tokens or secrets.
-- Cookie/Session-specific CSRF and credentialed CORS rules, secure cookie attributes, allowed frontend origins, and/or Bearer token lifecycle/rotation/storage rules are decided in the future **auth transport implementation spec**.
-- Do not claim either transport is already selected. In particular, **do not force browser Bearer tokens or stateful SPA cookies** solely by copying a reference project.
-
-Sanctum configuration, guard mapping, login user Resource, role assignment, account blocking and logout semantics must be verified against the actual Laravel 12 implementation when the Identity/Auth feature is developed.
+Sanctum configuration, CSRF integration, guard mapping, login user Resource, account status, logout and previous-session invalidation semantics must be verified against the **installed Laravel 12/Sanctum version** during development.
 
 ## 11. Idempotency for Financial & Sensitive Commands
 
@@ -556,7 +554,7 @@ For PDF use `application/pdf`. Binary/streaming success is a deliberate exceptio
 - Do not return raw application error traces or sensitive DB details in `500` responses. Production failures use a safe Arabic message; unexpected errors go to restricted server logs.
 - Important role changes, refunds, cash corrections and other approved sensitive actions are written to a **selective Audit Log** by their owning Actions/Core, not as an exception response side effect.
 - No API response should expose password hashes, token secrets, unneeded personal details or payroll amounts to unauthorized roles.
-- CORS/CSRF/session-cookie rules follow the **future Sanctum transport decision**, not a premature assumption.
+- **Sanctum Cookie/Session is selected**; enforce CSRF, credentialed CORS, secure cookie scoping, and the configured 720-minute idle lifetime, with actual origins established in the Auth feature/deployment plan.
 - There is no tenant isolation layer or public self-service/customer API in V1.
 
 ## 14. PHPUnit API Contract Tests & Definition of Done
@@ -580,7 +578,7 @@ Use **PHPUnit Feature tests** for the HTTP contract and domain-integrity tests i
 | Idempotency | Missing required key 422; same key+payload one effect; same key+different payload 409; concurrent duplicate no double posting |
 | Exports | Authorized Excel/PDF returns direct file bytes and proper headers; denied/invalid export returns JSON |
 | Uploads | Approved allowed MIME/size, private storage, unauthorized download blocked |
-| Session/auth | Login rate limits, invalid sessions/credentials safe, no HTML API redirects |
+| Session/auth | Sanctum Cookie/CSRF handshake, 12-hour inactivity, logout/session invalidation, password revocation, 5-attempt login throttle, `419` JSON where applicable, no HTML redirects |
 | Error hygiene | Generic 500, no SQL/stack traces/tokens/private values |
 
 **Feature definition of done:**
@@ -597,7 +595,7 @@ Use **PHPUnit Feature tests** for the HTTP contract and domain-integrity tests i
 
 **Do not introduce solely because of this standard:**
 
-- Laravel Passport/OAuth, mandatory JWT, premature SPA Bearer-token storage or a fixed Cookie/Session scheme.
+- Laravel Passport/OAuth, mandatory JWT, browser Bearer-token storage, or a second unapproved auth transport alongside the selected Sanctum Cookie/Session scheme.
 - Multi-tenancy, tenant route prefixes, extra databases, multi-branch routing or public checkout.
 - A generic API gateway, GraphQL, hypermedia layer, generic repository/DTO interface per endpoint, or mandatory ResourceCollection subclasses.
 - External full-text search infrastructure for ordinary activity/customer/child filters.
