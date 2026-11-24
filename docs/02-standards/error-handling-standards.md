@@ -95,7 +95,7 @@ Do not require a code for each framework validation/authentication error. Avoid 
 - Use `503` for confirmed **temporary unavailability**, not a generic replacement for all `500` errors. Do not assume a payment failed merely because the caller received `503`.
 - Exhausted safe deadlock retries can be `503` when temporary unavailability is established. If not, use the correct unexpected-fault handling instead.
 - Preserve the `429` throttling behavior and any applicable `Retry-After` header. For `503` set `Retry-After` only when the next safe attempt time is genuinely known.
-- **Laravel's `419` CSRF/session response is deferred** until the approved future frontend/auth transport plan. Laravel Sanctum is approved, but a Cookie/Session or Bearer token strategy has **not** yet been chosen.
+- **Sanctum Cookie/Session is now the approved browser transport**. Render Laravel-handled CSRF/token-mismatch failures (including `419` when applicable) through the unified safe Arabic JSON error contract. Exact CSRF/session expiry mapping and tests are specified by the Identity Authentication feature.
 - This standard does **not** require creating an `HttpStatusCode` enum; existing API Standards permit a pragmatic shared helper and integer codes.
 
 ## 4. Permission-Aware 403 / 404 and the Strict Select Registry
@@ -248,7 +248,7 @@ Configure error-to-response mapping **once** in Laravel 12's `bootstrap/app.php`
 - Implement handlers against the **actual installed Laravel 12 APIs**, not copied Laravel 13 snippets assumed identical.
 - **Binary export exception:** successful Excel/PDF is binary, but prestreaming failures return regular JSON. Do not attempt JSON inside already-partially-sent binary output.
 - A genuine web server/PHP startup failure outside Laravel may produce non-JSON `5xx`; middleware cannot guarantee formatting for responses it never handled.
-- The future Sanctum Cookie/Session vs Bearer decision will determine CSRF/session-expiry nuances, including any needed `419` mapping.
+- The selected Sanctum Cookie/Session transport requires CSRF and idle-session handling. Finalize specific `419` JSON and expired-session behavior against installed Laravel 12 in the Authentication feature plan.
 
 ## 8. Contextual Database Errors and Safe Deadlock Retries
 
@@ -460,7 +460,7 @@ Feature specs own the precise transaction boundaries, idempotency scope/retentio
 **Do not add simply because this standard exists:**
 
 - A mandatory global error-code registry, custom error framework, new response package or exception class for every validation rule.
-- OAuth/Passport/JWT requirements, Cookie-only Sanctum or mandatory 419 handling before selecting frontend authentication transport.
+- OAuth/Passport/JWT requirements or alternative Bearer-token browser auth; use the **approved Sanctum Cookie/Session** transport and test applicable `419` JSON behavior against the actual Laravel version.
 - Tenant/branch-specific errors, a public customer API or unrelated printing-production exceptions.
 - Queue-driven retries, Redis locks, cron jobs, dead-letter handling, mandatory external monitoring or distributed tracing.
 - Automatic compensating refunds or state changes triggered solely by 500/503.
@@ -478,7 +478,7 @@ Feature specs own the precise transaction boundaries, idempotency scope/retentio
 | **This Error Handling Standards file** | Exception mapping, error codes, privacy/reporting, tracing, failure/recovery policy |
 | Module feature specs | Approved exact business failures, message keys, transitions, retry rules and tests |
 
-**Documentation alignment (no open design decision):** The already-approved API Standards status table predates the newly adopted `503` rule and its content predates the `X-Request-ID` header rule. Those two entries should be synchronized with API Standards in a **separately reviewed documentation change**; this file records the approved requirements now. Older printing reference snippets are Laravel 13 and SPA-cookie-specific; do not copy their `419` assumption into Kids Area.
+**Documentation alignment (no open design decision):** The already-approved API Standards status table predates the newly adopted `503` rule and its content predates the `X-Request-ID` header rule. Those two entries should be synchronized with API Standards in a **separately reviewed documentation change**; this file records the approved requirements now. Older printing reference snippets are Laravel 13 and SPA-cookie-specific; **although Sanctum Cookie is now approved in Kids Area, do not copy their `419` handler without verifying Laravel 12 behavior**.
 
 **Implementation status:** These are the approved **design standards only**. Publishing this file does **not** establish that the Laravel exception handler, correlation middleware, logging policy, tests, Actions or GitHub Actions workflow have been built or executed.
 
