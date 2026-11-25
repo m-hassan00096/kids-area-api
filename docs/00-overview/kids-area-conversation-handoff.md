@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) remains DISCUSSION. Phased permission seeding, role-agnostic six-permission Last Viable Administrator Protection, deferred Audit, Bootstrap prerequisites, case-sensitive case-preserved Usernames, nullable unique Email/Phone, and **case-insensitive Email uniqueness with original casing preserved** are APPROVED. Phone canonicalization remains PROPOSED; no Feature 01 spec/plan/tasks, implementation branch, code, or tests have been created.
+> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) remains DISCUSSION. Phased permissions, role-agnostic six-permission last viable admin, deferred Audit, strict Bootstrap, case-sensitive case-preserved Username, nullable unique Email/Phone, case-insensitive Email uniqueness, and **phone check of exactly 11 local digits only (no +20 normalization)** are APPROVED. No Feature 01 spec/plan/tasks, implementation branch, code, or tests have been created.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -15,7 +15,7 @@
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
-- **Current docs PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (`docs/feature01-seeding-handoff` -> `develop`); captures phased permissions, role-agnostic last admin, deferred Audit, Bootstrap checks, case-sensitive Username uniqueness/Login, nullable unique contacts and **case-insensitive Email uniqueness**. It remains **open and not merged**, pending explicit user permission.
+- **Current docs PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (`docs/feature01-seeding-handoff` -> `develop`); captures phased permissions, role-agnostic last admin, deferred Audit, Bootstrap checks, case-sensitive Username Login, case-insensitive Email uniqueness and **optional exactly-11-digit Phone**. It remains **open and not merged**, pending explicit user permission.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -41,7 +41,8 @@
 
 ### Authentication
 - Individual Username/password Login only. Username: 3-50 ASCII Latin letters in either case, digits/dot/underscore/hyphen, stored without letter-case rewriting. **Latest user correction (2026-11-25): Username is case-sensitive for both Login and MySQL uniqueness**: `Mohamed.Admin` and `mohamed.admin` are **different** identifiers that can be registered separately; only the exact same letter-case Username must not be duplicated, including among inactive Users. The MySQL constraint must use a verified case-sensitive collation/index.
-- **Email and Phone:** both `NULLABLE` and independently **UNIQUE when non-NULL**, even across inactive Users. Multiple records with `NULL` allowed; both are contacts, never Login identifiers. **User approved (2026-11-25) case-insensitive Email uniqueness with original casing preserved**: `Ahmed@Gmail.com` and `ahmed@gmail.com` cannot be two Users' email addresses. Username stays independently case-sensitive for both Login and UNIQUE. Phone canonicalization/format and empty-value policy are **not yet approved**.
+- **Email and Phone:** both `NULLABLE` and independently **UNIQUE when non-NULL**, including inactive Users; multiple NULLs allowed, neither is a Login identifier. **Email** uniqueness is case-insensitive with entered casing preserved: `Ahmed@Gmail.com` conflicts with `ahmed@gmail.com`. Username remains case-sensitive for Login/uniqueness.
+- **Phone validation APPROVED (2026-11-25):** Optional and **exactly 11 ASCII digits (`0`-`9`) if provided**. **Only** require digit characters and 11-digit length; do **not** require starting `01`, validate network/operator, normalize to `+20`/E.164, or accept international/spaces/hyphens in V1. Store as a string retaining leading zeros. Unique exact non-NULL 11-digit numbers across all retained Users. Empty optional input handling can be specified as null in the upcoming feature spec without a new normalization concept.
 - Password >=8 characters; no required uppercase/symbol complexity.
 - Five failed login attempts in one minute leads to one-minute temporary throttle, safe non-enumerating Arabic error.
 - Sanctum **stateful browser Cookie/Session** authentication and Spatie `web` guard; CSRF; 12-hour inactivity expiry; logout current session only; password change invalidates previous affected sessions.
@@ -118,7 +119,7 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 
 ### Next design topic (PROPOSED; not approved)
 
-Review **Feature 01 foundational database schema and constraints**: `users` (case-sensitive Username/Login uniqueness; case-insensitive Email uniqueness with original case retained; nullable Phone independent uniqueness), native Spatie Roles/Permissions/pivots, database-level single-role invariant, shared InnoDB access-guard lock row and Bootstrap concurrency/ID=1 guarantees. **Next phone discussion:** should `01012345678` and `+201012345678` count as the same phone? Proposed: yes, via canonical E.164 normalization before storing/checking UNIQUE; accept local and international Egyptian representations. Do not implement until approved. No Audit schema in Feature 01.
+Review **Feature 01 foundational database schema and constraints**: `users` (case-sensitive Username/Login uniqueness, case-insensitive Email UNIQUE while preserving its casing, nullable independent Phone UNIQUE with precisely 11 digits only), native Spatie Roles/Permissions/pivots, DB-level single-role invariant, shared InnoDB access-guard lock row, and Bootstrap concurrency/ID=1 guarantees. Phone format is **resolved**: no +20, international notation, prefix check or E.164 conversion in V1. No Audit schema in Feature 01.
 
 ### Further details for Feature 01 plan (not silently decided)
 - Identity's 10 initial permissions and the exact **six-permission role-agnostic viability rule** are approved. The concrete implementation strategy, table names, lock-row schema and MySQL tests remain technical plan work.
@@ -130,7 +131,7 @@ Review **Feature 01 foundational database schema and constraints**: `users` (cas
 ## 6. Next action and restrictions
 
 1. Continue **discussion only** of Feature 01 scope, permission inventory and acceptance tests.
-2. Phased seeding/grants, role-agnostic six-permission viability, deferred Audit, strict Bootstrap readiness, case-sensitive Username Login/uniqueness, nullable unique Email/Phone, and **case-insensitive Email UNIQUE with preserved case** are APPROVED. Next seek approval for **phone-equivalence/normalization**, then review Spatie single-role constraint, shared access guard and Bootstrap concurrency, followed by Feature 01 acceptance scenarios. Audit remains a separate future feature.
+2. Phased seeding/grants, six-permission role-agnostic viability, deferred Audit, strict Bootstrap, case-sensitive Username, case-insensitive unique Email and **optional exactly-11-digit unique Phone (no E.164)** are APPROVED. Next discuss **Spatie single-role database constraint and its MySQL index compatibility**, shared Identity access-guard concurrency and Bootstrap tests; then approve Feature 01 acceptance scenarios. Audit remains a separate future feature.
 3. Only after approval, prepare/review `specs/identity/identity-core-rbac-foundation/spec.md`, then `plan.md`, then `tasks.md`.
 4. Do not create implementation branch or write code before approved gates; do not merge any PR without explicit approval.
 5. Update **this same GitHub handoff** at every approved decision, milestone or blocker; capture a timestamp, current verified branch/commit/PR state, *approved vs proposed* decisions, work actually done/tests run, current question, and exact next step. Do not use the handoff to override canonical docs or invent completed work.
