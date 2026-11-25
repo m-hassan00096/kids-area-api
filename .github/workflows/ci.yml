@@ -57,6 +57,7 @@ jobs:
         run: |
           composer install --no-interaction --prefer-dist --no-progress
           composer check-platform-reqs
+          composer audit --locked
       - name: Set up isolated application key
         run: |
           cp .env.example .env
@@ -65,6 +66,8 @@ jobs:
         run: php artisan migrate --force
       - name: Run focused Identity tests
         run: php artisan test --filter=Identity
+      - name: Run focused Authentication tests
+        run: php artisan test --filter=Authentication
       - name: Run PHPUnit
         run: php artisan test
       - name: Check Laravel Pint
