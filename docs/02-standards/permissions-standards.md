@@ -141,7 +141,7 @@ Use Spatie's native tables, pivot relationships and permission-check semantics. 
 
 ### 5.1 Database-level single-role invariant
 
-**Approved:** enforce the single-role rule at both application and database layers.
+**Approved and explicitly reconfirmed (2026-11-25):** enforce Single Role **in three layers**: a MySQL unique constraint on the installed Spatie assignment pivot, `syncRoles([$role])` under an authorized transaction with User-row serialization, and an active-User/active-Role/one-assignment check on every protected request. Do not substitute a UI-only or pre-insert check for the actual database invariant.
 
 Spatie normally supports multiple role records per model. On the **actual installed schema**, with **Teams disabled** and only the approved staff User role assignment, verify an additional unique index equivalent to:
 
@@ -155,7 +155,7 @@ UNIQUE (model_type, model_id)
 - Audit and clean existing multi-role anomalies **safely before adding** the unique index; do not pick an arbitrary surviving role.
 - Spatie Teams must remain off for V1; enabling Teams later requires a separate schema/invariant redesign.
 - The index enforces **at most one**, **not exactly one**. Authentication middleware rejects a protected request if the User has **zero** roles. Administrative Actions must maintain valid assignments under their approved rules.
-- All User-role changes use a transaction with a row lock/consistent serialization for that User, plus `syncRoles([$role])`, to avoid conflicting concurrent replacements. Do not manually write pivot rows or rely on a check-then-insert pattern alone.
+- All User-role changes use an authorized transaction with a row lock/consistent serialization for that User, plus `syncRoles([$role])`, to avoid conflicting concurrent replacements. Do not manually write pivot rows or rely on a check-then-insert pattern alone. **Test truly overlapping reassignments with distinct MySQL 8 connections**, verifying the final persisted User has no more than one Role; if the target is part of the last viable administrator path, the shared admin guard/invariant applies additionally.
 - If an unexpected multi-role/direct-grant legacy state is detected, **fail closed and remediate**. Do not choose whichever role looks most powerful.
 - Do not use this design to disable unrelated Spatie relationships without an explicit future review.
 
@@ -237,28 +237,34 @@ Spatie does **not** enforce a custom `roles.is_active` flag by default. A disabl
 
 **Approved:** never allow a committed change to leave **zero viable administrators capable of managing staff access**.
 
-A viable manager (under the V1 starting-role policy; **not the only Manager User**) must have:
+A **viable administrative User** must meet **all** of the following:
 
 1. A usable, active staff User account, not disabled/deleted.
-2. Exactly one role, active and assigned to the User.
-3. The approved `manager` role and the **effective set of essential access-management permissions** from the Identity/RBAC feature spec; it must not be a merely named Manager with missing administrative capabilities.
+2. Exactly **one assigned active Role**, with no invalid direct grants or multi-role anomaly.
+3. Effective membership, through that Role, of **all six approved essential technical permissions**:
+   - `identity.users.view`
+   - `identity.users.create`
+   - `identity.users.update`
+   - `identity.roles.index`
+   - `identity.roles.show`
+   - `identity.roles.update`
 
-The exact minimal critical permission set, plus whether a future custom role may count as a viable administrative path, will be finalized by the Identity/RBAC feature spec. **No unconditional manager privilege is implied.**
+**Role name does not matter.** An active User in `manager`, an eligible custom Role or any other active Role can count if its effective permissions include **all six**. Having fewer than six does not count. `identity.users.delete`, `identity.roles.delete` and `identity.audit.view` are **not** required for this viability check. This is not a new super-admin grant; each action still requires its own explicit permission and business checks.
 
 **Prohibited outcomes include:**
 
-- Disabling or deleting the last viable Manager's account.
-- Reassigning the last viable Manager to a nonadministrative role.
-- Disabling the Manager role if that removes the last viable administrative path.
-- Removing the necessary admin permissions from the Manager role, including changes that indirectly strand all viable Managers.
-- Replacing a manager grant mapping through deployment seeding without the required protection.
-- Bypassing this check through a bulk update, alternate Action, CLI admin operation or seed-update path.
+- Disabling or deleting the final viable administrative User.
+- Reassigning that User to a Role without all six capabilities.
+- Disabling an assigned custom Role when doing so would remove the last viable path (seeded `manager`/`reception` cannot be disabled under their separate invariant).
+- Revoking any of the six essential grants from a Role if that strands every viable administrator, including through indirect changes affecting several Users.
+- Replacing Role grant mappings during deployment/seed updates or bypassing the invariant through another Action, CLI operation, bulk write or racing update.
+- Treating protected User ID 1 as automatically viable merely because it cannot be disabled/deleted: its effective six permissions must still be checked.
 
 **Concurrency and transaction requirements**
 
 1. All mutations that can change viability use one consistent InnoDB transaction/locking strategy. A mere `COUNT(*)` or `exists()` before editing is **not race-safe**.
-2. Acquire a **shared serialization point for administrative-access mutations**, e.g., a stable designated Identity guard row, and lock any affected User/Role/assignment rows in a consistent order. Choose the concrete mechanism during implementation and validate on MySQL 8.
-3. **Recompute viability inside the lock**, using effective current permissions and active states, then perform the requested mutation and its audit write atomically.
+2. **Do not create a dedicated `identity_access_guard` table or any extra lock/sentinel table** (explicit user simplification, 2026-11-25). For administrative-access mutations, serialize on an **existing, reliably present Identity row** using `SELECT ... FOR UPDATE` (for example, the never-deletable seeded `roles` record with `name=manager` and `guard_name=web`), then lock any affected User/Role/assignment rows in a consistent order. This shared lock is for **serialization only**, and **does not** make the `manager` role a privileged bypass or exclude viable Custom Role users. Define the exact approach/order during planning and validate concurrent writes with real MySQL 8.
+3. **Recompute viability inside the lock**, using effective current permissions and active states, then perform the requested mutation atomically; **include mandatory audit writes in that transaction once the deferred Audit feature exists**.
 4. Reject the command when it would remove the last viable administrator. Use an expected **`409 Conflict`** and safe Arabic business message for an authorized request conflicting with this state invariant.
 5. Any deadlock retry must restart the **entire rollback-safe Action/transaction**, never continue after partial effects, and must follow Database/Error Handling Standards.
 6. Recheck the invariant when the final operation actually executes; do not rely only on Form Request validation or a prior UI confirmation.
@@ -268,7 +274,8 @@ The exact minimal critical permission set, plus whether a future custom role may
 
 ### 8.2 Initial bootstrap and manual recovery
 
-- Seeders create the approved `manager`/`reception` roles, fixed catalogue and reviewed first-install grants; a **separate secure, one-time Artisan command** creates the founding administrative User. It must confirm that the protected first account actually has **`users.id=1`** and fail safely if the ID is occupied or the account is already provisioned.
+- Seeders create the approved `manager`/`reception` roles, fixed catalogue and reviewed first-install grants; a **separate secure, one-time Artisan command** creates the founding administrative User. **The `users` table must be completely empty before any bootstrap run**: if a User of **any ID**, active state or Role already exists, reject without mutation. On success the first account must have **`users.id=1`**, otherwise rollback/fail safely (an empty table does not guarantee the next auto-increment is 1). Do not overwrite/reset existing accounts, silently reset auto-increment state or create a second founder. Concurrent bootstrap runs must not each provision an account; the exact InnoDB serialization is defined in the plan.
+- **Bootstrap readiness — approved option A:** The separate bootstrap command must validate that the `manager` and `reception` seeded active Roles, all ten approved Identity permissions and the explicit initial Manager Role grants are **already present and valid** with `guard_name=web`. If any prerequisite is missing/inconsistent, the command **fails without modifying any data** and instructs the operator to run the reviewed additive role/permission seeders beforehand (or follow a separately approved correction for existing customized grants). **No seeder is called from bootstrap and bootstrap never silently creates or repairs Role/Permission/grant records.**
 - No demo/hardcoded credentials in code or seeders; running seeders again must not change credentials or grants.
 - If all administrative credentials are lost, the technical owner handles **controlled manual server-side recovery** with secure password hashing and documented audit evidence. **No automated emergency recovery command, public Forgot Password endpoint or hidden Manager-reset API** is part of V1.
 - `manager` and `reception` are always active and cannot be deleted/deactivated. The invariant also protects any last viable administrative grant path from being removed.
@@ -402,11 +409,13 @@ This shows a **single definition**, not an approved automatic assignment to `man
 - Keep `role.name` technical/stable and `alias_name` editable under authorization. Spatie pivots describe **current** role/permission state, not historical grants; the append-only audit retains before/after evidence.
 - A future privacy purge/anonymization procedure is separate from V1 CRUD and cannot silently erase protected records.
 
-## 13. Complete RBAC Audit and Security Logging
+## 13. Complete RBAC Audit and Security Logging — deferred implementation
 
-**Approved: Complete RBAC Change Audit + Restricted Read Access.**
+**Scheduling exception approved 2026-11-25:** **Audit Logs implementation is postponed beyond Feature 01**. Identity Core & RBAC Foundation will **not** create a shared audit table, audit writer, audit-read API or Audit persistence tests. The future target design is **one shared append-only audit log**, with module-scoped read access; it requires a later approved feature/spec. `identity.audit.view` can exist as a seeded technical permission while it has **no live endpoint**.
 
-**Audit every actual successful change** affecting:
+**Full RBAC Change Audit + Restricted Read Access remains the future policy**, not evidence of present enforcement. **Until the deferred Audit is built, successful sensitive mutations (including founding-user bootstrap) are not covered by a durable central change-audit trail**, cannot be completely reconstructed retroactively, and must **not** be reported as audited. Revisit this release risk before allowing real-world admin workflows. Permission checks, founder safeguards, transaction locks, rate limits and other security constraints are **not** deferred.
+
+**Once the separate Audit feature is implemented, audit every actual successful change** affecting:
 
 - Creation of roles, role display-alias edit, activation/deactivation.
 - Addition/removal/replacement of a role's permission assignments.
@@ -429,7 +438,7 @@ This shows a **single definition**, not an approved automatic assignment to `man
 
 **Rules**
 
-1. Role/permission/user access changes and their required critical audit evidence complete **atomically in one MySQL transaction**. A failed mandatory audit write rolls back the change.
+1. **After Audit delivery**, role/permission/user access changes and required critical audit evidence must complete **atomically in one MySQL transaction**; a failed mandatory audit write rolls back the change. **Before delivery**, the business mutation itself must still be transaction-safe and preserve the last viable administrator invariant, but no central audit evidence is created.
 2. Do not log the entire User model or raw request: exclude passwords, tokens, session/CSRF headers, financial payloads, children's details, guardian contacts and unrelated payroll data.
 3. Preserve the **technical identifiers** in history even if display aliases are later edited.
 4. RBAC audit records are **append-only** in normal app flows; authorized users may read them with a dedicated capability, illustrative `identity.audit.view`, but do not edit/delete the records through the dashboard.
@@ -437,7 +446,7 @@ This shows a **single definition**, not an approved automatic assignment to `man
 6. Ordinary GET, `can()`, successful routine Login and Logout are **not administrative change-audit events**. Suspicious or denied access-management/authentication attempts may create **selective security logs** under Error Handling Standards, but must **not** appear as successful change audits.
 7. Do not use the audit log instead of Spatie's current role pivots, and do not use error logs as change history.
 8. Cache refreshes/logging of permission-cache diagnostics do not represent successful role/permission changes.
-9. Test rollback of a sensitive mutation when mandatory audit persistence fails, plus successful before/after history for each RBAC mutation category.
+9. **In the later Audit feature**, test rollback of a sensitive mutation when mandatory audit persistence fails, plus successful before/after history for each RBAC mutation category; **not a Feature 01 acceptance test**.
 
 **Illustrative mutation transaction outline**
 
@@ -448,7 +457,7 @@ Authorize actor + target + requested capability changes
   -> lock affected account/role rows in consistent order
   -> re-check current authorization and Last Manager invariant
   -> update using approved Spatie role/permission APIs
-  -> persist required RBAC audit event
+  -> once deferred Audit feature is implemented, persist required RBAC audit event
   -> commit
   -> ensure coherent post-commit Spatie cache handling
 ```
@@ -518,7 +527,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Select Registry | Unknown key `422`; any forbidden key `403` with **no partial options** |
 | Role management | Only authorized actor can manage each eligible Role/permission set |
 | Administrative grants | `identity.roles.update` may grant any predefined Permission (including not personally held); `identity.users.update` may manage other Managers except User ID 1; test Last Manager safeguards |
-| Last Manager | Cannot disable, reassign or remove essential permissions from last viable administrator |
+| Last viable administrator | Any active single-Role User (including custom Roles) with all six essential effective permissions counts; no concurrent mutation may leave zero viable paths |
 | True concurrency | Two independently overlapping MySQL transactions cannot remove two final Managers |
 | Admin-grant race | Concurrent role permission removals honor the same serialization invariant |
 | Cache coherence | Role permission revocation during an active session is enforced on subsequent requests |
@@ -526,9 +535,9 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Seeder re-run | Repeated runs yield no duplicates; existing aliases, role grants and active state unchanged |
 | New deployment permission | Added to catalog but not implicitly granted to current roles |
 | Alias display | `name` remains technical; `alias_name` returned unchanged as `aliasName` and Select label |
-| Audit write | Actual RBAC change logs actor, target and minimal before/after |
-| Audit atomicity | Failed mandatory audit write rolls back the sensitive change |
-| Audit read | Separate permission required; ordinary reads do not generate audit changes |
+| Audit write (deferred feature) | After Audit is implemented, RBAC changes log actor, target and minimal before/after; **not built in Feature 01** |
+| Audit atomicity (deferred feature) | After Audit is implemented, failed mandatory audit write rolls back the sensitive change |
+| Audit read (deferred feature) | Separate permission required when endpoint is implemented; seeded `identity.audit.view` does not expose an endpoint in Feature 01 |
 | Conditional deletion | Seeded roles cannot be deleted/deactivated; only unused custom roles and historically unlinked non-founding Users may be hard-deleted, preserving audit and protected history |
 | API shape | Safe Arabic failures, `camelCase`, status/codes, empty messages where required |
 
@@ -564,8 +573,8 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 - [ ] Permissions and aliases never replace technical names in authorization.
 - [ ] Register and test Spatie middleware guards/aliases for actual installed Laravel version.
 - [ ] Use native Spatie mutation methods, fresh roles and safe post-commit cache coherence.
-- [ ] Audit every actual RBAC change; audit is atomic when required and append-only.
-- [ ] Protect audit viewing with a distinct permission and Resource scope.
+- [ ] **Deferred separate Audit feature:** implement append-only RBAC change evidence, atomic audit writes and tests; **not part of Feature 01**.
+- [ ] **Deferred separate Audit feature:** expose scoped audit reads under `identity.audit.view`; **not part of Feature 01**.
 - [ ] Protect records, reports, exports and strict Select Registry providers.
 - [ ] Preserve Arabic/error/`camelCase` API contract and stored aliases.
 - [ ] Cover all approved security matrix cases and actual MySQL 8 concurrency in PHPUnit.
@@ -577,7 +586,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 
 1. Exact technical permission list and its owner module; initial `manager`/`reception` assignments.
 2. Exact request/Policy enforcement for the **already approved** broad `identity.roles.update` catalogue-grant scope, Users CRUD scope, and protected User ID 1; confirm target changes with audits and Last Manager Protection.
-3. Minimal essential access-management capabilities for Last Manager Protection; secure one-time first-admin bootstrap at User ID 1 and a documented **manual technical recovery** runbook (no extra recovery command).
+3. Implement the **approved six essential access-management capabilities and Role-name-independent viability predicate**; specify shared InnoDB locking; secure one-time first-admin bootstrap at User ID 1 and a documented **manual technical recovery** runbook (no extra recovery command).
 4. Request/Resource/Action contracts for users, roles, role assignments, audits and account status; no endpoints invented in this standards file.
 5. Actual Spatie package version and published table structure; index/migration plan, guard settings, model class/trait and Teams configuration.
 6. Exact locking serialization strategy and MySQL test harness for parallel mutations; approved failure messages/machine codes.

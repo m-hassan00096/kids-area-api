@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Identity Module Reference approved and merged; Feature 01 discussion started. No Feature 01 specification, plan, tasks, branch, implementation or tests have been created.
+> Status: Feature 01 Identity Core & RBAC Foundation **spec.md, plan.md and tasks.md APPROVED by user on 2026-11-25**. Documentation approvals complete; 32 execution tasks / 0 complete, all 14 acceptance scenarios mapped. Separate documentation merge, implementation and package-install authorization pending. Prior approved decisions unchanged. No implementation branch, packages, code, executed Feature 01 tests or deployment. PR #5 remains open and unmerged.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -11,8 +11,11 @@
 
 - Repository: https://github.com/m-hassan00096/kids-area-api
 - Working development branch: `develop`
-- Verified `develop` HEAD: `1ec084e267bb2e26446498b97fc4c2948ac8a1f1` (2026-11-25 verification).
+- Verified `develop` HEAD: `48211e74058c9effe496068f9ab2f33c8e3174d0` (2026-11-25 verification).
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
+- Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
+- Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
+- **Current documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (docs/feature01-seeding-handoff -> develop); approved spec.md (14 acceptance scenarios), approved plan.md and approved tasks.md (32 ordered tasks, all unchecked). Implementation, package installation and merge still require separate explicit approval. No code.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -37,7 +40,9 @@
 ## 3. Identity Module decisions - APPROVED
 
 ### Authentication
-- Individual username + password; optional email; username case-insensitive unique, 3-50 characters, English letters/digits/dot/underscore/hyphen.
+- Individual Username/password Login only. Username: 3-50 ASCII Latin letters in either case, digits/dot/underscore/hyphen, stored without letter-case rewriting. **Latest user correction (2026-11-25): Username is case-sensitive for both Login and MySQL uniqueness**: `Mohamed.Admin` and `mohamed.admin` are **different** identifiers that can be registered separately; only the exact same letter-case Username must not be duplicated, including among inactive Users. The MySQL constraint must use a verified case-sensitive collation/index.
+- **Email and Phone:** both `NULLABLE` and independently **UNIQUE when non-NULL**, including inactive Users; multiple NULLs allowed, neither is a Login identifier. **Email** uniqueness is case-insensitive with entered casing preserved: `Ahmed@Gmail.com` conflicts with `ahmed@gmail.com`. Username remains case-sensitive for Login/uniqueness.
+- **Phone validation APPROVED (2026-11-25):** Optional and **exactly 11 ASCII digits (`0`-`9`) if provided**. **Only** require digit characters and 11-digit length; do **not** require starting `01`, validate network/operator, normalize to `+20`/E.164, or accept international/spaces/hyphens in V1. Store as a string retaining leading zeros. Unique exact non-NULL 11-digit numbers across all retained Users. Empty optional input handling can be specified as null in the upcoming feature spec without a new normalization concept.
 - Password >=8 characters; no required uppercase/symbol complexity.
 - Five failed login attempts in one minute leads to one-minute temporary throttle, safe non-enumerating Arabic error.
 - Sanctum **stateful browser Cookie/Session** authentication and Spatie `web` guard; CSRF; 12-hour inactivity expiry; logout current session only; password change invalidates previous affected sessions.
@@ -62,7 +67,7 @@
 - Fresh installation: `manager` receives all then-approved permissions explicitly; `reception` receives approved daily operational permissions. Later reseeds only add missing definitions; do not reset aliases or role grants; new technical permissions are not automatically granted to existing roles.
 - Reception scope includes children/guardian attendance, hourly sessions, Cafe/POS and cashier, monthly/nursery subscriptions, renewals, installments, constrained operational edits; no sensitive refunds, payroll, HR contract or Identity permissions by default. Exact permission keys belong to the later modules.
 - Last viable administrative access path must remain after all sensitive mutations, using MySQL transaction/locking strategy.
-- Audit sensitive Identity changes synchronously/atomically, preserving history even after eligible deletes; `identity.audit.view` controls audit reads. No routine successful Login/Logout change audit. Suspicious authentication attempts may be handled in separate security logs.
+- **Long-term Audit design (DEFERRED):** Shared append-only `audit_logs` (option A), module-scoped reads including `identity.audit.view`, atomic sensitive change history and preservation after eligible deletes. No routine Login/Logout change audit. **User postponed all Audit implementation beyond Feature 01 on 2026-11-25**; these capabilities are **not yet available**. Mutations before Audit delivery will lack central before/after history and cannot be fully reconstructed retroactively. Retain other security controls and reassess the production rollout risk before live admin actions.
 - Identity Select Registry includes role options (active for assignment) and predefined permissions with stored aliases. Unknown select -> 422; any unauthorized requested key -> 403 for entire lookup.
 
 ## 4. Implementation status actually verified on `develop`
@@ -72,38 +77,68 @@
 - `Modules/` currently contains only `.gitkeep`; there is no Identity Module code.
 - `app/Models/User.php` was not found, while `config/auth.php` still imports `App\Models\User`; Feature 01 must create/configure canonical `Modules/Identity/app/Models/User.php` and update Laravel auth provider.
 - `bootstrap/app.php` sets API prefix `api/v1` and basic middleware/exception scaffolding.
-- No actual Feature 01 spec/plan/tasks or feature branch has been authored.
+- Feature 01 spec.md, plan.md and tasks.md approved. 0/32 execution tasks complete. No implementation branch/code. PR #5 remains open/unmerged. Existing MySQL 8/PHP 8.2 CI is configured, but its foundation-only module assertions must be updated to allow Identity; Feature 01 checks have not run.
 
 ## 5. Current topic - Feature 01: Identity Core & RBAC Foundation
 
-### Initial proposed scope (not yet approved as Feature 01 spec)
+### Approved Feature 01 scope
 - Generate canonical Identity Module and User model, configure Laravel authentication User provider.
 - Install and configure Spatie Permission with guard `web`, native tables/relationships, aliases and active status.
 - Design User and RBAC migrations, single-role DB constraint, username uniqueness, and protective access checks for future features.
 - Implement module-owned permission definitions and additive Identity seeders; two built-in roles and first-install explicit grants.
 - Implement secure one-time Artisan bootstrap for initial Manager with exactly User ID 1, fail closed if ID 1 occupied; no plaintext default credentials.
-- Implement foundational audit-write infrastructure (actor/target snapshots safe for future deletion), transaction-safe last-viable-admin guard and security test foundation.
+- Implement the transaction-safe last-viable-admin guard and security test foundation. **Do not implement Audit tables/writers/read APIs or Audit tests in Feature 01**; they are deferred to a separate later feature.
 - Provide relevant PHPUnit/MySQL 8 tests and Pint checks.
-- **Not in Feature 01:** Login/Logout/Sanctum session functionality (Feature 02); Users CRUD (Feature 03); Roles CRUD (Feature 04); Audit listing/detail API (Feature 05); business module permissions not yet formally specified.
+- **Not in Feature 01:** Login/Logout/Sanctum session functionality (Feature 02); Users CRUD (Feature 03); Roles CRUD (Feature 04); **all shared Audit functionality (table, writer, read APIs, audit-atomicity tests; deferred separate feature)**; business module permissions not yet formally specified.
 
-### Priority design decision to discuss next
+### Approved decision: phased permission catalogue and explicit rollout grants
 
-The system ships features incrementally, but permissions belong to future business modules. Recommended policy: **Feature 01 creates only the technical permissions already approved/owned by Identity**. At each later business feature release, that module contributes its reviewed permission definitions; new permission rows are seeded additively; initial grants for Manager/Reception must be handled as a separate **explicitly reviewed and audited grant** during that feature's rollout rather than auto-granting every future permission during routine reseeding. Do not pre-invent all business permission keys or silently expand live Manager permissions.
+**User approved 2026-11-25:** Feature 01 seeds only the **10 agreed Identity technical permissions**: four for Users (`identity.users.view/create/update/delete`), five for Roles (`identity.roles.index/store/show/update/delete`), and `identity.audit.view`. The first Manager receives these 10 explicitly; Reception starts without Identity administrative grants. In later business features, the owning module provides its reviewed permission definitions, Identity adds them **additively**, and assigning new grants to existing Manager/Reception roles is a **separate explicitly approved, auditable rollout action** — never an automatic routine Seeder side-effect. Do not pre-invent other module keys or overwrite customized live grants.
 
-Confirm this phased catalogue/role-grant approach before turning the Feature 01 discussion into a `spec.md` draft.
+### Approved decision: last viable administrator by six effective permissions (option A)
 
-### Further details for Feature 01 plan (not silently decided)
-- Exact first-install permission keys and essential admin capability set for last-viable access.
-- Installed Spatie version and morph-pivot unique index compatibility; actual MySQL 8 constraints and safe lock strategy.
-- Exact audit schema/FK snapshot strategy allowing deletion of unused Users while preserving history.
-- First-manager bootstrap command credentials and idempotent/fail-safe behavior.
-- Test harness and CI actual status. All unrun tests must be identified as Not Run.
+**User expressly approved option A on 2026-11-25:** A viable administrative path means at least one **usable active User with exactly one active Role** that effectively grants **all six**: `identity.users.view`, `identity.users.create`, `identity.users.update`, `identity.roles.index`, `identity.roles.show`, `identity.roles.update`. **The Role name is irrelevant**: a custom role qualifies equally to `manager`; not all six => not viable. Neither `identity.users.delete`, `identity.roles.delete` nor `identity.audit.view` is needed for viability. Any relevant committed change must preserve one path, with a consistent MySQL/InnoDB transaction/serialization guard, race checks and a `409` on an otherwise authorized state conflict. User ID 1 remains separately protected even when it does **not** qualify as viable.
+
+The approved policy is now reflected in `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` on the open documentation branch/PR; not yet merged into `develop`.
+
+### Approved decision: postpone Audit implementation (option A retained for later)
+
+**User selected A and then expressly deferred Audit Logs, on 2026-11-25.** Future Audit architecture is **one shared append-only system audit store**, with role/module-scoped read authorization, but **no Audit model/table/writer/API in Feature 01**. `identity.audit.view` remains one of the 10 agreed seeded technical permissions, without a working endpoint until the Audit feature. No false claim of complete auditability for founder bootstrap or future admin mutations performed before Audit delivery. **Reassess the production rollout gate for sensitive Users/Roles management before going live.** The previous requirement that Audit writes must exist from the first sensitive mutation is superseded **for delivery timing only**; the full future audit policy and security controls remain intact.
+
+### Approved decision: founding Manager Bootstrap requires completely empty Users table
+
+**User expressly approved (2026-11-25):** The one-time `identity:bootstrap-manager` Artisan command may create the first active Manager only when **zero rows exist in `users`**. If **any User** already exists (regardless of ID, activation, or Role), it **must abort without writing any User or changing an existing account**. The new founder must be **ID = 1**. If an empty table has a non-1 auto-increment next value, or another bootstrap run races to provision the first row, the command must fail safely without silently resetting IDs or generating another founder. Role/permission seeders remain additive and repeatable; bootstrap **is not** a repeatable account-creation operation. No credentials hard-coded in source. Exact transaction/lock handling and controlled credential input remain Feature 01 plan details.
+
+This approved rule is documented in both `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` on the open documentation PR.
+
+### Approved decision: bootstrap does not run seeders (option A)
+
+**User expressly approved A on 2026-11-25:** `identity:bootstrap-manager` must validate existing RBAC prerequisites first: active seeded `manager` and `reception` Roles, all ten approved Identity technical permission definitions under `web`, and the complete initial explicit `manager` grant set. If any are absent or inconsistent, **fail with no DB mutations** and tell the operator to execute the approved additive seeders beforehand or follow the separately reviewed repair process for existing customized grants. **Never run a seeder inside bootstrap**; no silent creation, repair, reassignment or permission grant. Bootstrap is one-time and requires all `users` rows absent and creation of actual ID 1.
+
+The decision is documented in `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` on **open, unmerged PR #5**.
+
+### Approved decision: three-layer Spatie Single Role enforcement
+
+**User expressly approved (2026-11-25):** In installed Spatie `model_has_roles` (Teams disabled), enforce **at most one** persisted Role assignment with a compatible DB unique index equivalent to `UNIQUE (model_type, model_id)`, **after verifying the exact vendor schema, indexes and morph type**. All role changes go through `syncRoles([$role])` inside an authorized MySQL/InnoDB transaction, serializing on the affected User row and additionally using the shared admin-viability lock when relevant. Every protected request validates an active User with **exactly one active Role** and current effective authorization; fail closed on zero/multiple/disabled-role/direct-permission anomalies. The DB unique index itself only guarantees at most one. Test concurrent reassignment on **real MySQL 8**, no SQLite-based race claim. Do not enable Spatie Teams or silently change other morph models.
+
+### Approved simplification: no separate Identity access-guard table
+
+**User rejected the proposed `identity_access_guard` table (2026-11-25)** as unnecessary complexity. **Do not add that table or any new dedicated lock/sentinel table in Feature 01.** Continue to enforce the **previously approved** invariant that at least one active User holding all six essential permissions through exactly one active Role remains after every sensitive change. Serialize conflicting User/Role/grant mutations using **existing, guaranteed persistent Identity records** inside MySQL transactions (a stable seeded `manager` Role row is one possible shared serialization point; it is permanent even if a Custom Role User is the final viable admin). Confirm an efficient safe locking order and isolation semantics in `plan.md` and concurrency tests, without changing the business invariant or adding a new table.
+
+### New milestone — all Feature 01 documents approved
+
+**2026-11-25:** User approved [spec.md](../../specs/identity/identity-core-rbac-foundation/spec.md) and [plan.md](../../specs/identity/identity-core-rbac-foundation/plan.md), then explicitly requested drafting/uploading [tasks.md](../../specs/identity/identity-core-rbac-foundation/tasks.md) on the same docs branch without code or PR merge. The user subsequently explicitly approved the task list on 2026-11-25. All three documents are now approved. Task list contains 32 unchecked execution tasks in six phases, dependencies, acceptance/verification evidence and traceability for all 14 scenarios. 0/32 complete; implementation checks Not Run. No new business requirements or permission to implement/install/merge.
+
+### Approved technical design; implementation verification still pending
+
+- Spatie ^6 for PHP 8.2/Laravel 12 (exact installed version/schema and module autoload must be verified after separate package authorization); module-owned schema, approved username/email/phone collations and indexes, secure interactive bootstrap, manager-row lock and current reads, additive seeding, last-admin protection, real MySQL concurrency tests and CI adjustments.
+- MySQL may consume ID 1 on failed insertion despite rollback; subsequent bootstrap must fail safely without resetting it. The initial-ID, missing-prerequisite, no-auto-seeder and simultaneous-bootstrap rules remain unchanged.
+- No dedicated guard table; Audit schema/writer/read API and related audit-write tests remain a separate later feature. Known production control gap until Audit is delivered.
+- Existing CI requires empty Modules; adjust during implementation to allow Identity only without weakening Foundation checks. Actual runtime, MySQL metadata/collations, package compatibility and independent-process test harness remain unverified.
 
 ## 6. Next action and restrictions
 
-1. Continue **discussion only** of Feature 01 scope, permission inventory and acceptance tests.
-2. Resolve phased seeding/grant decision; approve Feature 01 scope and scenarios.
-3. Only after approval, prepare/review `specs/identity/identity-core-rbac-foundation/spec.md`, then `plan.md`, then `tasks.md`.
-4. Do not create implementation branch or write code before approved gates; do not merge any PR without explicit approval.
-5. Update **this same GitHub handoff** at every approved decision, milestone or blocker; capture a timestamp, current verified branch/commit/PR state, *approved vs proposed* decisions, work actually done/tests run, current question, and exact next step. Do not use the handoff to override canonical docs or invent completed work.
-6. On a new ChatGPT conversation, open the current `develop` version of this handoff through the connected GitHub app (or supply its exact URL if unavailable), then inspect the current repo/PRs and relevant canonical files before continuing.
+1. All three Feature 01 documents are approved; do not reopen settled decisions. No task has been executed.
+2. Next: obtain explicit approval to merge documentation PR #5; separately obtain implementation and Spatie ^6 package-install authorization before execution.
+3. After approved documentation merge, create a dedicated implementation branch from actual develop, execute tasks in dependency order and verify with real MySQL 8/PHPUnit and Pint. All tasks currently unchecked, checks Not Run.
+4. Do not deploy or mutate real data; Audit remains a separately approved later feature and an acknowledged live rollout gap.
