@@ -32,7 +32,7 @@ final class LoginAction
     public function execute(#[SensitiveParameter] Request $request, #[SensitiveParameter] string $username, #[SensitiveParameter] string $password): LoginResult
     {
         $guard = Auth::guard('web');
-        if ($guard->user() !== null || $request->session()->has($guard->getName())) {
+        if ($guard->user() !== null || $request->session()->has($guard->getName()) || $this->sessions->hasAuthorityMarker($request)) {
             $existing = $this->sessions->binding($request, $this->sessions->now());
             if ($existing !== null && $this->access->isEligible((int) $existing->auth_user_id)) {
                 throw new BusinessException(ApiResponse::text('identity.login_conflict'));

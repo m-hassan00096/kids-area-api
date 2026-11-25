@@ -115,10 +115,21 @@ if ($inspect) {
 
 $count = 0;
 $credentialReads = 0;
+$timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$secrets): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$secrets, &$timing): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
+    $ns = hrtime(true);
+    if ($timing['first_throttle_sql'] !== null && $timing['after_throttle_sql'] === null) {
+        $timing['after_throttle_sql'] = $ns;
+    }
+    if ($timing['first_throttle_sql'] === null && str_starts_with($sql, 'insert into identity_login_throttles')) {
+        $timing['first_throttle_sql'] = $ns;
+    }
+    if ($timing['manager_start'] === null && str_contains($sql, 'from roles') && str_contains($sql, 'for update')) {
+        $timing['manager_start'] = $ns;
+    }
     $credentialRead = str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'username');
     if ($credentialRead) {
         $credentialReads++;
@@ -175,6 +186,13 @@ if ($diagnostic !== null) {
     $response->headers->set('X-Test-Exception-Class', $diagnostic);
 }
 $response->headers->set('X-Test-Credential-Reads', (string) $credentialReads);
+if ($timing['after_throttle_sql'] !== null) {
+    $response->headers->set('X-Test-First-Throttle-Sql-Ms', (string) round(($timing['after_throttle_sql'] - $timing['first_throttle_sql']) / 1000000, 2));
+}
+if ($timing['manager_start'] !== null) {
+    // Upper bound includes lock acquisition and native response completion.
+    $response->headers->set('X-Test-Manager-Span-Ms', (string) round((hrtime(true) - $timing['manager_start']) / 1000000, 2));
+}
 if ($inspect) {
     $restored = $connection->logging() && $connection->getEventDispatcher() !== null;
     $queryLog = $connection->getQueryLog();

@@ -5,12 +5,14 @@ use App\Http\Middleware\ProtectSensitiveQueries;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\TrustedIdentityProxies;
 use App\Support\ApiErrors;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
+use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -25,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->replace(TrustProxies::class, TrustedIdentityProxies::class);
         $middleware->replace(HandleCors::class, FirstPartyCors::class);
         $middleware->statefulApi();
+        $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireStatefulBrowser::class);
         $middleware->redirectGuestsTo(static fn () => null);
         $middleware->trimStrings(except: ['username', 'password', 'currentPassword', 'passwordConfirmation']);
         $middleware->convertEmptyStringsToNull(except: [fn (Request $request) => $request->is('api/v1/auth/login', 'api/v1/profile/password')]);

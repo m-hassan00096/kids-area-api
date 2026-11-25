@@ -143,8 +143,8 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
         $oldId = $a->sessionId();
 
         [$first, $second] = $this->race(
-            $a->prepare('GET', '/api/v1/auth/me', options: $this->options('hold-late-insert', 'first')),
-            $b->prepare('POST', '/api/v1/auth/logout', options: $this->options('observe', 'second')),
+            $a->prepare('GET', '/api/v1/auth/me', options: $this->raceOptions('hold-late-insert', 'first')),
+            $b->prepare('POST', '/api/v1/auth/logout', options: $this->raceOptions('observe', 'second')),
             null,
         );
         $this->assertSame(200, $first->status);
@@ -174,7 +174,7 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
         $oldId = $a->sessionId();
 
         [$first, $second] = $this->race(
-            $a->prepare('GET', '/api/v1/auth/me', options: $this->options('hold-late-insert', 'first')),
+            $a->prepare('GET', '/api/v1/auth/me', options: $this->raceOptions('hold-late-insert', 'first')),
             $this->change($b, 'new-synthetic-password', 'observe', 'second'),
             null,
         );
@@ -203,7 +203,7 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
         $b->timeMs = $a->timeMs;
         [$first, $second] = $this->race(
             $this->login($a, 'Expired.User', 'wrong-synthetic-password', 'hold-credentials', 'first', $ip),
-            $b->prepare('GET', '/sanctum/csrf-cookie', options: $this->options('cleanup', 'second')),
+            $b->prepare('GET', '/sanctum/csrf-cookie', options: $this->raceOptions('cleanup', 'second')),
             'cleanup',
         );
         $this->assertSame(401, $first->status);
@@ -237,7 +237,7 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
         $this->assertFalse(DB::table('identity_login_throttles')->where('scope', 1)->where('key_digest', $throttle->digest(1, 'Staff.Admin'))->exists());
     }
 
-    private function options(string $mode, string $barrier, ?string $ip = null): array
+    private function raceOptions(string $mode, string $barrier, ?string $ip = null): array
     {
         $headers = ['X-Identity-Test-Mode' => $mode, 'X-Identity-Test-Barrier' => $barrier];
         if ($ip !== null) {
@@ -249,7 +249,7 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
 
     private function login(AuthenticationBrowser $browser, string $username, string $password, string $mode, string $barrier, ?string $ip = null): AuthenticationPendingRequest
     {
-        return $browser->prepare('POST', '/api/v1/auth/login', ['username' => $username, 'password' => $password], $this->options($mode, $barrier, $ip));
+        return $browser->prepare('POST', '/api/v1/auth/login', ['username' => $username, 'password' => $password], $this->raceOptions($mode, $barrier, $ip));
     }
 
     private function change(AuthenticationBrowser $browser, string $password, string $mode, string $barrier): AuthenticationPendingRequest
@@ -258,7 +258,7 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
             'currentPassword' => 'test-fixture-only-password',
             'password' => $password,
             'passwordConfirmation' => $password,
-        ], $this->options($mode, $barrier));
+        ], $this->raceOptions($mode, $barrier));
     }
 
     /**

@@ -46,6 +46,12 @@ final class StaffSession
             ->first(['s.auth_user_id', 's.auth_version', 's.auth_last_activity']);
     }
 
+    public function hasAuthorityMarker(Request $request): bool
+    {
+        return DB::table('sessions')->useWritePdo()->where('id', $request->session()->getId())
+            ->whereNotNull('auth_user_id')->exists();
+    }
+
     public function requireBinding(Request $request, int $at): object
     {
         $binding = $this->binding($request, $at);
