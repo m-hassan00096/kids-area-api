@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01/02 merged; develop 8174097e (PR #8), F02 CI 45638942711 passed. Feature 03 spec/plan/tasks approved; PR #9 open. T03/T04 preliminary feasibility passed on PHP8.2.36/GD2.3.3, isolated [run 45652182251](https://github.com/m-hassan00096/kids-area-api/actions/runs/45652182251), actual logs reviewed. 4/49 tasks complete; all 19 acceptance scenarios Not Run. T05 awaits separate docs merge and implementation approvals. No feature code, Composer, DB, migration, hosting or merge.
+> Status: PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run authorized for compatibility review only; exact installation, protected reset, future merge and deployment require separate approval. No application code changed.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -179,9 +179,13 @@ Final reviewed code [`3c06a957`](https://github.com/m-hassan00096/kids-area-api/
 
 ## 8. Next action and restrictions
 
-1. Feature 03 approved; T01–T04 preliminary feasibility complete (tasks.md §14). T05 awaits separate docs merge and implementation approvals; no feature code.
+1. F03 implementation authorized; T05 complete. T06 compatibility dry-run review and separate exact installation approval, then T07 guarded test environment. No application code yet.
 2. After material feasibility resolution, obtain explicit docs merge, implementation, dependency/platform and protected-operation authorizations. No code before gates; no deployment.
 
 ### Follow-up decisions and evidence (2026-11-25)
 
 Earlier §13 blockers are historical: user approved one effective native parsed scalar avatar, visible arrays/extra fields and invalid retained files rejected; raw collapsed duplicates outside guarantee. Strong JPEG segment/scan actual EOI and PNG/WebP structure before GD decode. Prior JPEG+PNG+second EOI rejected before decode; baseline/progressive JPEG and valid PNG/WebP accepted. T03/T04 preliminary feasibility passed on PHP8.2.36/GD2.3.3, isolated [run 45652182251](https://github.com/m-hassan00096/kids-area-api/actions/runs/45652182251), actual logs reviewed. 4/49 tasks complete; all 19 acceptance scenarios Not Run. T05 awaits separate docs merge and implementation approvals. No feature code, Composer, DB, migration, hosting or merge. Probe branch `probe/identity-avatar-followup` retired at `00189a5c81194764269dd78fc03baf661ac5bd9e`, zero file diff vs develop. PHP peak 10489856 bytes, RSS 129872 KiB, Argon2id hash+verify 166.75ms; full app T45 and actual Laravel override/CSRF tests still due. No production validator or universal polyglot claim.
+
+### Implementation gate (2026-11-25)
+
+PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run authorized for compatibility review only; exact installation, protected reset, future merge and deployment require separate approval. No application code changed.

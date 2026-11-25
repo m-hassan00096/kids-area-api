@@ -1,9 +1,9 @@
 # Feature 03 — Users Management: Technical Plan
 
-> **Status:** APPROVED — accepted 2026-11-25 (user reply “تمام” to technical review). Material feasibility gates remain open; not Ready to Implement.
+> **Status:** APPROVED — preliminary gates resolved; implementation authorized with separate dependency and protected-operation gates.
 > **Approved contract:** [spec.md](spec.md), user explicitly approved the entire spec, Avatar/search/API defaults and 19 acceptance scenarios on 2026-11-25.
 > **Baseline:** verified develop `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merged), docs PR #9 `docs/feature03-users-management-spec` from that commit. Latest actual pre-merge F02 CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files. Historical evidence only; Feature 03 runtime and all new checks Not Run.
-> **Delivery gate:** [tasks.md](tasks.md) explicitly approved on 2026-11-25. Technical choices and task list accepted; authorized temporary isolated target PHP8.2/GD probes recorded in tasks.md §§12–13. T01–T04 preliminary feasibility complete (tasks.md §14, run 45652182251); T05 separate approval gate. No project dependency installation, migration, feature implementation/acceptance-test execution, merge or deployment authorized.
+> **Delivery gate:** PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run authorized for compatibility review only; exact installation, protected reset, future merge and deployment require separate approval. No application code changed.
 
 ## 1. Current source and compatibility verification
 
@@ -178,4 +178,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** approved T03/T04 decisions verified in isolated follow-up (tasks.md §14); T05 awaits separate approvals. All 19 acceptance scenarios Not Run; no feature code.
+**Next:** T06 compatibility dry-run then exact installation approval; T07 guarded disposable testing. See tasks.md §15. No application code yet.

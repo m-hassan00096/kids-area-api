@@ -1,10 +1,10 @@
 # Feature 03 — Users Management: Execution Tasks
 
-> **Status:** APPROVED — user explicitly approved task list and temporary isolated PHP8.2/GD/fileinfo T01–T04 feasibility on 2026-11-25; no Feature 03 implementation or PR #9 merge authorized.
+> **Status:** APPROVED — Feature 03 implementation authorized; PR #9 documentation merged. Separate T06/T07 gates apply.
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
-> **Baseline:** develop 8174097e93069cc20ae258ba236cf7acd8d37fb3, PR #8 merged; docs PR #9 open. Historical F02 CI 45638942711 passed 102 tests/2289 assertions, Pint 101. No F03 execution. 
-> **Progress:** 4/49 tasks complete (T01–T04); 19/19 acceptance scenarios Not Run. Authorized target PHP8.2/GD probes completed in isolated CI 45650686580 and 45650969241 (§13); T03/T04 follow-up passed (run 45652182251, actual logs reviewed; §14). No project dependencies, feature code, migration, acceptance test execution, merge or deployment. T05 awaits separate docs merge and implementation approvals.
+> **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
+> **Progress:** 5/49 tasks complete (T01–T05); 19/19 acceptance scenarios Not Run. T01–T04 verified preliminary evidence in §§13–14. T05 complete (§15). T06 dry-run compatibility review only; no actual dependency installation, code or migration.
 
 ## 1. Gates and evidence rules
 
@@ -20,7 +20,7 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 - [x] **T04 — Image validation feasibility.** Dependencies: T02,T03. Synthetic valid exact2MiB and malformed/truncated/animated/dual-format/trailing fixtures, dimension/pixel/codec bounds and canonical encoding; verify JPEG marker/segment/scan handling including real EOI, PNG/WebP static container checks, and measured isolated memory. No universal polyglot claim. Evidence: Actual evidence or blocking decision request; no silent relaxation of F03-14.
 
-- [ ] **T05 — Resolve blockers and verify implementation gates.** Dependencies: T01–T04. Resolve material unknowns and explicitly review any necessary plan/spec changes. Obtain separate docs merge approval, verify PR #9 latest CI/diff, merged develop; obtain explicit implementation permission and create dedicated branch from merged ref. Evidence: Resolved decisions, approval, merge SHA and actual branch; no feature code if unresolved.
+- [x] **T05 — Resolve blockers and verify implementation gates.** Dependencies: T01–T04. Resolve material unknowns and explicitly review any necessary plan/spec changes. Obtain separate docs merge approval, verify PR #9 latest CI/diff, merged develop; obtain explicit implementation permission and create dedicated branch from merged ref. Evidence: Resolved decisions, approval, merge SHA and actual branch; no feature code if unresolved.
 
 - [ ] **T06 — Authorized dependency resolution.** Dependencies: T05. Separate exact package/platform approval; dry-run composer require spatie/laravel-query-builder:^6.4.4 --dry-run --no-interaction --prefer-dist --no-scripts, review 6.4.4 and mandatory package-tools ^1.11 candidate, stop on unapproved changes; then approved actual require, authentic lock, validate --strict, locked install, platform/audit. GD/fileinfo requirement and CI as approved; no image package. Evidence: Actual solver/lock diff, installation and audit/platform evidence.
 
@@ -256,3 +256,9 @@ User expressly approved the revised native parsed-file boundary and stronger ima
 PHP 8.2.36 / GD 2.3.3, fileinfo, synthetic fixtures, temporary 128M/2M/4M limits. Native HTTP 14 cases: single, duplicate scalar, array-then-scalar, masked prior oversized then valid accepted only after retained-file validation; bracket arrays, scalar-then-array, extra/unknown-only, empty/corrupt, +1 byte and 4194600-byte body rejected; exact 2097152 accepted. Native `_method=PUT` observed, no Laravel boot/CSRF. `T03_PARSED_CONTRACT_ASSERTIONS_PASSED` logged. Raw duplicates collapse and are intentionally outside detection guarantee.
 
 Baseline/progressive JPEG, PNG/WebP and length-delimited APP containing EOI-like bytes passed; 2048x1024 -> 512x256, max square -> 512x512, alpha 40 preserved, exact 2MiB -> 115 bytes, metadata removed. Prior 860-byte JPEG+PNG+second EOI rejected `early_eoi_or_trailing` before GD decode. Invalid segment lengths, concatenated JPEG, missing scan/EOI, PNG duplicate IHDR/CRC, WebP RIFF mismatch, trailing payloads, spoof/truncation, animation-marker and constructed two-frame cases, SVG/GIF, dimensions and +1 byte rejected. Argon2id hash+verify 166.75ms; PHP peak 10489856 bytes, process RSS 129872 KiB. Selected synthetic feasibility only: no universal polyglot claim, production validator not written. Broader independently generated restart/stuffed-byte JPEG and PNG/WebP edge fixtures, canonical output and Laravel override/CSRF remain T22/T25/T35; full application memory/RSS T45 and actual host deployment checks remain. No Composer, Laravel boot, DB, migration, feature code or merge. **4/49** tasks complete; **19/19 acceptance scenarios Not Run**; T05 awaits separate approval. Probe-only files removed from branch tip; history retained.
+
+## 15. T05 — implementation authorization and verified branch (2026-11-25)
+
+PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run authorized for compatibility review only; exact installation, protected reset, future merge and deployment require separate approval. No application code changed.
+
+T06 preliminary solver probe uses isolated branch `probe/feature03-dependency-resolution`, commit `6a96dc2972055d0a7e68385ad563b3ec5a674978`, no app boot or dependency installation. Results pending review. Keep T06 unchecked until exact approved package/platform resolution and actual install, lock validation, platform/audit evidence. T07 separate protected disposable reset approval.

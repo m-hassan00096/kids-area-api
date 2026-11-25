@@ -1,6 +1,6 @@
 # Identity Module — Module Reference
 
-> **Status:** Feature 01 and Feature 02 implemented and merged (PR #6 and PR #8). Feature 03 [spec.md](../../specs/identity/users-management/spec.md) explicitly approved on 2026-11-25 (including Avatar/search/API defaults); [plan.md](../../specs/identity/users-management/plan.md) approved 2026-11-25; [tasks.md](../../specs/identity/users-management/tasks.md) explicitly approved on 2026-11-25, 4/49 complete (T01–T04 preliminary feasibility verified, original blockers resolved by approved contract and follow-up run 45652182251); all 19 acceptance scenarios Not Run. See tasks.md §§13–14. No Feature 03 implementation authorized.
+> **Status:** F01/F02 merged (PR #6/#8); F03 documentation merged (PR #9), implementation authorized on dedicated branch. Requirements unchanged; execution status in [tasks.md](../../specs/identity/users-management/tasks.md).
 > **Path:** `docs/03-modules/identity.md`
 > **Scope:** One Kids Area location; Laravel 12 API-first modular monolith, MySQL 8 / InnoDB.
 > **Owning module:** `Modules/Identity`.
@@ -274,4 +274,4 @@ These implementation details must respect the approved rules above. If an actual
 
 ### Approved Avatar follow-up (2026-11-25)
 
-At most one scalar uploaded `avatar` after native PHP parsing; reject visible arrays/additional fields and invalid retained uploads; collapsed raw duplicates/mixed parts and masked earlier errors are outside detection guarantee. Stronger format-aware JPEG segment/scan and actual EOI, PNG chunk/CRC/IEND, WebP RIFF/chunk/static validation before bounded GD decode and canonical re-encode. No universal polyglot claim. T03/T04 preliminary feasibility passed on PHP8.2.36/GD2.3.3, isolated [run 45652182251](https://github.com/m-hassan00096/kids-area-api/actions/runs/45652182251), actual logs reviewed. 4/49 tasks complete; all 19 acceptance scenarios Not Run. T05 awaits separate docs merge and implementation approvals. No feature code, Composer, DB, migration, hosting or merge.
+At most one scalar uploaded `avatar` after native PHP parsing; reject visible arrays/additional fields and invalid retained uploads; collapsed raw duplicates/mixed parts and masked earlier errors are outside detection guarantee. Stronger format-aware JPEG segment/scan and actual EOI, PNG chunk/CRC/IEND, WebP RIFF/chunk/static validation before bounded GD decode and canonical re-encode. No universal polyglot claim. T03/T04 preliminary feasibility passed on PHP8.2.36/GD2.3.3, isolated [run 45652182251](https://github.com/m-hassan00096/kids-area-api/actions/runs/45652182251), actual logs reviewed. Preliminary feasibility evidence is historical; current gates tracked in tasks.md.
