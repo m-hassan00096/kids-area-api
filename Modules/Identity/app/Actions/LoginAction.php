@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Modules\Identity\Http\Middleware\FinalizeLoginSession;
 use Modules\Identity\Models\User;
 use Modules\Identity\Services\IdentityAccess;
 use Modules\Identity\Services\IdentityMutex;
@@ -98,6 +99,10 @@ final class LoginAction
                 if ($marked !== 1) {
                     throw new RuntimeException('Staff session binding was not initialized.');
                 }
+
+                $request->attributes->set(FinalizeLoginSession::CANDIDATE, [
+                    'id' => $candidate, 'owner' => $owner, 'version' => $version,
+                ]);
 
                 return true;
             });

@@ -3,15 +3,19 @@
 namespace Modules\Identity\Services;
 
 use App\Exceptions\BusinessException;
+use App\Http\Middleware\RequestId;
 use App\Support\ApiResponse;
 use Closure;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use JsonException;
 use LogicException;
+use PDOException;
 use Modules\Identity\Support\LoginResult;
 use RuntimeException;
 use SensitiveParameter;
+use Throwable;
 
 final class LoginThrottle
 {
@@ -68,6 +72,7 @@ final class LoginThrottle
         $usernameDigest = $this->digest(self::USERNAME, $username);
         $connection = DB::connection();
         $originalWait = null;
+        $failure = null;
         try {
             $originalWait = (int) $connection->selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS value', [], false)->value;
             $connection->statement('SET SESSION innodb_lock_wait_timeout = 5');
@@ -117,17 +122,38 @@ final class LoginThrottle
                 // Return an outcome instead of throwing a 401 inside the transaction.
                 return new LoginResult(401);
             }, 1);
-        } catch (QueryException $exception) {
-            if (in_array((int) ($exception->errorInfo[1] ?? 0), [1205, 1213, 2002, 2003, 2006, 2013], true)) {
-                throw new BusinessException(ApiResponse::text('api.errors.unavailable'), 503);
-            }
+        } catch (Throwable $exception) {
+            $failure = $exception;
 
-            throw $exception;
+            throw $this->publicFailure($exception);
         } finally {
             if ($originalWait !== null) {
-                $connection->statement('SET SESSION innodb_lock_wait_timeout = '.$originalWait);
+                try {
+                    $connection->statement('SET SESSION innodb_lock_wait_timeout = '.$originalWait);
+                } catch (Throwable $restoreFailure) {
+                    // A connection with an unknown session setting must not be
+                    // reused. Preserve the original failure if there was one.
+                    $connection->disconnect();
+                    Log::warning('Login lock timeout restoration failed.', [
+                        'request_id' => app()->bound('request') ? RequestId::id(request()) : null,
+                        'exception_class' => $restoreFailure::class,
+                    ]);
+                    if ($failure === null) {
+                        throw $this->publicFailure($restoreFailure);
+                    }
+                }
             }
         }
+    }
+
+    private function publicFailure(Throwable $exception): Throwable
+    {
+        if ($exception instanceof PDOException
+            && in_array((int) ($exception->errorInfo[1] ?? 0), [1205, 1213, 2002, 2003, 2006, 2013], true)) {
+            return new BusinessException(ApiResponse::text('api.errors.unavailable'), 503);
+        }
+
+        return $exception;
     }
 
     private function lockRow(int $scope, string $digest, bool $create): ?object
@@ -155,8 +181,10 @@ final class LoginThrottle
     {
         $times = json_decode($row->failure_times, true, 512, JSON_THROW_ON_ERROR);
         $blocked = $row->blocked_until_ms === null ? null : filter_var($row->blocked_until_ms, FILTER_VALIDATE_INT);
+        $expiry = filter_var($row->expires_at_ms, FILTER_VALIDATE_INT);
         if (! is_array($times) || ! array_is_list($times) || count($times) > $limit
-            || $blocked === false || ($blocked !== null && $blocked < 0)) {
+            || $blocked === false || ($blocked !== null && $blocked < 0)
+            || $expiry === false || $expiry < 0 || $expiry > $now + self::WINDOW) {
             throw new RuntimeException('Invalid login throttle state.');
         }
 
@@ -166,6 +194,14 @@ final class LoginThrottle
                 throw new RuntimeException('Invalid login throttle clock or state.');
             }
             $previous = $time;
+        }
+
+        // Validate the persisted relationship before pruning expired failures.
+        // A corrupt deadline must not clear an otherwise active block.
+        if (($times !== [] && $expiry !== end($times) + self::WINDOW)
+            || ($blocked !== null && (count($times) !== $limit || $blocked !== $expiry))
+            || ($blocked === null && count($times) >= $limit)) {
+            throw new RuntimeException('Inconsistent login throttle state.');
         }
 
         if ($blocked !== null) {
@@ -218,9 +254,31 @@ final class LoginThrottle
         $deadline = microtime(true) + 0.1;
         foreach ($rows as $row) {
             try {
-                // One autocommit key at a time, recheck expiry; no reversed two-key lock.
-                DB::table('identity_login_throttles')->where('scope', $row->scope)
-                    ->where('key_digest', $row->key_digest)->where('expires_at_ms', '<=', $now)->delete();
+                // One key per transaction; re-read and validate the complete
+                // state before deleting so a corrupt expiry cannot erase a block.
+                DB::transaction(function () use ($row): void {
+                    $scope = (int) $row->scope;
+                    $current = $this->lockRow($scope, $row->key_digest, false);
+                    $at = $this->nowMs();
+                    if ($current === null || (int) $current->expires_at_ms > $at) {
+                        return;
+                    }
+                    if (! in_array($scope, [self::IP, self::USERNAME], true)) {
+                        return;
+                    }
+
+                    try {
+                        $this->state($current, $scope === self::IP ? self::IP_LIMIT : self::USERNAME_LIMIT, $at);
+                    } catch (RuntimeException|JsonException) {
+                        // Leave inconsistent rows for safe operator investigation.
+                        Log::warning('Inconsistent login throttle cleanup candidate.');
+
+                        return;
+                    }
+
+                    DB::table('identity_login_throttles')->where('scope', $scope)
+                        ->where('key_digest', $row->key_digest)->where('expires_at_ms', '<=', $at)->delete();
+                }, 1);
             } catch (QueryException $exception) {
                 if (! in_array((int) ($exception->errorInfo[1] ?? 0), [1205, 1213], true)) {
                     throw $exception;

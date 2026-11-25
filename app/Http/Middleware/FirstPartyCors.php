@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\BrowserOrigins;
 use Closure;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
@@ -19,11 +20,11 @@ final class FirstPartyCors extends HandleCors
 
     private function assertBrowser(Request $request): void
     {
-        $api = $this->origin((string) config('identity-browser.api_origin'), true);
+        $api = BrowserOrigins::normalize((string) config('identity-browser.api_origin'));
         $allowed = config('identity-browser.frontend_origins', []);
-        $origins = array_map(fn (string $origin) => $this->origin($origin, true), $allowed);
+        $origins = array_map(fn (string $origin) => BrowserOrigins::normalize($origin), $allowed);
 
-        abort_if($api === null || in_array(null, $origins, true) || $request->getSchemeAndHttpHost() !== $api, 403);
+        abort_if($api === null || in_array(null, $origins, true) || BrowserOrigins::normalize($request->getSchemeAndHttpHost()) !== $api, 403);
         if (! app()->environment('local', 'testing')) {
             abort_unless($request->isSecure() && config('session.secure') === true, 403);
             foreach ($origins as $configuredOrigin) {
@@ -36,29 +37,19 @@ final class FirstPartyCors extends HandleCors
         $referer = $request->headers->get('Referer');
         abort_if($origin === null && $referer === null, 403);
 
-        $fromOrigin = $origin === null ? null : $this->origin($origin, true);
-        $fromReferer = $referer === null ? null : $this->origin($referer, false);
+        $fromOrigin = $origin === null ? null : BrowserOrigins::normalize($origin);
+        $fromReferer = $referer === null ? null : BrowserOrigins::normalize($referer, false);
         abort_if($origin !== null && ($fromOrigin === null || ! in_array($fromOrigin, $origins, true)), 403);
         abort_if($referer !== null && ($fromReferer === null || ! in_array($fromReferer, $origins, true)), 403);
         abort_if($fromOrigin !== null && $fromReferer !== null && $fromOrigin !== $fromReferer, 403);
-    }
 
-    private function origin(string $value, bool $strict): ?string
-    {
-        $parts = parse_url($value);
-        if ($parts === false || ! isset($parts['scheme'], $parts['host'])
-            || ! in_array($parts['scheme'], ['https', 'http'], true)
-            || isset($parts['user']) || isset($parts['pass'])
-            || str_contains($parts['host'], '*')
-            || ($strict && (isset($parts['path']) || isset($parts['query']) || isset($parts['fragment'])))) {
-            return null;
+        // Use the same canonical authority in the native Sanctum and CORS checks.
+        // These staff routes do not consume the referring page path.
+        if ($fromOrigin !== null) {
+            $request->headers->set('Origin', $fromOrigin);
         }
-
-        $port = $parts['port'] ?? null;
-        if ($port === ($parts['scheme'] === 'https' ? 443 : 80)) {
-            $port = null;
+        if ($fromReferer !== null) {
+            $request->headers->set('Referer', $fromReferer.'/');
         }
-
-        return $parts['scheme'].'://'.strtolower($parts['host']).($port === null ? '' : ':'.$port);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SensitiveQueryScope;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,27 +12,13 @@ final class ProtectSensitiveQueries
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->is('api/*', 'sanctum/csrf-cookie')) {
+        // Credential/access operations in Identity need suppression, not every
+        // business API. Native session I/O is independently protected by the
+        // database session handler, including on future non-Identity routes.
+        if (! $request->is('api/v1/auth/*', 'api/v1/profile/*')) {
             return $next($request);
         }
 
-        // Wrap the whole native session lifecycle, not just controller writes.
-        // No secondary database connection is used by this feature.
-        $connection = DB::connection();
-        $logging = $connection->logging();
-        $dispatcher = $connection->getEventDispatcher();
-        $connection->disableQueryLog();
-        $connection->unsetEventDispatcher();
-
-        try {
-            return $next($request);
-        } finally {
-            if ($dispatcher !== null) {
-                $connection->setEventDispatcher($dispatcher);
-            }
-            if ($logging) {
-                $connection->enableQueryLog();
-            }
-        }
+        return SensitiveQueryScope::run(DB::connection(), fn () => $next($request));
     }
 }

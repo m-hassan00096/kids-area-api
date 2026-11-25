@@ -1,17 +1,13 @@
 <?php
 
+use App\Support\BrowserOrigins;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 
-$origins = array_filter(array_map('trim', explode(',', (string) env('IDENTITY_FRONTEND_ORIGINS', ''))));
+$origins = BrowserOrigins::frontendOrigins((string) env('IDENTITY_FRONTEND_ORIGINS', ''));
 
 return [
-    'stateful' => array_values(array_filter(array_map(static function (string $origin): ?string {
-        $host = parse_url($origin, PHP_URL_HOST);
-        $port = parse_url($origin, PHP_URL_PORT);
-
-        return is_string($host) && $host !== '' ? $host.($port === null ? '' : ':'.$port) : null;
-    }, $origins))),
+    'stateful' => BrowserOrigins::statefulHosts($origins),
     'guard' => ['web'],
     'expiration' => null,
     'token_prefix' => '',
