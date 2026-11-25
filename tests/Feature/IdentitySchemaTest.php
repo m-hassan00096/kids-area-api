@@ -28,12 +28,13 @@ class IdentitySchemaTest extends IdentityDatabaseTestCase
             ->whereRaw('table_schema = DATABASE()')
             ->where('table_name', 'users')
             ->whereIn('column_name', ['username', 'email', 'phone'])
-            ->get(['column_name', 'collation_name'])
-            ->keyBy('column_name');
+            ->selectRaw('COLUMN_NAME AS field_name, COLLATION_NAME AS field_collation')
+            ->get()
+            ->keyBy('field_name');
 
-        $this->assertSame('ascii_bin', $columns['username']->collation_name);
-        $this->assertSame('utf8mb4_0900_as_ci', $columns['email']->collation_name);
-        $this->assertSame('ascii_bin', $columns['phone']->collation_name);
+        $this->assertSame('ascii_bin', $columns['username']->field_collation);
+        $this->assertSame('utf8mb4_0900_as_ci', $columns['email']->field_collation);
+        $this->assertSame('ascii_bin', $columns['phone']->field_collation);
         $staff = User::factory()->create();
         $this->assertTrue($staff->is_active);
         $this->assertArrayNotHasKey('password', $staff->toArray());

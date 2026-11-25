@@ -63,6 +63,8 @@ jobs:
           php artisan key:generate --force
       - name: Run reviewed migrations in disposable test database
         run: php artisan migrate --force
+      - name: Run focused Identity tests
+        run: php artisan test --filter=Identity
       - name: Run PHPUnit
         run: php artisan test
       - name: Check Laravel Pint
@@ -70,6 +72,7 @@ jobs:
       - name: Verify modular package CLI and Identity only
         run: |
           php artisan module:list --no-ansi
+          php artisan route:list --no-ansi
           test -d Modules
           test -d Modules/Identity
           test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' -print -quit)"
