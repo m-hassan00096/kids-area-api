@@ -45,7 +45,7 @@ final class ChangePasswordRequest extends FormRequest
             if (! is_string($data['passwordConfirmation'] ?? null) || $data['passwordConfirmation'] !== ($data['password'] ?? null)) {
                 $validator->errors()->add('passwordConfirmation', __('validation.confirmed', ['attribute' => __('validation.attributes.password')]));
             }
-            if (array_diff(array_keys($data), ['currentPassword', 'password', 'passwordConfirmation']) !== [] || $this->query->count() !== 0) {
+            if (array_diff(array_keys($data), ['currentPassword', 'password', 'passwordConfirmation']) !== [] || $this->query->count() !== 0 || $this->files->count() !== 0) {
                 $validator->errors()->add('request', ApiResponse::text('identity.unsupported_field'));
             }
         }];

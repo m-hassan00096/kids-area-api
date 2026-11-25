@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->replace(TrustProxies::class, TrustedIdentityProxies::class);
         $middleware->replace(HandleCors::class, FirstPartyCors::class);
         $middleware->statefulApi();
+        $middleware->redirectGuestsTo(static fn () => null);
         $middleware->trimStrings(except: ['username', 'password', 'currentPassword', 'passwordConfirmation']);
         $middleware->convertEmptyStringsToNull(except: [fn (Request $request) => $request->is('api/v1/auth/login', 'api/v1/profile/password')]);
     })

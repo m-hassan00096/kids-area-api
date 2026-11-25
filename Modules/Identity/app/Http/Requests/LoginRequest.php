@@ -45,7 +45,7 @@ final class LoginRequest extends FormRequest
             if (! is_string($data['password'] ?? null) || $data['password'] === '') {
                 $validator->errors()->add('password', __('validation.required', ['attribute' => __('validation.attributes.password')]));
             }
-            if (array_diff(array_keys($data), ['username', 'password']) !== [] || $this->query->count() !== 0) {
+            if (array_diff(array_keys($data), ['username', 'password']) !== [] || $this->query->count() !== 0 || $this->files->count() !== 0) {
                 $validator->errors()->add('request', ApiResponse::text('identity.unsupported_field'));
             }
         }];
