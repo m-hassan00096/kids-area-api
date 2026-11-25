@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: F03 active draft PR #10, 9/49 T01–T09 verified. Avatar reference and preservation CI 45678811050 passed. T10 routes/transport authored, verification pending; controllers fail closed until later permission and CRUD tasks. All 19 acceptance scenarios Not Run. No production or feature merge.
+> Status: F03 active draft PR #10, 10/49 tasks complete T01–T10. Avatar schema/preservation CI 45678811050 and protected transport CI 45679742034 passed (109 tests / 2536 assertions, Pint 107). Next T11 capability before target lookup. Fail-closed controllers pending further implementation; 19 acceptance scenarios Not Run. No production or feature merge.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -179,7 +179,7 @@ Final reviewed code [`3c06a957`](https://github.com/m-hassan00096/kids-area-api/
 
 ## 8. Next action and restrictions
 
-1. F03 implementation authorized; Phase A T01–T07 verified. Next T08/T09 forward avatar reference and preservation. No feature merge.
+1. F03 implementation authorized; T01–T10 verified. Next T11 capability before target lookup, then T12/T13. No feature merge.
 2. After material feasibility resolution, obtain explicit docs merge, implementation, dependency/platform and protected-operation authorizations. No code before gates; no deployment.
 
 ### Follow-up decisions and evidence (2026-11-25)
@@ -210,3 +210,7 @@ T08/T09 forward nullable private `avatar_key` reference and schema/preservation 
 
 T08/T09 verified on exact `e16568daca348083df2d16e8f67548436a9e40a5` in [45678811050](https://github.com/m-hassan00096/kids-area-api/actions/runs/45678811050), job 139433506742: forward avatar migration succeeded; UsersManagementSchemaTest and EnvironmentTest passed; Auth 41/1456, Identity 56/820, full 105/2400, Pint 104, route cache/module/scope passed. T08/T09 complete.
 Exact protected routes and native method override gate authored with focused HTTP tests. T10 remains unchecked until CI. No actual business CRUD/select/avatar delivery until subsequent tasks.
+
+### T10 transport verified (2026-11-25)
+
+T10 protected transport verified on exact source commit `ba0021cc80651de95dec137026cbc4cef3b7545e`, [CI 45679742034](https://github.com/m-hassan00096/kids-area-api/actions/runs/45679742034), job 139436791612 completed Success, actual logs reviewed. All four UsersManagementTransportTest cases passed: exact route inventory and existing staff middleware; first-party/guest failures and disabled staff; credentialed canonical DELETE preflight without creating session; real native cookie/CSRF for POST/PUT/DELETE and multipart POST `_method=PUT` with PNG, unrelated/header/query/JSON overrides rejected, invalid target paths 404, no separate POST update or user mutation. Auth 41/1440 assertions; Identity 56/827; full 109/2536; Pint 107 files; locked install/platform/audit, forward migration, module and route cache/list checks passed. T10 complete. Seven approved operations registered (+ implicit HEAD), no new permissions. Temporary fail-closed 503 controllers only; capability-before-target T11, normalization T12, sensitive diagnostics T13, actual business operations/Select Registry/avatar storage and full acceptance scenarios remain later tasks. 10/49 complete (T01–T10), 19/19 full acceptance scenarios Not Run. No production, hosting or merge.

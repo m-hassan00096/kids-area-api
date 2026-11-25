@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 9/49 complete (T01–T09); 19/19 acceptance scenarios Not Run. T08/T09 verified (§18); T10 protected route inventory/transport authored, verification pending. No production or merge.
+> **Progress:** 10/49 tasks complete (T01–T10); 19/19 acceptance scenarios Not Run. T08/T09 verified (§18), T10 verified (§18.1). Next T11 capability before target lookup. No production or merge.
 
 ## 1. Gates and evidence rules
 
@@ -32,7 +32,7 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 - [x] **T09 — Migration preservation.** Dependencies: T08. Forward migrate existing synthetic founder/users/hashes/roles/sessions, verify DDL, collation, multiple NULL and duplicate key denial; destructive down only approved disposable fixture. Evidence: Actual MySQL preservation/constraints F03-19.
 
-- [ ] **T10 — Protected routes and CORS.** Dependencies: T07. Exact approved CRUD/avatar GET/selects GET; first-party gate users root/subpaths/selects, canonical origin, DELETE CORS, existing Sanctum/StaffSession, native CSRF/preflight and approved multipart override only; no bearer. Evidence: Route cache/inventory and real HTTP 401/403/419/preflight F03-07.
+- [x] **T10 — Protected routes and CORS.** Dependencies: T07. Exact approved CRUD/avatar GET/selects GET; first-party gate users root/subpaths/selects, canonical origin, DELETE CORS, existing Sanctum/StaffSession, native CSRF/preflight and approved multipart override only; no bearer. Evidence: Route cache/inventory and real HTTP 401/403/419/preflight F03-07.
 
 - [ ] **T11 — Capability before target lookup.** Dependencies: T10. Fresh staff context, independent view/create/update/delete, numeric target explicitly resolved after permission, no Manager bypass or implicit binding enumeration, original Request attributes. Evidence: Permission-before-query and missing target tests F03-07/08.
 
@@ -158,7 +158,7 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 | T05 documentation merge and implementation | Complete; PR #9 merged and implementation branch approved |
 | T06 package/platform | Verified approved additions, CI 45673916280 success |
 | T07–T09 guarded DB/FS/migration | T07 verified 45678335241; T08/T09 verified 45678811050 |
-| T10–T37 HTTP/reads/selects/avatar/writes | Not Run |
+| T10–T37 HTTP/reads/selects/avatar/writes | T10 verified 45679742034; T11–T37 Not Run |
 | T38–T46 races/faults/performance/scope | Not Run |
 | T47–T49 full tests/Pint/CI | Not Run |
 | Implementation merge / deployment | Not authorized |
@@ -167,7 +167,7 @@ Risks: PHP8.2 parser observability and strict image structural validation; GD/ho
 
 ## 11. Definition of done and next action
 
-All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** T08/T09 forward schema and preservation after verified Phase A. No production or feature merge.
+All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** T11 capability before target lookup, then T12/T13. No production or feature merge.
 
 ## 12. Preliminary local feasibility evidence — 2026-11-25
 
@@ -284,3 +284,7 @@ Added only `2026_11_25_000007_add_avatar_key_to_users.php`: nullable ASCII/bin V
 T08/T09 verified on exact `e16568daca348083df2d16e8f67548436a9e40a5` in [45678811050](https://github.com/m-hassan00096/kids-area-api/actions/runs/45678811050), job 139433506742: forward avatar migration succeeded; UsersManagementSchemaTest and EnvironmentTest passed; Auth 41/1456, Identity 56/820, full 105/2400, Pint 104, route cache/module/scope passed. T08/T09 complete.
 
 T10 implemented exact seven operations plus Laravel implicit HEAD; module CRUD routes and Core selects route use existing stateful Sanctum/staff middleware. FirstPartyCors scope extends users root/subpaths and selects, explicit DELETE added. Header/query/file override and unrelated body `_method` rejected; only real multipart POST with exact PUT body on positive numeric users/{user} allowed. Controllers intentionally fail closed 503 until later permission/operation tasks; no target lookup or write. Added real HTTP transport, CSRF, preflight and route inventory tests; T10 unchecked until actual CI. Full acceptance scenarios still Not Run.
+
+### 18.1 T10 actual transport and regression evidence
+
+T10 protected transport verified on exact source commit `ba0021cc80651de95dec137026cbc4cef3b7545e`, [CI 45679742034](https://github.com/m-hassan00096/kids-area-api/actions/runs/45679742034), job 139436791612 completed Success, actual logs reviewed. All four UsersManagementTransportTest cases passed: exact route inventory and existing staff middleware; first-party/guest failures and disabled staff; credentialed canonical DELETE preflight without creating session; real native cookie/CSRF for POST/PUT/DELETE and multipart POST `_method=PUT` with PNG, unrelated/header/query/JSON overrides rejected, invalid target paths 404, no separate POST update or user mutation. Auth 41/1440 assertions; Identity 56/827; full 109/2536; Pint 107 files; locked install/platform/audit, forward migration, module and route cache/list checks passed. T10 complete. Seven approved operations registered (+ implicit HEAD), no new permissions. Temporary fail-closed 503 controllers only; capability-before-target T11, normalization T12, sensitive diagnostics T13, actual business operations/Select Registry/avatar storage and full acceptance scenarios remain later tasks. 10/49 complete (T01–T10), 19/19 full acceptance scenarios Not Run. No production, hosting or merge.
