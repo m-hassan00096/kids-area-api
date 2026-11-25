@@ -1,10 +1,10 @@
 # Feature 03 — Users Management: Execution Tasks
 
-> **Status:** APPROVED — user explicitly approved the full task list on 2026-11-25, for documentation only; no execution or PR #9 merge authorized.
+> **Status:** APPROVED — user explicitly approved the full task list on 2026-11-25. Subsequent narrow preliminary exploration only; no Feature 03 implementation, platform installation or PR #9 merge authorized.
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop 8174097e93069cc20ae258ba236cf7acd8d37fb3, PR #8 merged; docs PR #9 open. Historical F02 CI 45638942711 passed 102 tests/2289 assertions, Pint 101. No F03 execution. 
-> **Progress:** 0/49 tasks complete; 19/19 scenarios Not Run. No dependency install, probes, migration, code, tests, merge or deployment. Ready to Implement blocked by unresolved material feasibility/approval gates.
+> **Progress:** 0/49 tasks complete; 19/19 scenarios Not Run. Exploratory local PHP8.4 probe recorded in §12; target PHP8.2/GD unavailable in current container. No dependencies installed, feature code, migration, acceptance test execution, merge or deployment. Ready to Implement blocked.
 
 ## 1. Gates and evidence rules
 
@@ -154,7 +154,7 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 |---|---|
 | Spec and technical plan | Approved 2026-11-25; feasibility not proved |
 | Task review | Approved — explicit user approval 2026-11-25 |
-| T01–T04 isolated feasibility authorization/evidence | Pending / Not Run; blocking native multipart/image/platform checks |
+| T01–T04 isolated feasibility authorization/evidence | Partial exploratory evidence (PHP8.4 only), all tasks unchecked; target PHP8.2/GD setup authorization and proof pending; blocking |
 | T05 documentation merge and implementation | Not authorized / Not Run |
 | T06 package/platform | Not authorized / Not Run |
 | T07–T09 guarded DB/FS/migration | Not Run |
@@ -167,4 +167,34 @@ Risks: PHP8.2 parser observability and strict image structural validation; GD/ho
 
 ## 11. Definition of done and next action
 
-All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** separately authorize preliminary T01–T04 isolated probes. Task-list approval is recorded; no execution authorized. Resolve material feasibility evidence and any required plan/spec decision before implementation. Docs merge, implementation, dependencies and protected operations remain separate gates.
+All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** authorize the exact temporary isolated PHP8.2/GD setup or provide an already provisioned verified disposable environment for T01–T04. See §12 exploratory evidence and blockers. Resolve material feasibility and any required approved plan/spec decision before implementation. Docs merge, implementation, dependencies and protected operations remain separate gates.
+
+## 12. Preliminary local feasibility evidence — 2026-11-25
+
+User replied “تمام كمل” after approval-recording follow-up and the proposed isolated preliminary T01–T04 checks. This was treated as permission to reconcile the approved documentation and perform narrow disposable preliminary inspection/probes only, not to install a PHP version/extension or implement Feature 03. Approval commit `76ed09ce88814578182b956bf3de7459146953bd` was successfully attached to the documentation branch; PR #9 remains open. Actual develop remains `8174097e93069cc20ae258ba236cf7acd8d37fb3`.
+
+### Available environment and T01/T02
+
+Isolated assistant container, no access to live application, real accounts, database or hosting. The installed CLI and built-in HTTP server are PHP 8.4.24 (only PHP 8.4 available), with fileinfo and Argon2id availability, **without GD**. Native default upload_max_filesize=2M, post_max_size=8M, memory_limit=-1; exploratory HTTP process used explicit temporary upload_max_filesize=2M, post_max_size=4M and memory_limit=128M. No PHP/extension/package installation or global config change. No target PHP8.2 runtime verified, no GD codec or image normalization/Argon2id memory benchmark completed. T01 and T02 remain unchecked.
+
+### T03 exploratory real HTTP observations (PHP 8.4.24, not target PHP8.2)
+
+Temporary local-only PHP server on 127.0.0.1, private disposable directory, synthetic 8x8 valid PNGs (77 bytes each) and a valid synthetic noisy 1024x1024 PNG (3,151,217 bytes). Raw multipart POST requests were sent; PHP parsed `$_FILES` and `$_POST` directly. No Laravel boot, CSRF, application validation, GD, database, or live host.
+
+| Raw multipart case | Observed PHP result |
+|---|---|
+| One scalar avatar | One scalar first.png, upload error 0 |
+| Repeated scalar avatar | Only second.png visible, error 0; first part collapsed |
+| Two avatar[] parts | Both names visible as array |
+| avatar[] followed by scalar avatar | Only second.png visible as scalar |
+| Scalar avatar followed by avatar[] | Only second.png visible as one-element array |
+| avatar and unknown extra file | Two separate visible file fields |
+| _method=PUT plus avatar | Actual HTTP method POST; _method field PUT present; native PHP result only, not proof of Laravel method override |
+| 3,151,217-byte image, file limit 2M | UPLOAD_ERR_INI_SIZE (1), reported size zero |
+| Two oversized images, body 6,302,749 bytes, post limit 4M | Both POST and FILES empty |
+
+Server stopped and temporary directory removed at end. These actual observations support the previously documented parser risk, but are **not** PHP8.2 certification and do not prove strict duplicate-part rejection or the approved Laravel contract. T03 remains unchecked. No exact 2 MiB valid boundary fixture, structural image rejection, GD canonical encode or peak-memory proof; T04 remains unchecked. All 19 acceptance scenarios remain Not Run; 0/49 tasks complete.
+
+### Next isolated-environment decision
+
+Recommend a separately authorized, temporary isolated GitHub Actions probe branch/runner using the project's existing setup-php approach with PHP 8.2 + gd/fileinfo, synthetic fixtures only, no application implementation/dependency install/database/production access and no merge. Existing CI uses setup-php@v2 with PHP8.2/fileinfo but does not explicitly request GD; this proposal is not a claim that GD or target runtime has been tested. Alternatively use an already provisioned verified disposable PHP8.2/GD environment. Obtain approval for the exact temporary platform setup before executing it. Re-run T02/T03/T04 on target runtime, including raw duplicate/mixed parts, actual image safety/limits and method override feasibility. If strict raw duplicate rejection is impossible with the native parser, return with evidence for a narrow explicit parsed-file contract or strict ingress design decision; no custom parser, package or contract change silently. T05 remains blocked. No docs merge or Feature 03 implementation authorized.
