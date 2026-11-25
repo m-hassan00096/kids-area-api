@@ -8,11 +8,13 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Modules\Identity\Http\Controllers\UsersController;
 use Modules\Identity\Http\Middleware\FinalizeLoginSession;
 use Modules\Identity\Http\Middleware\RequireStaffSession;
 use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
 use Modules\Identity\Services\LoginThrottle;
 use Tests\Support\AuthenticationCommitFault;
+use Tests\Support\UsersBoundaryProbe;
 
 require __DIR__.'/../../vendor/autoload.php';
 
@@ -52,6 +54,10 @@ if (is_string($time) && ctype_digit($time)) {
 $barrierDir = getenv('IDENTITY_TEST_BARRIER_DIR');
 $barrier = $request->headers->get('X-Identity-Test-Barrier');
 $mode = $request->headers->get('X-Identity-Test-Mode');
+if (is_string($mode) && str_starts_with($mode, 'users-probe-') && $request->is('api/v1/users', 'api/v1/users/*')) {
+    // Swap only the unimplemented controller in the guarded test router. The real route and middleware stack runs unchanged.
+    $app->bind(UsersController::class, fn () => new UsersBoundaryProbe);
+}
 
 // Isolated test-only route: prove ordinary API query events remain visible
 // while real native session reads, writes and garbage collection are private.
@@ -114,7 +120,12 @@ $logs = [];
 $queries = [];
 $secrets = ['synthetic-redaction-sentinel'];
 if ($inspect) {
-    foreach (['password', 'currentPassword', 'passwordConfirmation'] as $field) {
+    $fields = ['password', 'currentPassword', 'passwordConfirmation'];
+    if ($request->is('api/v1/users', 'api/v1/users/*')) {
+        $fields = [...$fields, 'email', 'phone'];
+        $secrets = [...$secrets, UsersBoundaryProbe::KEY, UsersBoundaryProbe::PATH, UsersBoundaryProbe::RAW];
+    }
+    foreach ($fields as $field) {
         $value = $request->input($field);
         if (is_string($value) && strlen($value) >= 8) {
             $secrets[] = $value;
@@ -143,12 +154,20 @@ if ($inspect) {
 
 $count = 0;
 $credentialReads = 0;
+$usersTargetReads = 0;
+$usersSensitiveReads = 0;
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$secrets, &$timing, &$restoreStatements, $request): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$secrets, &$timing, &$restoreStatements, $request): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key')) {
+        $usersTargetReads++;
+    }
+    if (str_contains($sql, 'synthetic_users_sensitive_probe')) {
+        $usersSensitiveReads++;
+    }
     $ns = hrtime(true);
     if (str_starts_with($sql, 'set session innodb_lock_wait_timeout =')) {
         $restoreStatements++;
@@ -234,6 +253,11 @@ if ($diagnostic !== null) {
     $response->headers->set('X-Test-Exception-Class', $diagnostic);
 }
 $response->headers->set('X-Test-Credential-Reads', (string) $credentialReads);
+$response->headers->set('X-Test-Users-Target-Reads', (string) $usersTargetReads);
+$response->headers->set('X-Test-Users-Sensitive-Reads', (string) $usersSensitiveReads);
+if ($request->attributes->has('_test_users_fingerprint')) {
+    $response->headers->set('X-Test-Users-Fingerprint', $request->attributes->get('_test_users_fingerprint'));
+}
 if ($timing['after_throttle_sql'] !== null) {
     $response->headers->set('X-Test-First-Throttle-Sql-Ms', (string) round(($timing['after_throttle_sql'] - $timing['first_throttle_sql']) / 1000000, 2));
 }
@@ -249,6 +273,9 @@ if ($inspect) {
     $nativeVisible = collect($queries)->contains(fn ($query) => str_contains(strtolower($query[0]), 'sessions'))
         || collect($queryLog)->contains(fn ($query) => str_contains(strtolower($query['query']), 'sessions'));
     $response->headers->set('X-Test-Business-Query-Visible', $eventVisible && $logVisible ? '1' : '0');
+    $usersVisible = collect($queries)->contains(fn ($query) => str_contains($query[0], 'synthetic_users_sensitive_probe'))
+        || collect($queryLog)->contains(fn ($query) => str_contains($query['query'], 'synthetic_users_sensitive_probe'));
+    $response->headers->set('X-Test-Users-Sensitive-Query-Visible', $usersVisible ? '1' : '0');
     $response->headers->set('X-Test-Native-Session-Query-Visible', $nativeVisible ? '1' : '0');
     $correlated = collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.' && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID'));
     $response->headers->set('X-Test-Correlated-Report', $correlated ? '1' : '0');

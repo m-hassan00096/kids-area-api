@@ -40,7 +40,7 @@ final class AuthenticationHttpServer
         $this->hostOverride = $splitOrigins ? 'api.kids.example.test' : null;
         $connection = DB::connection();
         $this->process = new Process(
-            [PHP_BINARY, '-S', $address, base_path('tests/Support/authentication-router.php')],
+            [PHP_BINARY, '-d', 'post_max_size=4M', '-d', 'upload_max_filesize=2M', '-S', $address, base_path('tests/Support/authentication-router.php')],
             base_path(),
             [
                 'APP_ENV' => 'testing',

@@ -5,13 +5,13 @@ namespace Modules\Identity\Http\Middleware;
 use App\Support\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use JsonException;
 use SensitiveParameter;
 use stdClass;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 
 final class NormalizeUsersInput
