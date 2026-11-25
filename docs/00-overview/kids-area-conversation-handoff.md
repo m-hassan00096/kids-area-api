@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) is in DISCUSSION. The phased permission-catalogue / explicit grant rollout decision is APPROVED. No Feature 01 specification, plan, tasks, implementation branch, implementation or tests have been created.
+> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) is in DISCUSSION. Phased permission seeding and **six-permission, role-name-independent Last Viable Administrator Protection (A)** are APPROVED. No Feature 01 spec/plan/tasks, implementation branch, code, or tests have been created.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -15,6 +15,7 @@
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
+- **Current docs PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (`docs/feature01-seeding-handoff` -> `develop`); captures approved staged grants + six-permission role-agnostic admin rule. It is open and **not merged**, pending explicit user permission.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -74,7 +75,7 @@
 - `Modules/` currently contains only `.gitkeep`; there is no Identity Module code.
 - `app/Models/User.php` was not found, while `config/auth.php` still imports `App\Models\User`; Feature 01 must create/configure canonical `Modules/Identity/app/Models/User.php` and update Laravel auth provider.
 - `bootstrap/app.php` sets API prefix `api/v1` and basic middleware/exception scaffolding.
-- No actual Feature 01 spec/plan/tasks or feature branch has been authored.
+- No actual Feature 01 spec/plan/tasks or **implementation** branch has been authored. A documentation-only branch `docs/feature01-seeding-handoff` and PR #5 are open; do not confuse these with implementation.
 
 ## 5. Current topic - Feature 01: Identity Core & RBAC Foundation
 
@@ -92,12 +93,18 @@
 
 **User approved 2026-11-25:** Feature 01 seeds only the **10 agreed Identity technical permissions**: four for Users (`identity.users.view/create/update/delete`), five for Roles (`identity.roles.index/store/show/update/delete`), and `identity.audit.view`. The first Manager receives these 10 explicitly; Reception starts without Identity administrative grants. In later business features, the owning module provides its reviewed permission definitions, Identity adds them **additively**, and assigning new grants to existing Manager/Reception roles is a **separate explicitly approved, auditable rollout action** — never an automatic routine Seeder side-effect. Do not pre-invent other module keys or overwrite customized live grants.
 
-### Next design decision (PROPOSED; not yet approved)
+### Approved decision: last viable administrator by six effective permissions (option A)
 
-Define the minimal **essential access-management permission set** for the last viable administrator and whether an active custom-role account holding that effective set can count as the viable admin. Proposed six: `identity.users.view`, `identity.users.create`, `identity.users.update`, `identity.roles.index`, `identity.roles.show`, `identity.roles.update`; `identity.users.delete`, `identity.roles.delete` and `identity.audit.view` are not strictly necessary to preserve access management. Protect the invariant under InnoDB concurrency and always enforce User ID 1 rules. Confirm before adding to the Feature 01 spec.
+**User expressly approved option A on 2026-11-25:** A viable administrative path means at least one **usable active User with exactly one active Role** that effectively grants **all six**: `identity.users.view`, `identity.users.create`, `identity.users.update`, `identity.roles.index`, `identity.roles.show`, `identity.roles.update`. **The Role name is irrelevant**: a custom role qualifies equally to `manager`; not all six => not viable. Neither `identity.users.delete`, `identity.roles.delete` nor `identity.audit.view` is needed for viability. Any relevant committed change must preserve one path, with a consistent MySQL/InnoDB transaction/serialization guard, race checks and a `409` on an otherwise authorized state conflict. User ID 1 remains separately protected even when it does **not** qualify as viable.
+
+The approved policy is now reflected in `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` on the open documentation branch/PR; not yet merged into `develop`.
+
+### Next design topic (PROPOSED; not approved)
+
+Review Feature 01 foundational DB shape (`users`, native Spatie roles/permissions/pivots, bootstrap ID 1), a shared InnoDB serialization guard, and **Audit history**. Consider whether to use **one shared append-only `audit_logs` table** with Identity-scoped read API and controlled module-owned events, or an Identity-only table; record the selected model before drafting the feature spec.
 
 ### Further details for Feature 01 plan (not silently decided)
-- Identity's 10 first-install permission keys have been confirmed; the exact **essential subset** for last-viable-admin protection and custom-role eligibility are still proposed.
+- Identity's 10 initial permissions and the exact **six-permission role-agnostic viability rule** are approved. The concrete implementation strategy, table names, lock-row schema and MySQL tests remain technical plan work.
 - Installed Spatie version and morph-pivot unique index compatibility; actual MySQL 8 constraints and safe lock strategy.
 - Exact audit schema/FK snapshot strategy allowing deletion of unused Users while preserving history.
 - First-manager bootstrap command credentials and idempotent/fail-safe behavior.
@@ -106,7 +113,7 @@ Define the minimal **essential access-management permission set** for the last v
 ## 6. Next action and restrictions
 
 1. Continue **discussion only** of Feature 01 scope, permission inventory and acceptance tests.
-2. Phased seeding/grants is APPROVED. Next confirm the minimal **essential admin** capabilities / custom-role eligibility, then approve Feature 01 functional scenarios and acceptance criteria.
+2. Phased seeding/grants **and** six-permission role-agnostic viability are APPROVED. Discuss the foundational **Audit data model/shared writer**, DB schema, bootstrap and transaction safety; then approve Feature 01 functional scenarios and acceptance criteria.
 3. Only after approval, prepare/review `specs/identity/identity-core-rbac-foundation/spec.md`, then `plan.md`, then `tasks.md`.
 4. Do not create implementation branch or write code before approved gates; do not merge any PR without explicit approval.
 5. Update **this same GitHub handoff** at every approved decision, milestone or blocker; capture a timestamp, current verified branch/commit/PR state, *approved vs proposed* decisions, work actually done/tests run, current question, and exact next step. Do not use the handoff to override canonical docs or invent completed work.
