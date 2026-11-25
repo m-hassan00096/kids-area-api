@@ -3,8 +3,14 @@
 namespace Modules\Identity\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\Identity\Console\BootstrapManagerCommand;
 
 class IdentityServiceProvider extends ServiceProvider
 {
-    // Module migrations are auto-discovered by nwidart/laravel-modules v12.
+    public function boot(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([BootstrapManagerCommand::class]);
+        }
+    }
 }
