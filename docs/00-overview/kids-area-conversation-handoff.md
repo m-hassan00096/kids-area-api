@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01 merged and verified; Feature 02 approved documentation PR #7 merged into develop at 4f9c4505. User authorized scoped implementation, Sanctum ^4.5 installation and isolated tests on 2026-11-25; feat/identity-authentication created from actual develop. 0/42 execution tasks verified; 18 acceptance scenarios Not Run. No implementation merge or deployment authorized.
+> Status: Feature 01 merged and verified. Feature 02 approved documents merged via PR #7 (develop 4f9c4505); implementation in PR #8, branch feat/identity-authentication. Code commit 20f4edec passed isolated CI 45633137808 (93 tests / 2031 assertions, 96 Pint files); 42/42 tasks and 18/18 acceptance cases verified. Implementation not merged; production not authorized.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -17,7 +17,7 @@
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
 - **Documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 merged into develop at b6031c88a0c30560f11803a1c4dba8e0138a7185. Approved spec/plan/tasks preserved.
 - **Implementation PR #6:** https://github.com/m-hassan00096/kids-area-api/pull/6 merged into develop at f5d740b6ace3e10ec63a5a69844856b3d241ecd0. Latest pre-merge CI https://github.com/m-hassan00096/kids-area-api/actions/runs/45618607042 passed.
-- **Feature 02 documentation PR #7:** merged at 4f9c4505; approved spec/plan/tasks. Implementation branch feat/identity-authentication created from merged develop.
+- **Feature 02 documentation PR #7:** merged at 4f9c4505; approved spec/plan/tasks. **Implementation PR #8:** https://github.com/m-hassan00096/kids-area-api/pull/8; branch `feat/identity-authentication`; verified code `20f4edec6706b670fdba036c34ca03bea9404cfb`; passing code CI https://github.com/m-hassan00096/kids-area-api/actions/runs/45633137808. Not merged.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -76,7 +76,7 @@
 
 - Merged Feature 01 via PR #6 at f5d740b6. Laravel 12.73.0, PHP 8.2, nwidart 12.0.6, Spatie Permission 6.25.0; canonical Identity User/provider, module-owned migrations, native RBAC, ten permissions/additive seeders, secure Argon2id founder bootstrap, single-role constraint and fresh access/last-admin protection are present.
 - Latest pre-merge CI run 45618607042 passed: 56 focused tests / 812 assertions, full 61 tests / 830 assertions, Pint 54 files, MySQL 8 and genuine concurrency, Composer/platform, migrations, module/route/scope checks. All 32 Feature 01 tasks and 14 acceptance cases verified. No live data or deployment.
-- Sanctum, session storage/Auth routes, Users/Roles/Selects CRUD and Audit remain absent. Feature 02 is specification only. Existing Feature 01 absence tests must be deliberately updated for the approved Authentication scope during implementation, not weakened indiscriminately.
+- On develop (still 4f9c4505), only Feature 02 documentation is merged; Auth code, Sanctum and new session/throttle schema are on PR #8 only. Users/Roles/Selects CRUD and Audit remain absent. Feature 01 absence assertions were deliberately superseded only for approved F02 changes on the implementation branch.
 
 ## 5. Completed Feature 01 decisions and verification history
 
@@ -146,12 +146,18 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 
 User expressly approved [spec.md](../../specs/identity/authentication/spec.md) and [plan.md](../../specs/identity/authentication/plan.md) on 2026-11-25, then requested [tasks.md](../../specs/identity/authentication/tasks.md) on the same docs branch without code or PR merge. The exact four API routes + native CSRF handshake, minimal Me payload (no top-level User ID, nested Role ID), Login data [], authenticated re-login 409, wrong current password 422, threshold failure 401 then 429, all-session logout after password change and all 18 acceptance cases remain approved.
 
-Approved technical design: Sanctum ^4.5 candidate 4.5.0 (declared compatibility; actual Composer install separately authorized), native encrypted database session handler, users.auth_version and three explicit authoritative session fields; one transient identity_login_throttles table with rolling windows, IP then username locks, bounded cleanup and 5s wait/503 policy. Reuse existing manager mutex for final successful Login and credential mutations only; ordinary reads do not acquire it. Fresh access, successful 2xx idle activity, cookie-only origin/CSRF, central Arabic envelope/request ID/sensitive log redaction. No new business rules.
+Approved technical design: Sanctum ^4.5 resolved and installed at 4.5.0 after separate authorization, native encrypted database session handler, users.auth_version and three explicit authoritative session fields; one transient identity_login_throttles table with rolling windows, IP then username locks, bounded cleanup and 5s wait/503 policy. Reuse existing manager mutex for final successful Login and credential mutations only; ordinary reads do not acquire it. Fresh access, successful 2xx idle activity, cookie-only origin/CSRF, central Arabic envelope/request ID/sensitive log redaction. No new business rules.
 
-The user explicitly approved tasks.md on 2026-11-25 without authorizing implementation or PR #7 merge. The approved task list contains 42 ordered unchecked execution tasks in eight phases, dependencies, evidence and full traceability F02-01–F02-18. 0/42 complete; all checks Not Run. Actual resolved dependency/native save semantics, real HTTP CSRF, independent MySQL races, lock contention/performance and hosting compatibility still need verification. No code, migrations, dependencies, tests or merge; no production authorization.
+The user explicitly approved all Feature 02 planning documents; PR #7 merged at 4f9c4505, then user explicitly authorized scoped implementation, Sanctum ^4.5 installation and isolated tests, without merge/deployment.
+
+### Feature 02 implementation verified — 2026-11-25
+
+- PR #8: https://github.com/m-hassan00096/kids-area-api/pull/8; code commit `20f4edec6706b670fdba036c34ca03bea9404cfb`; [passing CI](https://github.com/m-hassan00096/kids-area-api/actions/runs/45633137808). Actual Sanctum 4.5.0 only; approved four API routes plus native CSRF handshake; native encrypted DB session, authoritative generation/owner/activity, 720-minute idle expiry, exact-case Username, 5/30 rolling-window throttles and safe 503 lock timeout; reusable internal credential revocation, current-device Logout, all-device logout on self password change, fresh role/grant projection with no top-level User ID, centralized Arabic errors/request ID and secret log redaction.
+- Actual evidence PHP 8.2/MySQL 8 and isolated real HTTP/CSRF, independent concurrent processes, fault injection, schema and legacy regression: Authentication 32 tests / 1193 assertions, Identity 56 / 820, full 93 / 2031, Pint 96 files, Composer lock/platform/audit, migrations and module/route/cache/scope checks passed. All 42 execution tasks and 18 cases verified; see tasks.md. Small full-cost CI sample: three same-IP successful logins ~579 ms total, 7 SQL statements for Me; not a hosting capacity guarantee.
+- Hosting prerequisites remain separately unverified: exact same-site origins/TLS/proxy/cookie configuration, APP_KEY and Argon2id compatibility, database/backup/capacity and external logs. No tokens, Users/Roles/Selects CRUD, Audit persistence, queues/Redis/cron or actual deployment. Audit deferred.
 
 ## 7. Next action and restrictions
 
-1. Documentation PR #7 merged; user explicitly authorized scoped implementation and approved Sanctum installation in isolated development/CI. Branch feat/identity-authentication created from develop 4f9c4505.
-2. Resolve actual Composer dependency in isolated GitHub Actions, verify lock and package hooks. Execute approved tasks, record actual results and blockers. No implementation merge/deployment.
+1. PR #8 is open/unmerged. Review implementation and actual evidence, verify latest documentation follow-up CI and request separate explicit user authorization before merging to `develop`. User has not approved merge or deployment.
+2. Do not start implementation of Feature 03 until its specification/plan/tasks and implementation gates are approved. Do not add real accounts, deployment config or production migrations without separate authorization.
 3. No production provisioning, secrets, data, migrations or configuration. Audit remains deferred.
