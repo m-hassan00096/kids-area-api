@@ -1,9 +1,9 @@
 # Feature 02 — Authentication — Technical Plan
 
-> **Status:** APPROVED — user explicitly approved the technical plan on 2026-11-25, following approval of the complete [spec.md](spec.md). [tasks.md](tasks.md) is a draft for separate review. The technical design is approved; actual package/runtime compatibility and required tests remain unverified.
+> **Status:** APPROVED — user explicitly approved the technical plan on 2026-11-25, following approval of the complete [spec.md](spec.md). [tasks.md](tasks.md) was explicitly approved by the user on 2026-11-25. The technical design is approved; actual package/runtime compatibility and required tests remain unverified.
 > **Owner:** Modules/Identity; shared HTTP response/error infrastructure in application Core.
 > **Baseline:** develop f5d740b6ace3e10ec63a5a69844856b3d241ecd0 (Feature 01 PR #6 merged), docs/feature02-authentication-spec / PR #7.
-> **Gates:** No package installation, code changes, migrations, tests, merge or deployment authorized by plan approval alone. Review the drafted tasks.md, then obtain separate implementation/dependency and documentation-merge approvals.
+> **Gates:** No package installation, code changes, migrations, tests, merge or deployment authorized by plan approval alone. The task list is approved; obtain separate implementation/dependency and documentation-merge approvals.
 > **References:** [Identity](../../../docs/03-modules/identity.md), [API](../../../docs/02-standards/api-standards.md), [Database](../../../docs/02-standards/database-standards.md), [Errors](../../../docs/02-standards/error-handling-standards.md), [Permissions](../../../docs/02-standards/permissions-standards.md), [Code](../../../docs/02-standards/code-standards.md), [Localization](../../../docs/02-standards/localization-standards.md), [Workflow](../../../docs/02-standards/ai-workflow-rules.md), [Feature 01 plan](../identity-core-rbac-foundation/plan.md).
 
 ## 1. Verified baseline and dependency approach
@@ -176,7 +176,7 @@ Every check is planned, **Not Run**. PHP/Pint or a green Foundation run does not
 | F02-17 | Exact shared envelope and safe Arabic statuses/headers for specified errors, 503 if introduced; server-generated X-Request-ID, debug/Accept behavior, synthetic credential/hash/cookie/payload/exception log redaction |
 | F02-18 | Full Feature 01 regression, exact module/scope/schema/routes/permission inventory, no token/CRUD/Select/Audit/remember/queue/Redis/cron |
 
-Execution order for future tasks: (1) baseline + separately authorized Sanctum resolve/lock, (2) module migrations/config and shared HTTP boundary, (3) stateful/CSRF transport + session admission, (4) atomic limiter + Login, (5) Me/Logout, (6) Profile/revocation, (7) real HTTP, time, concurrency/security and scope regression tests, (8) full verification and implementation PR to develop. The drafted tasks.md records ordered work; no execution task or test has started. CI update preserves PHP 8.2/MySQL 8/Pint/Composer checks; use controlled DB session config for Auth tests and independent processes, include focused Authentication suite then full PHPUnit, actual HTTP integration and contention tests, route:list/module:list, schema inspection, composer validate --strict/check-platform-reqs, locked install and security audit, vendor/bin/pint --test. Verify CI actual run and latest PR head before any requested merge. If security/compatibility issue arises, document affected task/blocker; do not silently adjust requirements.
+Execution order for future tasks: (1) baseline + separately authorized Sanctum resolve/lock, (2) module migrations/config and shared HTTP boundary, (3) stateful/CSRF transport + session admission, (4) atomic limiter + Login, (5) Me/Logout, (6) Profile/revocation, (7) real HTTP, time, concurrency/security and scope regression tests, (8) full verification and implementation PR to develop. The approved tasks.md records ordered work; no execution task or test has started. CI update preserves PHP 8.2/MySQL 8/Pint/Composer checks; use controlled DB session config for Auth tests and independent processes, include focused Authentication suite then full PHPUnit, actual HTTP integration and contention tests, route:list/module:list, schema inspection, composer validate --strict/check-platform-reqs, locked install and security audit, vendor/bin/pint --test. Verify CI actual run and latest PR head before any requested merge. If security/compatibility issue arises, document affected task/blocker; do not silently adjust requirements.
 
 ## 9. Review decisions, operational risks and delivery gates
 
@@ -189,7 +189,7 @@ Technical choices approved by the user on 2026-11-25 (implementation evidence st
 
 Deployment blockers remain separate: real same-site frontend origins, TLS/proxy/trusted hosts, secure cookie/domain/CORS values, actual PHP Argon2id/platform support, MySQL permissions/index/DDL/clock and capacity, backups and recovery procedure, secret handling and sanitized external logging. No live data, no production schema/commands, no real accounts or credentials, no destructive changes. Audit still deferred and a known gap before live privileged administration. No new security claims for untested browser flow; package source inspection is not execution.
 
-Next: review/approve the drafted tasks.md with dependencies, evidence and open gates; obtain separate documentation merge, dependency-install and implementation authorization. Branch implementation from actual develop only after approved documentation merge; no implicit merge/deploy.
+Next: obtain separate documentation merge, dependency-install and implementation authorization; the task list, dependencies, evidence requirements and open gates are approved. Branch implementation from actual develop only after approved documentation merge; no implicit merge/deploy.
 
 ### Source references inspected (not executed)
 

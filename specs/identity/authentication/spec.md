@@ -4,7 +4,7 @@
 > **Owner:** Modules/Identity.
 > **Baseline:** Feature 01 implementation merged via PR #6 into develop at `f5d740b6ace3e10ec63a5a69844856b3d241ecd0`. The latest verified pre-merge CI (45618607042) passed 61 tests / 830 assertions and Pint. These results are Feature 01/Foundation evidence, not Authentication implementation evidence.
 > **Sources:** [Identity Module Reference](../../../docs/03-modules/identity.md), [API Standards](../../../docs/02-standards/api-standards.md), [Error Handling Standards](../../../docs/02-standards/error-handling-standards.md), [Permissions Standards](../../../docs/02-standards/permissions-standards.md), [Localization Standards](../../../docs/02-standards/localization-standards.md), [Backend Architecture](../../../docs/01-architecture/backend-architecture.md), [AI Workflow Rules](../../../docs/02-standards/ai-workflow-rules.md), [Feature 01](../identity-core-rbac-foundation/spec.md).
-> **Delivery gate:** The complete spec, including its endpoint/payload contracts, error/threshold boundary choices and 18 acceptance scenarios, is approved. [plan.md](plan.md) was explicitly approved by the user on 2026-11-25; [tasks.md](tasks.md) is drafted for separate review. No Sanctum installation, code, migration, executed Authentication tests, PR merge or production operation is authorized.
+> **Delivery gate:** The complete spec, including its endpoint/payload contracts, error/threshold boundary choices and 18 acceptance scenarios, is approved. [plan.md](plan.md) was explicitly approved by the user on 2026-11-25; [tasks.md](tasks.md) was explicitly approved by the user on 2026-11-25. All three Feature 02 documents are approved. No Sanctum installation, code, migration, executed Authentication tests, PR merge or production operation is authorized.
 
 ## 1. Purpose and scope
 
@@ -241,4 +241,4 @@ The plan must map every acceptance scenario to executable test cases, including 
 - Define safe API error mapping, X-Request-ID generation and sanitization; reuse existing localization and BusinessException. Review any conflict with canonical standards instead of silently changing them.
 - Define precise implementation files, migrations, dependency order, test harness and CI verification in plan.md/tasks.md. No live environment/real staff data or deployment configuration; actual hosting domains, proxy/TLS, Argon2id and database compatibility still need verification separately.
 
-**Next:** review/approve [tasks.md](tasks.md), then obtain separate documentation merge, dependency-install and implementation approvals. Authentication code has not started.
+**Next:** obtain separate documentation merge, dependency-install and implementation approvals; [tasks.md](tasks.md) is approved. Authentication code has not started.

@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01 implemented, verified and merged in PR #6 into develop at f5d740b6 (2026-11-25); latest pre-merge CI 45618607042 passed. Feature 02 Authentication **spec.md and plan.md APPROVED by user on 2026-11-25**; **tasks.md DRAFT** for explicit review, 42 execution tasks in eight phases, 0 complete, all 18 acceptance scenarios Not Run. PR #7 docs/feature02-authentication-spec remains open/unmerged. No Feature 02 code, dependencies, migrations or tests.
+> Status: Feature 01 implemented, verified and merged in PR #6 into develop at f5d740b6 (2026-11-25); latest pre-merge CI 45618607042 passed. Feature 02 Authentication **spec.md, plan.md and tasks.md APPROVED by user on 2026-11-25**; 42 execution tasks in eight phases, 0 complete, all 18 acceptance scenarios Not Run. PR #7 docs/feature02-authentication-spec remains open/unmerged. No Feature 02 code, dependencies, migrations or tests.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -17,7 +17,7 @@
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
 - **Documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 merged into develop at b6031c88a0c30560f11803a1c4dba8e0138a7185. Approved spec/plan/tasks preserved.
 - **Implementation PR #6:** https://github.com/m-hassan00096/kids-area-api/pull/6 merged into develop at f5d740b6ace3e10ec63a5a69844856b3d241ecd0. Latest pre-merge CI https://github.com/m-hassan00096/kids-area-api/actions/runs/45618607042 passed.
-- **Feature 02 documentation PR #7:** https://github.com/m-hassan00096/kids-area-api/pull/7 (docs/feature02-authentication-spec -> develop); approved spec.md and plan.md, draft tasks.md (42 unchecked tasks, 18 acceptance scenarios) in specs/identity/authentication; open/unmerged.
+- **Feature 02 documentation PR #7:** https://github.com/m-hassan00096/kids-area-api/pull/7 (docs/feature02-authentication-spec -> develop); approved spec.md, plan.md and tasks.md (42 unchecked tasks, 18 acceptance scenarios) in specs/identity/authentication; open/unmerged.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -148,10 +148,10 @@ User expressly approved [spec.md](../../specs/identity/authentication/spec.md) a
 
 Approved technical design: Sanctum ^4.5 candidate 4.5.0 (declared compatibility; actual Composer install separately authorized), native encrypted database session handler, users.auth_version and three explicit authoritative session fields; one transient identity_login_throttles table with rolling windows, IP then username locks, bounded cleanup and 5s wait/503 policy. Reuse existing manager mutex for final successful Login and credential mutations only; ordinary reads do not acquire it. Fresh access, successful 2xx idle activity, cookie-only origin/CSRF, central Arabic envelope/request ID/sensitive log redaction. No new business rules.
 
-Task draft contains 42 ordered unchecked execution tasks in eight phases, dependencies, evidence and full traceability F02-01–F02-18. 0/42 complete; all checks Not Run. Actual resolved dependency/native save semantics, real HTTP CSRF, independent MySQL races, lock contention/performance and hosting compatibility still need verification. No code, migrations, dependencies, tests or merge; no production authorization.
+The user explicitly approved tasks.md on 2026-11-25 without authorizing implementation or PR #7 merge. The approved task list contains 42 ordered unchecked execution tasks in eight phases, dependencies, evidence and full traceability F02-01–F02-18. 0/42 complete; all checks Not Run. Actual resolved dependency/native save semantics, real HTTP CSRF, independent MySQL races, lock contention/performance and hosting compatibility still need verification. No code, migrations, dependencies, tests or merge; no production authorization.
 
 ## 7. Next action and restrictions
 
-1. Review/approve draft tasks.md on PR #7. Spec and plan approved; do not reopen settled decisions.
+1. Spec, plan and tasks.md are approved on PR #7. Obtain separate documentation merge authorization; do not reopen settled decisions.
 2. Obtain separate documentation merge, implementation and Sanctum ^4.5 installation authorization. Only after approved docs merge branch from actual develop for implementation; execute tasks in dependency order and record actual evidence. No merge or code yet.
 3. No live founder provisioning, real data, production migrations/deployment. Audit remains deferred and a live-rollout control gap. Verify actual hosting/TLS/Argon2id/MySQL configuration separately.

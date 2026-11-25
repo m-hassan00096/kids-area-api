@@ -1,6 +1,6 @@
 # Identity Module — Module Reference
 
-> **Status:** Approved V1 functional decisions. Feature 01 specification, plan, tasks and implementation merged; Feature 02 complete Authentication specification approved on 2026-11-25; technical plan approved on 2026-11-25; task list drafted for review.
+> **Status:** Approved V1 functional decisions. Feature 01 specification, plan, tasks and implementation merged; Feature 02 complete Authentication specification approved on 2026-11-25; technical plan approved on 2026-11-25; task list explicitly approved on 2026-11-25. All Feature 02 planning documents are approved; documentation merge and implementation remain separately gated.
 > **Path:** `docs/03-modules/identity.md`
 > **Scope:** One Kids Area location; Laravel 12 API-first modular monolith, MySQL 8 / InnoDB.
 > **Owning module:** `Modules/Identity`.

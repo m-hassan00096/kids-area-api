@@ -1,16 +1,16 @@
 # Feature 02 — Authentication — Tasks
 
-> **Status:** DRAFT — for explicit task-list review (2026-11-25).
+> **Status:** APPROVED — user explicitly approved the complete Feature 02 task list on 2026-11-25; execution remains unauthorized.
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md), both explicitly approved by user on 2026-11-25.
 > **Owner:** Modules/Identity; shared HTTP infrastructure in application Core.
 > **Baseline:** Feature 01 merged via PR #6; develop f5d740b6ace3e10ec63a5a69844856b3d241ecd0; Laravel 12.73.0, PHP 8.2+, nwidart 12.0.6, Spatie Permission 6.25.0, MySQL 8/InnoDB. Sanctum ^4.5 approved design choice, candidate 4.5.0; actual resolution/install Not Run and separately authorized.
-> **Delivery:** Documentation PR #7 (docs/feature02-authentication-spec -> develop) remains open/unmerged. No implementation branch/code/dependency/migration/test/merge/production operation authorized by this task draft.
+> **Delivery:** Documentation PR #7 (docs/feature02-authentication-spec -> develop) remains open/unmerged. Task-list approval does not authorize any implementation branch/code/dependency/migration/test/merge/production operation.
 > **Progress:** 0/42 execution tasks complete; all 18 acceptance scenarios and implementation checks **Not Run**.
 
 ## 1. Execution gates and evidence rules
 
 - Follow the approved spec and technical plan without changing functional contracts or opening future modules. [AI workflow](../../../docs/02-standards/ai-workflow-rules.md), [Identity reference](../../../docs/03-modules/identity.md), [API](../../../docs/02-standards/api-standards.md), [Database](../../../docs/02-standards/database-standards.md), [Errors](../../../docs/02-standards/error-handling-standards.md), [Permissions](../../../docs/02-standards/permissions-standards.md), [Code](../../../docs/02-standards/code-standards.md) and [Localization](../../../docs/02-standards/localization-standards.md) apply. This checklist organizes the approved work; no new business or technical design decision is authorized merely by a task name.
-- Before T01: obtain explicit approval of this list, separate authorization to merge documentation PR #7, and authorization to start Feature 02 implementation. Verify docs actually merged and create an implementation branch from current develop (suggested feat/identity-authentication).
+- Before T01: this list has explicit user approval; obtain separate authorization to merge documentation PR #7 and authorization to start Feature 02 implementation. Verify docs actually merged and create an implementation branch from current develop (suggested feat/identity-authentication).
 - Before T02: obtain separate package authorization for the approved exact operation in verified isolated development/CI: composer require 'laravel/sanctum:^4.5' --no-interaction --prefer-dist. Impact: composer.json/lock and installed vendor package; rollback by restoring pre-install dependency files on the implementation branch and reinstalling the prior lock; verify genuine resolution, platform requirements, security audit and minimal diff. Do not run install:api, publish token migrations or add other packages without authorization.
 - Before database work or test resets, verify APP_ENV, actual connection/host/database and synthetic fixture isolation. Restrict destructive test resets to an explicitly authorized disposable kids_area_test MySQL 8 environment (use existing safety guards); no live credentials, production-derived data, real staff accounts or production operations. Only approved forward schema changes; no destructive operation outside its separately approved scope.
 - Each task has an ID, prior dependencies, work, evidence and acceptance references. Execute in dependency order, progressively run relevant focused tests; integration tests may exercise later assembled components. A task is complete only after its own applicable verification; a code file or a planned test is not evidence. Record command, environment, actual result (Passed / Failed / Not Run), commit/CI reference and blockers. Leave unverified checks unchecked. Stop affected work if an approval, compatibility issue, security requirement or material plan conflict cannot be resolved within scope. Do not waive failed tests or claim a new Feature is verified by Foundation CI.
@@ -116,7 +116,7 @@ All 18 additionally require final applicable verification and CI evidence T40–
 | Check | Current result | Evidence / next action |
 |---|---|---|
 | Functional specification and technical plan | Approved | User approval 2026-11-25 |
-| Task-list review | Pending | This draft |
+| Task-list review | Approved | Explicit user approval 2026-11-25 |
 | Documentation PR #7 merge | Pending | Open, unmerged; explicit authorization required |
 | Feature 02 implementation authorization | Pending | Separate explicit authorization |
 | Sanctum resolution/install/platform/security | Not Run / separate authorization pending | T02; candidate tag requirements inspected only |
@@ -140,4 +140,4 @@ Record any confirmed blocker with affected task ID, exact failure, evidence, imp
 
 All 42 execution tasks and all 18 acceptance scenarios verified with actual evidence; genuine approved Composer lock, real MySQL 8 migrations/constraints, stateful HTTP/CSRF tests, independent-process races, safe credential/session behavior, correct API contract, measured performance and regression checks, PHPUnit/Pint/CI passed; single handoff and task ledger updated. Implementation PR ready for review but not merged. User ID remains internal; no top-level User ID in Me. No Users/Roles/Selects APIs, Audit persistence, token issuance/storage, public reset, remember-me or other scope creep. Production deployment and implementation merge need separate approvals.
 
-**Next:** review/approve this task list, then obtain separate documentation merge, Sanctum package-install and implementation authorization. This is documentation only; no execution task has started.
+**Next:** obtain separate documentation merge, Sanctum package-install and implementation authorization. The task list is approved. This is documentation only; no execution task has started.
