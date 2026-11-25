@@ -1,0 +1,11 @@
+{
+    "name": "kids-area/identity",
+    "description": "Identity Core and RBAC foundation",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Identity\\": "app/",
+            "Modules\\Identity\\Database\\Factories\\": "database/factories/",
+            "Modules\\Identity\\Database\\Seeders\\": "database/seeders/"
+        }
+    }
+}
