@@ -68,7 +68,8 @@ An effective technical permission authorizes an attempted action. Required recor
 
 - Idempotent seeders create the fixed technical role/permission catalogue and starting `manager` and `reception` roles with approved initial explicit grants.
 - A **separate, secure, one-time Artisan command** provisions the first active Manager User; do not hardcode or print any default password in a seeder or source file.
-- Because special protection uses **`users.id = 1`**, bootstrap must verify that the founding account will in fact have ID 1, or **fail safely**. It must not overwrite an existing record occupying ID 1 or reset an established Manager.
+- **Approved bootstrap precondition:** the entire `users` table **must be empty**. If **any User row exists**, regardless of its ID, role or active state, the command must **reject the run without changing data**. It must never overwrite, reuse or reset an existing User, nor create a second founding account. Re-running bootstrap after the first successful provisioning fails safely; this differs from the intentionally repeatable permission/role seeders.
+- Because special protection uses **`users.id = 1`**, bootstrap must verify that the founding account will in fact have ID 1, or **fail safely**. An empty table alone does not guarantee the auto-increment next ID is 1 (e.g. previously removed rows). The implementation must not silently reset an existing table's auto-increment state or write a different founding ID; the precise safe check/creation and concurrent-run serialization belong in the approved plan.
 - Normal reseeding never resets passwords, activation, role aliases or live customized grants.
 - If the last usable administrative credentials are lost, the system has **no separate automated emergency-recovery command or hidden API**. Operators contact the technical owner for a **controlled manual server-side recovery**, with safe password hashing and appropriate documented audit evidence. This does not create a new user-facing feature.
 
@@ -229,7 +230,7 @@ All module APIs use `/api/v1`, `camelCase` request/Resource fields, Arabic trans
 The feature specs and plans must concretize migrations, payloads, role/permission inventories and actual installed package-version behavior. At minimum, test:
 
 1. Username uniqueness/canonicalization under concurrent creation and update; inactive User remains reserved.
-2. First Manager one-time bootstrap truly establishes **User ID 1** and never overwrites an existing record; repeat seed preserves credentials, grants and aliases.
+2. First Manager one-time bootstrap truly establishes **User ID 1** and **refuses any nonempty `users` table** (even a different/inactive ID) without changes. A second or concurrent bootstrap fails safely; an empty table with non-1 next ID fails rather than silently rewriting IDs. Routine reseeding independently preserves existing credentials, grants and aliases.
 3. Cookie/CSRF handshake, session regeneration, correct credentialed browser flow, 12-hour **idle** expiry, Logout, and invalid session handling.
 4. Wrong username/password indistinguishable in public Login error; five failed attempts/minute triggers one-minute throttle with no permanent lock.
 5. Personal Profile password change requires current password; Users PUT missing/empty password never changes it; administrative reset for **another** User needs `identity.users.update`, not their old password.
