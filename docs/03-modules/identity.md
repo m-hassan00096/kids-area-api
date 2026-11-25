@@ -1,6 +1,6 @@
 # Identity Module — Module Reference
 
-> **Status:** Approved V1 functional decisions. Feature 01 specification, plan, tasks and implementation merged; Feature 02 complete Authentication specification approved on 2026-11-25; technical plan approved on 2026-11-25; task list explicitly approved on 2026-11-25. All Feature 02 planning documents are approved; documentation merge and implementation remain separately gated.
+> **Status:** Feature 01 and Feature 02 implemented and merged (PR #6 and PR #8). Feature 03 Users Management decisions approved on 2026-11-25; [draft spec](../../specs/identity/users-management/spec.md) for explicit review. No Feature 03 implementation authorized.
 > **Path:** `docs/03-modules/identity.md`
 > **Scope:** One Kids Area location; Laravel 12 API-first modular monolith, MySQL 8 / InnoDB.
 > **Owning module:** `Modules/Identity`.
@@ -88,7 +88,7 @@ Proposed account core, subject to migration-level type/length verification: `id`
 - `email` and `phone` are **nullable and independently UNIQUE when provided**: multiple Users may have `NULL` email/phone values, but two retained Users (including inactive accounts) may not have the same non-NULL email or phone. These are contact fields, **not login identifiers**. Enforce each uniqueness rule in MySQL 8 as well as request validation, including concurrency checks.
 - **Approved email behavior (2026-11-25):** Preserve the email casing as entered for storage/display, but make **email uniqueness case-insensitive** across all retained Users, including inactive accounts. For example, `Ahmed@Gmail.com` and `ahmed@gmail.com` are considered one email and cannot belong to two Users. Enforce this with an appropriate MySQL 8 unique comparison/index, not just Laravel validation. **This does not change the distinct, case-sensitive Username rule.**
 - **Approved phone validation (2026-11-25):** V1 accepts an **optional Egyptian-format local phone number consisting of exactly 11 ASCII digits (`0`–`9`)**. Check **only digit characters and exact length 11**: no additional prefix rule (such as starting with `01`), operator lookup, or other mobile-number validity check is required. Keep the value as a **string** to preserve leading zeros; do **not** convert to `+20` / E.164 or accept alternative international/spaced/hyphenated notation in this field in V1. Every non-NULL phone value must remain **unique** across retained Users, including inactive ones. Because only digit strings of fixed length are accepted, direct stored-value equality defines phone duplicates. Empty optional input must not be stored as an arbitrary duplicate non-NULL empty string; exact request handling of empty string versus `NULL` is specified in Feature 01 validation.
-- User-list search covers name and username; filters include active state and role. Use approved server pagination (default 15, maximum 100).
+- **Approved Feature 03 correction (2026-11-25):** Users table displays avatar, name, username, phone, active state and role; response includes `userId`, omits `createdAt`. Search name, username or phone; filter active state and role with the approved Laravel/Spatie Query Builder; pagination default 15, maximum 100. Staff avatar accepts PNG/JPG/WebP, max 2 MB. Private storage per API standard; exact upload/read/Resource details in the draft spec for review.
 - User select and role input cannot bypass server-side authorization; inactive roles are not eligible for new assignments.
 
 ### 4.2 Operations and permissions
@@ -128,7 +128,7 @@ Hard delete is explicitly allowed for a User **only when no important operationa
 - Retain the relevant history and technical identifiers after deletion, without retaining unnecessary secrets. Every cross-module data owner defines which FK/reference protects its important records.
 - Check dependencies, special protections and transaction-safe locking **at deletion time**. Do not rely on a pre-delete UI check or permit a concurrent referenced operation to disappear.
 
-Deactivation remains the alternative for any otherwise nondeletable account. Deactivation retains the role/history, blocks the next protected request and does not automatically reassign the User.
+Deactivation remains the alternative for any otherwise nondeletable account. **Approved Feature 03 (2026-11-25):** disabling a User invalidates all their sessions; re-enabling never restores them. An eligible active-role change keeps sessions and applies fresh grants on the next protected request. Self-deletion is forbidden for all Users. An existing inactive role can be retained on ordinary edits, but cannot be newly assigned or used to re-enable a disabled account. Deactivation retains the role/history and does not automatically reassign the User.
 
 ## 5. Roles and permission catalogue
 
@@ -212,7 +212,7 @@ Authorized filters may include actor, target, event type and date range. Never r
 
 ## 8. Select Registry and authorization
 
-Use the **existing central** `GET /api/v1/selects?selects=roles,permissions` contract, not an Identity-specific dropdown endpoint or a different envelope:
+Use the **approved central** `GET /api/v1/selects?selects=...` contract, not an Identity-specific dropdown endpoint or a different envelope. Feature 03 first implements the registry and only `roles` (Users create OR update; active assignment options) and `userFilterRoles` (Users view; active/inactive filter options). The `permissions` provider is deferred to Feature 04:
 
 - The requested `roles` options for **assignment** contain only active eligible roles; the administrator's full role list can show inactive roles.
 - Role option `value` is the role ID and `label` comes from stored `roles.alias_name`.
