@@ -1,10 +1,10 @@
 # Feature 03 — Users Management: Execution Tasks
 
-> **Status:** APPROVED — Feature 03 implementation authorized; PR #9 documentation merged. Separate T06/T07 gates apply.
+> **Status:** APPROVED — implementation authorized; PR #9 merged, draft implementation PR #10 open; Phase A verified.
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 5/49 tasks complete (T01–T05); 19/19 acceptance scenarios Not Run. T06 actual approved install and authentic lock verified (§15.2); application regression pending. No Feature 03 application code/migration or deployment.
+> **Progress:** 7/49 tasks complete (T01–T07); 19/19 acceptance scenarios Not Run. T06/T07 verified (§16); next T08/T09 forward schema and preservation. No production or feature merge.
 
 ## 1. Gates and evidence rules
 
@@ -22,9 +22,9 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 - [x] **T05 — Resolve blockers and verify implementation gates.** Dependencies: T01–T04. Resolve material unknowns and explicitly review any necessary plan/spec changes. Obtain separate docs merge approval, verify PR #9 latest CI/diff, merged develop; obtain explicit implementation permission and create dedicated branch from merged ref. Evidence: Resolved decisions, approval, merge SHA and actual branch; no feature code if unresolved.
 
-- [ ] **T06 — Authorized dependency resolution.** Dependencies: T05. Separate exact package/platform approval; dry-run composer require spatie/laravel-query-builder:^6.4.4 --dry-run --no-interaction --prefer-dist --no-scripts, review 6.4.4 and mandatory package-tools ^1.11 candidate, stop on unapproved changes; then approved actual require, authentic lock, validate --strict, locked install, platform/audit. GD/fileinfo requirement and CI as approved; no image package. Evidence: Actual solver/lock diff, installation and audit/platform evidence.
+- [x] **T06 — Authorized dependency resolution.** Dependencies: T05. Separate exact package/platform approval; dry-run composer require spatie/laravel-query-builder:^6.4.4 --dry-run --no-interaction --prefer-dist --no-scripts, review 6.4.4 and mandatory package-tools ^1.11 candidate, stop on unapproved changes; then approved actual require, authentic lock, validate --strict, locked install, platform/audit. GD/fileinfo requirement and CI as approved; no image package. Evidence: Actual solver/lock diff, installation and audit/platform evidence.
 
-- [ ] **T07 — Guarded fixtures and baseline regression.** Dependencies: T05,T06. Verify APP_ENV testing, localhost MySQL8/InnoDB kids_area_test/kids_area_ci, synthetic accounts/private temp root; separate exact destructive disposable reset approval, independent HTTP/cookie jars/shared clock/barriers; run baseline regression. Evidence: Actual guarded DB/FS, baseline test results, no production operations.
+- [x] **T07 — Guarded fixtures and baseline regression.** Dependencies: T05,T06. Verify APP_ENV testing, localhost MySQL8/InnoDB kids_area_test/kids_area_ci, synthetic accounts/private temp root; separate exact destructive disposable reset approval, independent HTTP/cookie jars/shared clock/barriers; run baseline regression. Evidence: Actual guarded DB/FS, baseline test results, no production operations.
 
 ## 3. Phase B — Schema and shared HTTP boundary (T08–T13)
 
@@ -155,9 +155,9 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 | Spec and technical plan | Approved 2026-11-25; feasibility not proved |
 | Task review | Approved — explicit user approval 2026-11-25 |
 | T01–T04 isolated feasibility authorization/evidence | Explicitly authorized; target PHP8.2.36/GD2.3.3 runs 45650686580 and 45650969241 completed. T01–T04 passed preliminary feasibility; original blockers (§13) resolved by approved contract and follow-up proof (§14). |
-| T05 documentation merge and implementation | Not authorized / Not Run |
-| T06 package/platform | Not authorized / Not Run |
-| T07–T09 guarded DB/FS/migration | Not Run |
+| T05 documentation merge and implementation | Complete; PR #9 merged and implementation branch approved |
+| T06 package/platform | Verified approved additions, CI 45673916280 success |
+| T07–T09 guarded DB/FS/migration | T07 verified 45678335241; T08/T09 Not Run |
 | T10–T37 HTTP/reads/selects/avatar/writes | Not Run |
 | T38–T46 races/faults/performance/scope | Not Run |
 | T47–T49 full tests/Pint/CI | Not Run |
@@ -167,7 +167,7 @@ Risks: PHP8.2 parser observability and strict image structural validation; GD/ho
 
 ## 11. Definition of done and next action
 
-All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** T03/T04 preliminary feasibility resolved (§14); T05 awaits separate docs merge and implementation approvals. No feature code.
+All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** T08/T09 forward schema and preservation after verified Phase A. No production or feature merge.
 
 ## 12. Preliminary local feasibility evidence — 2026-11-25
 
@@ -270,3 +270,7 @@ T06 preliminary solver dry-run succeeded in [45658008076](https://github.com/m-h
 ### 15.2 Approved actual dependency installation
 
 User approved exact installation and explicit PHP GD/fileinfo requirements on 2026-11-25. Isolated install [45673686431](https://github.com/m-hassan00096/kids-area-api/actions/runs/45673686431), job 139415422829, PHP 8.2.36; actual logs reviewed. Composer-generated lock adds only spatie/laravel-query-builder 6.4.4 and spatie/laravel-package-tools 1.93.3, zero updates/removals, existing package metadata identical; manifest requires ext-gd and ext-fileinfo, query-builder ^6.4.4. composer validate --strict, audit --locked (no known advisories), locked composer install --no-scripts, check-platform-reqs and installed-version/class check passed. No app/DB boot or protected reset on the isolated runner. Authentic generated blobs verified by matching Git SHA composer.json `56229fc06bb8ee52fe0f9556658b125d29b2a936`, composer.lock `516c88cd918e667800f8ad090a6f62ca70b6e90e`. CI updated to provision GD. Normal application regression pending; T06 remains unchecked until regression evidence reviewed. T07 separate explicit disposable reset approval required. No hosting change or merge.
+
+## 16. T06/T07 verified regression and approved isolated environment
+
+User explicitly authorized `migrate:fresh` only in disposable CI MySQL `kids_area_test` / `kids_area_ci`, APP_ENV testing, host 127.0.0.1, MySQL 8/InnoDB, synthetic fixtures, no production or external database. T06 approved install regression [45673916280](https://github.com/m-hassan00096/kids-area-api/actions/runs/45673916280), exact dependency commit `bdf142759bcd953029e983447690dba66eeb41d0`, job 139416248611 completed Success: Authentication 41/1457 assertions, Identity 56/820, full 102/2296, Pint 101 files, validate/install/audit/platform/route/module/scope checks passed. T07 dedicated [45678335241](https://github.com/m-hassan00096/kids-area-api/actions/runs/45678335241), job 139431824332, probe commit `681d60624869302f4afb7874d311026f0deab6d7`, actual logs reviewed Success: PHP 8.2.36 GD PNG/JPEG/WebP + fileinfo, pre-reset environment/connection guard, actual MySQL database/user/8.x/InnoDB, empty reset schema, synthetic manager/reception, independent HTTP servers and cookie jars/shared clock/authoritative sessions, private 0700 temp root with 0600 PNG and cleanup, barrier dir checked; UsersManagementEnvironmentTest 1 test / 43 assertions and AuthenticationConcurrencyTest 12 / 500; focused Pint passed. Retain exact verified test in feature branch. No Feature 03 business acceptance scenario executed; all 19 Not Run. T01–T07 complete (7/49). Next T08 forward avatar reference migration, T09 migration preservation. No production DB/hosting change or merge.

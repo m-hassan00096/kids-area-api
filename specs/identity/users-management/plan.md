@@ -3,7 +3,7 @@
 > **Status:** APPROVED — preliminary gates resolved; implementation authorized with separate dependency and protected-operation gates.
 > **Approved contract:** [spec.md](spec.md), user explicitly approved the entire spec, Avatar/search/API defaults and 19 acceptance scenarios on 2026-11-25.
 > **Baseline:** verified develop `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merged), docs PR #9 `docs/feature03-users-management-spec` from that commit. Latest actual pre-merge F02 CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files. Historical evidence only; Feature 03 runtime and all new checks Not Run.
-> **Delivery gate:** PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 exact dependency/platform installation explicitly authorized and verified; protected reset, future merge and deployment require separate approval. No application code changed.
+> **Delivery gate:** PR #9 merged; implementation approved on `feature/identity-users-management`; draft PR #10. T01–T07 verified, 7/49; see tasks.md §16. All 19 feature acceptance scenarios Not Run. Separate production/merge authorization required.
 
 ## 1. Current source and compatibility verification
 
@@ -178,4 +178,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** verify T06 normal CI regression after approved dependency/CI update, then T07 guarded disposable testing with separate reset approval. No application code yet.
+**Next:** T08/T09 forward avatar reference migration and preservation on the approved guarded fixture environment. See tasks.md §16.

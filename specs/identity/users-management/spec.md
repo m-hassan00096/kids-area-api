@@ -3,7 +3,7 @@
 > **Status:** APPROVED by user (2026-11-25), including all Avatar, search, and API contract review defaults.
 > **Baseline:** `develop` `8174097e93069cc20ae258ba236cf7acd8d37fb3`, PR #8 merged. Foundation, Feature 01 (Identity Core & RBAC) and Feature 02 (Authentication) are implemented. Latest pre-merge CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files; no Feature 03 execution.
 > **User decisions approved:** six functional decisions from the Users Management discussion, plus subsequent correction: avatar PNG/JPG/WebP max 2 MB; list shows image/name/username/phone/state/role; search includes phone; filter by role/state using Laravel Query Builder; return `userId`; omit `createdAt`. The approved specification supersedes the earlier proposed list shape.
-> **Delivery gate:** PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run authorized for compatibility review only; exact installation, protected reset, future merge and deployment require separate approval. No application code changed.
+> **Delivery gate:** PR #9 merged; implementation authorized on `feature/identity-users-management`, draft PR #10; T01–T07 verified (tasks.md §16). Requirements unchanged, all 19 acceptance scenarios Not Run; no feature merge/deployment.
 
 ## 1. Purpose and scope
 
@@ -227,4 +227,4 @@ Existing schema: users (name, username, nullable unique email/phone, hashed pass
 | F03-18 | HTTP envelopes Arabic/camelCase/X-Request-ID; no passwords/hashes/session IDs/raw multipart/storage keys/SQL in output or logs; native session protection and unrelated DB events intact. |
 | F03-19 | Real MySQL concurrency, forward avatar migration preserves existing founder/users and baseline RBAC, full Authentication/Identity/Foundation regression, route/permission/module scope, Pint and CI. No audit, Roles CRUD/permissions select, HR or token/queue/Redis/cron implementation. |
 
-All scenarios remain approved requirements, not executed results. T05 complete; next T06 separate package/platform gate and T07 guarded disposable testing. See tasks.md §15.
+All scenarios remain approved requirements, not executed results. T01–T07 complete; next T08/T09 forward schema and preservation. See tasks.md §16.

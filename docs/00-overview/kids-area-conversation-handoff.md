@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: F03 implementation authorized; PR #9 merged into develop `aa931b65`; active branch `feature/identity-users-management`. T01–T05 complete, 5/49; T06 approved install and authentic lock verified, standard CI regression pending; all 19 acceptance scenarios Not Run. T07 requires separate disposable reset approval. No Feature 03 application code, migration, hosting change or feature merge.
+> Status: F03 approved, PR #9 merged at `aa931b65`, active `feature/identity-users-management` draft PR #10. T01–T07 verified (7/49), all 19 acceptance scenarios Not Run. CI 45673916280 regression and 45678335241 guarded fixtures success. T08/T09 next. No production/hosting change or feature merge.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -179,7 +179,7 @@ Final reviewed code [`3c06a957`](https://github.com/m-hassan00096/kids-area-api/
 
 ## 8. Next action and restrictions
 
-1. F03 implementation authorized; T05 complete. T06 approved install verified; normal CI regression pending, then T07 separate disposable reset approval. No application code yet.
+1. F03 implementation authorized; Phase A T01–T07 verified. Next T08/T09 forward avatar reference and preservation. No feature merge.
 2. After material feasibility resolution, obtain explicit docs merge, implementation, dependency/platform and protected-operation authorizations. No code before gates; no deployment.
 
 ### Follow-up decisions and evidence (2026-11-25)
@@ -197,3 +197,7 @@ T06 preliminary solver dry-run succeeded in [45658008076](https://github.com/m-h
 ### Approved dependency installation (2026-11-25)
 
 User approved exact installation and explicit PHP GD/fileinfo requirements on 2026-11-25. Isolated install [45673686431](https://github.com/m-hassan00096/kids-area-api/actions/runs/45673686431), job 139415422829, PHP 8.2.36; actual logs reviewed. Composer-generated lock adds only spatie/laravel-query-builder 6.4.4 and spatie/laravel-package-tools 1.93.3, zero updates/removals, existing package metadata identical; manifest requires ext-gd and ext-fileinfo, query-builder ^6.4.4. composer validate --strict, audit --locked (no known advisories), locked composer install --no-scripts, check-platform-reqs and installed-version/class check passed. No app/DB boot or protected reset on the isolated runner. Authentic generated blobs verified by matching Git SHA composer.json `56229fc06bb8ee52fe0f9556658b125d29b2a936`, composer.lock `516c88cd918e667800f8ad090a6f62ca70b6e90e`. CI updated to provision GD. Normal application regression pending; T06 remains unchecked until regression evidence reviewed. T07 separate explicit disposable reset approval required. No hosting change or merge.
+
+### Guarded environment and dependency regression (2026-11-25)
+
+User explicitly authorized `migrate:fresh` only in disposable CI MySQL `kids_area_test` / `kids_area_ci`, APP_ENV testing, host 127.0.0.1, MySQL 8/InnoDB, synthetic fixtures, no production or external database. T06 approved install regression [45673916280](https://github.com/m-hassan00096/kids-area-api/actions/runs/45673916280), exact dependency commit `bdf142759bcd953029e983447690dba66eeb41d0`, job 139416248611 completed Success: Authentication 41/1457 assertions, Identity 56/820, full 102/2296, Pint 101 files, validate/install/audit/platform/route/module/scope checks passed. T07 dedicated [45678335241](https://github.com/m-hassan00096/kids-area-api/actions/runs/45678335241), job 139431824332, probe commit `681d60624869302f4afb7874d311026f0deab6d7`, actual logs reviewed Success: PHP 8.2.36 GD PNG/JPEG/WebP + fileinfo, pre-reset environment/connection guard, actual MySQL database/user/8.x/InnoDB, empty reset schema, synthetic manager/reception, independent HTTP servers and cookie jars/shared clock/authoritative sessions, private 0700 temp root with 0600 PNG and cleanup, barrier dir checked; UsersManagementEnvironmentTest 1 test / 43 assertions and AuthenticationConcurrencyTest 12 / 500; focused Pint passed. Retain exact verified test in feature branch. No Feature 03 business acceptance scenario executed; all 19 Not Run. T01–T07 complete (7/49). Next T08 forward avatar reference migration, T09 migration preservation. No production DB/hosting change or merge.
