@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Identity Module Reference approved and merged; Feature 01 discussion started. No Feature 01 specification, plan, tasks, branch, implementation or tests have been created.
+> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) is in DISCUSSION. The phased permission-catalogue / explicit grant rollout decision is APPROVED. No Feature 01 specification, plan, tasks, implementation branch, implementation or tests have been created.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -11,8 +11,10 @@
 
 - Repository: https://github.com/m-hassan00096/kids-area-api
 - Working development branch: `develop`
-- Verified `develop` HEAD: `1ec084e267bb2e26446498b97fc4c2948ac8a1f1` (2026-11-25 verification).
+- Verified `develop` HEAD: `48211e74058c9effe496068f9ab2f33c8e3174d0` (2026-11-25 verification).
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
+- Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
+- Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -86,14 +88,16 @@
 - Provide relevant PHPUnit/MySQL 8 tests and Pint checks.
 - **Not in Feature 01:** Login/Logout/Sanctum session functionality (Feature 02); Users CRUD (Feature 03); Roles CRUD (Feature 04); Audit listing/detail API (Feature 05); business module permissions not yet formally specified.
 
-### Priority design decision to discuss next
+### Approved decision: phased permission catalogue and explicit rollout grants
 
-The system ships features incrementally, but permissions belong to future business modules. Recommended policy: **Feature 01 creates only the technical permissions already approved/owned by Identity**. At each later business feature release, that module contributes its reviewed permission definitions; new permission rows are seeded additively; initial grants for Manager/Reception must be handled as a separate **explicitly reviewed and audited grant** during that feature's rollout rather than auto-granting every future permission during routine reseeding. Do not pre-invent all business permission keys or silently expand live Manager permissions.
+**User approved 2026-11-25:** Feature 01 seeds only the **10 agreed Identity technical permissions**: four for Users (`identity.users.view/create/update/delete`), five for Roles (`identity.roles.index/store/show/update/delete`), and `identity.audit.view`. The first Manager receives these 10 explicitly; Reception starts without Identity administrative grants. In later business features, the owning module provides its reviewed permission definitions, Identity adds them **additively**, and assigning new grants to existing Manager/Reception roles is a **separate explicitly approved, auditable rollout action** — never an automatic routine Seeder side-effect. Do not pre-invent other module keys or overwrite customized live grants.
 
-Confirm this phased catalogue/role-grant approach before turning the Feature 01 discussion into a `spec.md` draft.
+### Next design decision (PROPOSED; not yet approved)
+
+Define the minimal **essential access-management permission set** for the last viable administrator and whether an active custom-role account holding that effective set can count as the viable admin. Proposed six: `identity.users.view`, `identity.users.create`, `identity.users.update`, `identity.roles.index`, `identity.roles.show`, `identity.roles.update`; `identity.users.delete`, `identity.roles.delete` and `identity.audit.view` are not strictly necessary to preserve access management. Protect the invariant under InnoDB concurrency and always enforce User ID 1 rules. Confirm before adding to the Feature 01 spec.
 
 ### Further details for Feature 01 plan (not silently decided)
-- Exact first-install permission keys and essential admin capability set for last-viable access.
+- Identity's 10 first-install permission keys have been confirmed; the exact **essential subset** for last-viable-admin protection and custom-role eligibility are still proposed.
 - Installed Spatie version and morph-pivot unique index compatibility; actual MySQL 8 constraints and safe lock strategy.
 - Exact audit schema/FK snapshot strategy allowing deletion of unused Users while preserving history.
 - First-manager bootstrap command credentials and idempotent/fail-safe behavior.
@@ -102,7 +106,7 @@ Confirm this phased catalogue/role-grant approach before turning the Feature 01 
 ## 6. Next action and restrictions
 
 1. Continue **discussion only** of Feature 01 scope, permission inventory and acceptance tests.
-2. Resolve phased seeding/grant decision; approve Feature 01 scope and scenarios.
+2. Phased seeding/grants is APPROVED. Next confirm the minimal **essential admin** capabilities / custom-role eligibility, then approve Feature 01 functional scenarios and acceptance criteria.
 3. Only after approval, prepare/review `specs/identity/identity-core-rbac-foundation/spec.md`, then `plan.md`, then `tasks.md`.
 4. Do not create implementation branch or write code before approved gates; do not merge any PR without explicit approval.
 5. Update **this same GitHub handoff** at every approved decision, milestone or blocker; capture a timestamp, current verified branch/commit/PR state, *approved vs proposed* decisions, work actually done/tests run, current question, and exact next step. Do not use the handoff to override canonical docs or invent completed work.
