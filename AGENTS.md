@@ -17,4 +17,4 @@
 - Use the project's GitHub-first review workflow: documentation changes on an approved branch/PR; **never merge to `develop` without the user's explicit approval**. No implementation or deployment without the relevant gates.
 - When GitHub access is unavailable in a new conversation, ask the user to provide the file/link or its text; **do not claim the file was read automatically**.
 
-**Current workflow:** Discuss `Identity Core & RBAC Foundation` Feature 01; permission seeding policy remains pending approval. Consult the handoff for the latest status rather than relying on this sentence.
+**Current workflow:** Consult the **latest GitHub handoff** for the active feature and next pending decision. This file deliberately avoids hard-coded, quickly outdated discussion status.
