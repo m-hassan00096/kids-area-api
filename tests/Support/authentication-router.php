@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Route;
 use Modules\Identity\Http\Middleware\FinalizeLoginSession;
 use Modules\Identity\Http\Middleware\RequireStaffSession;
 use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
-use Tests\Support\AuthenticationCommitFault;
 use Modules\Identity\Services\LoginThrottle;
+use Tests\Support\AuthenticationCommitFault;
 
 require __DIR__.'/../../vendor/autoload.php';
 
