@@ -1,0 +1,32 @@
+name: Temporary avatar feasibility follow-up
+on:
+  push:
+    branches: [probe/identity-avatar-followup]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: gd, fileinfo
+          coverage: none
+          tools: none
+      - name: Disposable target PHP probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          d=$(mktemp -d)
+          pid=""
+          trap 'if [ -n "$pid" ]; then kill "$pid" 2>/dev/null || true; fi; rm -rf "$d"' EXIT
+          php -d memory_limit=128M -d upload_max_filesize=2M -d post_max_size=4M .temporary-feasibility/images.php "$d"
+          php -d memory_limit=128M -d upload_max_filesize=2M -d post_max_size=4M -S 127.0.0.1:18742 .temporary-feasibility/receiver.php > "$d/server.log" 2>&1 &
+          pid=$!
+          python3 .temporary-feasibility/multipart.py "$d"
