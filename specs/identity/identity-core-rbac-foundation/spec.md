@@ -4,7 +4,7 @@
 > **Owner:** `Modules/Identity`
 > **Target stack:** Laravel 12, MySQL 8/InnoDB, `nwidart/laravel-modules` ^12, Spatie Laravel Permission (`web` guard, Teams disabled).
 > **Sources:** `docs/03-modules/identity.md`, `docs/02-standards/permissions-standards.md`, `docs/02-standards/database-standards.md`, `docs/02-standards/api-standards.md`, `docs/02-standards/ai-workflow-rules.md`.
-> **Delivery gate:** `spec.md` and `plan.md` approved on 2026-11-25; `tasks.md` drafted for explicit review before implementation. No merge, package installation, implementation or deployment is authorized by these document approvals.
+> **Delivery gate:** `spec.md`, `plan.md` and `tasks.md` approved on 2026-11-25. Separate documentation merge, implementation and dependency-install authorization remain pending. No merge, package installation, implementation or deployment is authorized by these document approvals.
 
 ## 1. Goal
 

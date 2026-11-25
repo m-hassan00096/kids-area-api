@@ -1,6 +1,6 @@
 # Feature 01 — Identity Core & RBAC Foundation — Technical Plan
 
-> **Status:** APPROVED — user explicitly approved this technical plan on 2026-11-25. Functional [spec.md](spec.md) also approved; [tasks.md](tasks.md) drafted for separate review. The user expressly requested documentation only: no implementation, dependency installation, migrations, tests or merge.
+> **Status:** APPROVED — user explicitly approved this technical plan on 2026-11-25. Functional [spec.md](spec.md) also approved; [tasks.md](tasks.md) explicitly approved by the user on 2026-11-25. The user expressly requested documentation only: no implementation, dependency installation, migrations, tests or merge.
 > **Owner:** Modules/Identity; Laravel 12, PHP >=8.2, MySQL 8/InnoDB, nwidart ^12; single location, shared hosting.
 > **Sources:** [Identity reference](../../../docs/03-modules/identity.md), [workflow](../../../docs/02-standards/ai-workflow-rules.md), [database](../../../docs/02-standards/database-standards.md), [permissions](../../../docs/02-standards/permissions-standards.md), [code](../../../docs/02-standards/code-standards.md), [localization](../../../docs/02-standards/localization-standards.md). Project-specific Kids Area documents take precedence over reference projects.
 
@@ -10,7 +10,7 @@ Inspected PR #5 on docs/feature01-seeding-handoff, targeting develop (base 48211
 
 - Approved dependency choice (installation separately authorized): spatie/laravel-permission ^6.0, compatible with Laravel 12/PHP 8.2; confirm exact resolved version, security/platform constraints and its migration/config/trait APIs against the installed release before writing dependent code. Include composer.json and composer.lock only after explicit package-install authorization. Do not install Sanctum until Feature 02; no other runtime or development packages.
 - Use the installed module generator/PSR-4 conventions and check composer autoload discovery; verify generated paths and module enabled state. Remove only unused newly generated scaffolding; never create an App\\Models\\User fallback. If module discovery/autoload requires an unapproved extra dependency, report it before installing.
-- Manual feature documents (no Spec Kit CLI or .specify requirement). The plan is approved; tasks.md is drafted with traceability for separate review. After required approvals/merge of the docs, branch from actual develop for implementation and PR back to develop. Never merge or deploy implicitly.
+- Manual feature documents (no Spec Kit CLI or .specify requirement). The plan and task list are approved; all execution tasks remain unchecked. After required approvals/merge of the docs, branch from actual develop for implementation and PR back to develop. Never merge or deploy implicitly.
 
 ## 2. Schema and persistence
 
@@ -118,7 +118,7 @@ Existing .github/workflows/ci.yml uses mysql:8.0, PHP 8.2, Composer lock validat
 - If existing/dirty schema, collation compatibility, unavailable metadata privilege, module autoload, or concurrency harness cannot be verified, stop affected work and record blocker in tasks.md. Production backups/restore and live provisioning separately authorized.
 - Founder protection rules remain approved; full HTTP enforcement belongs to Features 02–04. No Sanctum install/login/session/CSRF/profile, Users/Roles CRUD, selects, Audit storage/writer/API, other module keys or operational features. Audit absence remains known production control gap; review before live privileged admin rollout.
 - No production operations, no destructive migration or SQL, no Redis/queues/cron/WebSockets, no sentinel table, no automatic sequence reset.
-- Next: review the drafted tasks.md; obtain separate dependency/implementation and documentation merge authorization before any code. Then execute and verify reviewed tasks on the dedicated implementation branch. No tasks checked and no tests run here.
+- Next: obtain separate dependency/implementation and documentation merge authorization before any code; all three feature documents are approved. Then execute and verify reviewed tasks on the dedicated implementation branch. No tasks checked and no tests run here.
 
 ### Technical references
 

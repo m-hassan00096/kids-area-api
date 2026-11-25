@@ -1,15 +1,15 @@
 # Feature 01 — Identity Core & RBAC Foundation — Tasks
 
-> **Status:** DRAFT — for explicit task review (2026-11-25).
+> **Status:** APPROVED — user explicitly approved the task list on 2026-11-25; implementation not yet authorized.
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md), both explicitly approved by the user on 2026-11-25.
 > **Owner:** Modules/Identity. Laravel 12 / PHP 8.2+ / MySQL 8 InnoDB / nwidart ^12 / Spatie Permission ^6 (installation not authorized yet).
-> **Delivery:** Documentation PR #5, docs/feature01-seeding-handoff -> develop. No implementation branch, code, migrations, package installation, tests or merge authorized by this task draft.
+> **Delivery:** Documentation PR #5, docs/feature01-seeding-handoff -> develop. No implementation branch, code, migrations, package installation, tests or merge authorized by document approval alone.
 > **Progress:** 0/32 execution tasks complete. All implementation verification: **Not Run**.
 
 ## 1. Execution rules and gates
 
 - Follow the approved functional spec and technical plan; the tasks are an execution sequence, not a new requirements source. The [AI workflow](../../../docs/02-standards/ai-workflow-rules.md), [Identity reference](../../../docs/03-modules/identity.md) and relevant Kids Area standards apply. Do not import Tabaa-specific rules or install Spec Kit CLI.
-- Before T01: obtain explicit review/approval of this task list, authorization to merge documentation PR #5, and authorization to start Feature 01 implementation. Confirm the documentation PR is actually merged before branching from current develop.
+- Before T01: task list approval is recorded. Obtain separate authorization to merge documentation PR #5 and authorization to start Feature 01 implementation. Confirm the documentation PR is actually merged before branching from current develop.
 - Before T02: separately obtain explicit authorization for Composer installation of spatie/laravel-permission:^6.0 in the verified development checkout. State the exact operation, environment, composer.json/lock impact, rollback via restoring the pre-change dependency files in that checkout and verification. Do not install Sanctum or any other unapproved package.
 - Before any database operation, verify the isolated development/test connection and APP_ENV. Use only synthetic fixtures and disposable kids_area_test for destructive test resets. No destructive command or production access by implication; the approved test setup does not authorize touching real data. If the test environment is not verified/authorized for a reset, stop and record the blocker.
 - Each task below has an ID, dependencies and completion evidence. Execute in dependency order, add/run relevant tests incrementally; keep every unfinished or unverified checkbox open. Mark completed only after actual applicable evidence. Record command, environment, result (Passed / Failed / Not Run), commit or CI reference. Stop only affected tasks for a material conflict or missing approval; do not silently change approved behavior.
@@ -94,7 +94,8 @@ All 14 scenarios additionally require final suite/CI evidence in T31–T32.
 | Check | Current result | Evidence |
 |---|---|---|
 | Functional spec and technical plan approval | Approved | User decisions, 2026-11-25 |
-| Task review / implementation approval | Pending | This document is a draft |
+| Task list review | Approved | User decision, 2026-11-25 |
+| Implementation approval | Pending | Separate explicit authorization required |
 | Documentation PR #5 merge | Pending | Must remain open until explicit approval |
 | Spatie dependency installation | Not Run / authorization pending | T02 |
 | Module/migration/schema inspection in actual runtime | Not Run | T03–T07, T10 |
@@ -108,4 +109,4 @@ Known implementation risks from the approved plan (not newly invented decisions)
 
 All 32 tasks and all 14 acceptance scenarios verified, actual MySQL 8 and Pint/CI passing, no scope violations, task ledger and single handoff updated. A ready-for-review implementation PR is not a merged feature. Founder HTTP protection, Sanctum/browser auth, Users CRUD, Roles CRUD, selects and shared Audit implementation remain later features. Review Audit gap before live privileged administration. No Redis/queues/cron/WebSockets, separate access guard table or production operations. No merge or deployment unless explicitly authorized.
 
-**Next:** review this task list; separate documentation merge, dependency and implementation approvals are still required. This file was authored as documentation only; no execution task has started.
+**Next:** obtain separate documentation merge, dependency and implementation approvals. Task list approved; documentation only, no execution task has started.

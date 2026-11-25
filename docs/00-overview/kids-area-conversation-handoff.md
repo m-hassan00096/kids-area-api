@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01 Identity Core & RBAC Foundation **spec.md and plan.md APPROVED by user on 2026-11-25**. **tasks.md DRAFT prepared for explicit review**, 32 execution tasks / 0 complete, all 14 acceptance scenarios mapped. Prior approved business decisions unchanged. No implementation branch, packages, code, executed Feature 01 tests or deployment. PR #5 remains open and unmerged.
+> Status: Feature 01 Identity Core & RBAC Foundation **spec.md, plan.md and tasks.md APPROVED by user on 2026-11-25**. Documentation approvals complete; 32 execution tasks / 0 complete, all 14 acceptance scenarios mapped. Separate documentation merge, implementation and package-install authorization pending. Prior approved decisions unchanged. No implementation branch, packages, code, executed Feature 01 tests or deployment. PR #5 remains open and unmerged.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -15,7 +15,7 @@
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
-- **Current documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (docs/feature01-seeding-handoff -> develop); approved spec.md (14 acceptance scenarios), approved plan.md, and draft tasks.md (32 ordered tasks, all unchecked). Task review, implementation, package installation and merge still require explicit approval. No code.
+- **Current documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (docs/feature01-seeding-handoff -> develop); approved spec.md (14 acceptance scenarios), approved plan.md and approved tasks.md (32 ordered tasks, all unchecked). Implementation, package installation and merge still require separate explicit approval. No code.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -77,7 +77,7 @@
 - `Modules/` currently contains only `.gitkeep`; there is no Identity Module code.
 - `app/Models/User.php` was not found, while `config/auth.php` still imports `App\Models\User`; Feature 01 must create/configure canonical `Modules/Identity/app/Models/User.php` and update Laravel auth provider.
 - `bootstrap/app.php` sets API prefix `api/v1` and basic middleware/exception scaffolding.
-- Feature 01 spec.md and plan.md approved; tasks.md drafted for review. 0/32 execution tasks complete. No implementation branch/code. PR #5 remains open/unmerged. Existing MySQL 8/PHP 8.2 CI is configured, but its foundation-only module assertions must be updated to allow Identity; Feature 01 checks have not run.
+- Feature 01 spec.md, plan.md and tasks.md approved. 0/32 execution tasks complete. No implementation branch/code. PR #5 remains open/unmerged. Existing MySQL 8/PHP 8.2 CI is configured, but its foundation-only module assertions must be updated to allow Identity; Feature 01 checks have not run.
 
 ## 5. Current topic - Feature 01: Identity Core & RBAC Foundation
 
@@ -125,9 +125,9 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 
 **User rejected the proposed `identity_access_guard` table (2026-11-25)** as unnecessary complexity. **Do not add that table or any new dedicated lock/sentinel table in Feature 01.** Continue to enforce the **previously approved** invariant that at least one active User holding all six essential permissions through exactly one active Role remains after every sensitive change. Serialize conflicting User/Role/grant mutations using **existing, guaranteed persistent Identity records** inside MySQL transactions (a stable seeded `manager` Role row is one possible shared serialization point; it is permanent even if a Custom Role User is the final viable admin). Confirm an efficient safe locking order and isolation semantics in `plan.md` and concurrency tests, without changing the business invariant or adding a new table.
 
-### New milestone — approved specification and technical plan; draft tasks
+### New milestone — all Feature 01 documents approved
 
-**2026-11-25:** User approved [spec.md](../../specs/identity/identity-core-rbac-foundation/spec.md) and [plan.md](../../specs/identity/identity-core-rbac-foundation/plan.md), then explicitly requested drafting/uploading [tasks.md](../../specs/identity/identity-core-rbac-foundation/tasks.md) on the same docs branch without code or PR merge. Task list contains 32 unchecked execution tasks in six phases, dependencies, acceptance/verification evidence and traceability for all 14 scenarios. 0/32 complete; implementation checks Not Run. No new business requirements or permission to implement/install/merge.
+**2026-11-25:** User approved [spec.md](../../specs/identity/identity-core-rbac-foundation/spec.md) and [plan.md](../../specs/identity/identity-core-rbac-foundation/plan.md), then explicitly requested drafting/uploading [tasks.md](../../specs/identity/identity-core-rbac-foundation/tasks.md) on the same docs branch without code or PR merge. The user subsequently explicitly approved the task list on 2026-11-25. All three documents are now approved. Task list contains 32 unchecked execution tasks in six phases, dependencies, acceptance/verification evidence and traceability for all 14 scenarios. 0/32 complete; implementation checks Not Run. No new business requirements or permission to implement/install/merge.
 
 ### Approved technical design; implementation verification still pending
 
@@ -138,7 +138,7 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 
 ## 6. Next action and restrictions
 
-1. Review/approve the draft [tasks.md](../../specs/identity/identity-core-rbac-foundation/tasks.md). Functional and technical plans are approved; do not reopen settled decisions.
-2. Keep PR #5 open until explicit documentation merge approval; separately obtain implementation and Spatie ^6 package-install authorization before execution.
+1. All three Feature 01 documents are approved; do not reopen settled decisions. No task has been executed.
+2. Next: obtain explicit approval to merge documentation PR #5; separately obtain implementation and Spatie ^6 package-install authorization before execution.
 3. After approved documentation merge, create a dedicated implementation branch from actual develop, execute tasks in dependency order and verify with real MySQL 8/PHPUnit and Pint. All tasks currently unchecked, checks Not Run.
 4. Do not deploy or mutate real data; Audit remains a separately approved later feature and an acknowledged live rollout gap.
