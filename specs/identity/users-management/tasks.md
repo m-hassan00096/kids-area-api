@@ -1,20 +1,20 @@
 # Feature 03 — Users Management: Execution Tasks
 
-> **Status:** APPROVED — user explicitly approved the full task list on 2026-11-25. Subsequent narrow preliminary exploration only; no Feature 03 implementation, platform installation or PR #9 merge authorized.
+> **Status:** APPROVED — user explicitly approved task list and temporary isolated PHP8.2/GD/fileinfo T01–T04 feasibility on 2026-11-25; no Feature 03 implementation or PR #9 merge authorized.
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop 8174097e93069cc20ae258ba236cf7acd8d37fb3, PR #8 merged; docs PR #9 open. Historical F02 CI 45638942711 passed 102 tests/2289 assertions, Pint 101. No F03 execution. 
-> **Progress:** 0/49 tasks complete; 19/19 scenarios Not Run. Exploratory local PHP8.4 probe recorded in §12; target PHP8.2/GD unavailable in current container. No dependencies installed, feature code, migration, acceptance test execution, merge or deployment. Ready to Implement blocked.
+> **Progress:** 2/49 tasks complete (T01/T02); 19/19 acceptance scenarios Not Run. Authorized target PHP8.2/GD probes completed in isolated CI 45650686580 and 45650969241 (§13); T03/T04 executed but blocked by native multipart observability and a JPEG structural validation counterexample. No project dependencies, feature code, migration, acceptance test execution, merge or deployment. Ready to Implement blocked.
 
 ## 1. Gates and evidence rules
 
-Task-list review explicitly approved on 2026-11-25. T01–T04 still require separate authorization of narrowly scoped isolated feasibility probes, no live host, no feature code or probe code on docs branch. T02 native platform and T03/T04 multipart/image safety are hard readiness gates; if wire duplicates collapse or approved rejection cannot be proven, record evidence and seek explicit reviewed ingress/design/contract resolution, no silent weakening, custom parser or global host change. Isolated evidence does not certify live hosting. T05 separate docs merge and implementation approvals; no feature code before material unknowns resolved. T06 separate exact dependency/platform approval; stop on unapproved solver change. T07 verify isolated testing and separate protected disposable reset/cleanup authorization. No production operations or sensitive data. Dependencies use IDs/ranges inclusive. Completion requires actual tests/source/CI evidence, not test files or checkboxes. No required check waived; no Ready for Review on failed/unrun checks. Test authoring can accompany code but mark complete only after execution. Preserve approved contracts and scope.
+Task-list review explicitly approved on 2026-11-25. User subsequently authorized temporary isolated GitHub Actions PHP8.2/GD/fileinfo T01–T04 preliminary feasibility only (see §13); any further material design change/probe requires appropriate separate review, no live host, no feature code or probe code on docs branch. T02 native platform and T03/T04 multipart/image safety are hard readiness gates; if wire duplicates collapse or approved rejection cannot be proven, record evidence and seek explicit reviewed ingress/design/contract resolution, no silent weakening, custom parser or global host change. Isolated evidence does not certify live hosting. T05 separate docs merge and implementation approvals; no feature code before material unknowns resolved. T06 separate exact dependency/platform approval; stop on unapproved solver change. T07 verify isolated testing and separate protected disposable reset/cleanup authorization. No production operations or sensitive data. Dependencies use IDs/ranges inclusive. Completion requires actual tests/source/CI evidence, not test files or checkboxes. No required check waived; no Ready for Review on failed/unrun checks. Test authoring can accompany code but mark complete only after execution. Preserve approved contracts and scope.
 
 ## 2. Phase A — Approval, preliminary feasibility and preparation (T01–T07)
 
-- [ ] **T01 — Review gates and environment.** Dependencies: —. Verify docs PR #9, actual develop and reviewed task list; obtain explicit scoped authorization for temporary isolated T02–T04 probes. Identify verified disposable PHP8.2 runtime and test scope, no live data, no changes to docs branch code. Evidence: Recorded approvals, refs and isolation evidence.
+- [x] **T01 — Review gates and environment.** Dependencies: —. Verify docs PR #9, actual develop and reviewed task list; obtain explicit scoped authorization for temporary isolated T02–T04 probes. Identify verified disposable PHP8.2 runtime and test scope, no live data, no changes to docs branch code. Evidence: Recorded approvals, refs and isolation evidence.
 
-- [ ] **T02 — Native platform feasibility.** Dependencies: T01. Inspect fileinfo/GD PNG/JPEG/WebP decode/encode, native Argon2id, PHP limits, private temp root and synthetic image smoke/memory. No platform installation or actual host change without separate approval. Evidence: PHP version, gd_info, codecs/limits/memory results; missing support blocks readiness.
+- [x] **T02 — Native platform feasibility.** Dependencies: T01. Inspect fileinfo/GD PNG/JPEG/WebP decode/encode, native Argon2id, PHP limits, private temp root and synthetic image smoke/memory. No platform installation or actual host change without separate approval. Evidence: PHP version, gd_info, codecs/limits/memory results; missing support blocks readiness.
 
 - [ ] **T03 — Raw multipart feasibility.** Dependencies: T01. Real disposable native PHP8.2 HTTP probe with duplicate scalar avatar wire parts, bracketed/mixed shapes and upload/body limits. Verify observable parsed data and native method override feasibility. Never infer duplicate detection from FormRequest count. Evidence: Actual parser evidence; collapsed duplicates or unproven rejection block F03-14, obtain reviewed ingress/contract solution; no custom parser or global host change silently.
 
@@ -154,7 +154,7 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 |---|---|
 | Spec and technical plan | Approved 2026-11-25; feasibility not proved |
 | Task review | Approved — explicit user approval 2026-11-25 |
-| T01–T04 isolated feasibility authorization/evidence | Partial exploratory evidence (PHP8.4 only), all tasks unchecked; target PHP8.2/GD setup authorization and proof pending; blocking |
+| T01–T04 isolated feasibility authorization/evidence | Explicitly authorized; target PHP8.2.36/GD2.3.3 runs 45650686580 and 45650969241 completed. T01/T02 passed; T03/T04 executed, unresolved blockers (§13), remain unchecked. |
 | T05 documentation merge and implementation | Not authorized / Not Run |
 | T06 package/platform | Not authorized / Not Run |
 | T07–T09 guarded DB/FS/migration | Not Run |
@@ -167,7 +167,7 @@ Risks: PHP8.2 parser observability and strict image structural validation; GD/ho
 
 ## 11. Definition of done and next action
 
-All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** authorize the exact temporary isolated PHP8.2/GD setup or provide an already provisioned verified disposable environment for T01–T04. See §12 exploratory evidence and blockers. Resolve material feasibility and any required approved plan/spec decision before implementation. Docs merge, implementation, dependencies and protected operations remain separate gates.
+All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** review confirmed multipart observability and JPEG structural gaps in §13; obtain explicit contract/technical decision and any necessary follow-up isolated probe authorization. Resolve T03/T04 before T05 and any code. Docs merge, implementation, dependencies and protected operations remain separate gates.
 
 ## 12. Preliminary local feasibility evidence — 2026-11-25
 
@@ -198,3 +198,51 @@ Server stopped and temporary directory removed at end. These actual observations
 ### Next isolated-environment decision
 
 Recommend a separately authorized, temporary isolated GitHub Actions probe branch/runner using the project's existing setup-php approach with PHP 8.2 + gd/fileinfo, synthetic fixtures only, no application implementation/dependency install/database/production access and no merge. Existing CI uses setup-php@v2 with PHP8.2/fileinfo but does not explicitly request GD; this proposal is not a claim that GD or target runtime has been tested. Alternatively use an already provisioned verified disposable PHP8.2/GD environment. Obtain approval for the exact temporary platform setup before executing it. Re-run T02/T03/T04 on target runtime, including raw duplicate/mixed parts, actual image safety/limits and method override feasibility. If strict raw duplicate rejection is impossible with the native parser, return with evidence for a narrow explicit parsed-file contract or strict ingress design decision; no custom parser, package or contract change silently. T05 remains blocked. No docs merge or Feature 03 implementation authorized.
+
+## 13. Authorized target-runtime feasibility — 2026-11-25
+
+The user explicitly authorized temporary isolated GitHub Actions PHP 8.2/GD/fileinfo setup and preliminary T01–T04 probes, not Feature 03 implementation, PR #9 merge, production/hosting changes or project dependencies. Verified develop 8174097e93069cc20ae258ba236cf7acd8d37fb3 (PR #8 merged) and approved docs PR #9 head 68b873baa5f8220313f9c83e4a0e01a01dee7c75. Probe-only branch `probe/identity-avatar-php82` created directly from develop; workflow triggered on push to that exact branch. No PR opened for probe, no Composer install, Laravel boot, database/service, application migration or credentials/production access. Contents permission read, checkout did not persist credentials, synthetic fixtures generated in private mode 0700 disposable runner directory, local PHP HTTP server 127.0.0.1 and EXIT cleanup. No probe files on docs or develop.
+
+| Run | Source commit | Result |
+|---|---|---|
+| [45650686580](https://github.com/m-hassan00096/kids-area-api/actions/runs/45650686580) / job 139334038477 | 3b148f9ed5eb740dbc88b322ae1a29c45740caae | Success: PHP8.2 platform, native GD, size/dimensions, structural sample checks and raw multipart |
+| [45650969241](https://github.com/m-hassan00096/kids-area-api/actions/runs/45650969241) / job 139335029702 | 51b78e02dbcea26747ff6ca04a34902e4c610537 | Success: repeated observations, raw input observability, masked oversize, two-frame container fixtures and JPEG structural gap |
+
+Success means probe completed, **not** the proposed policy passed all cases. Actual logs inspected. Temporary workflow and scripts removed with forward-only retirement commit `393c2c0cdb00c54268017b2f0dbef8dfe5d4ebbd`, whose tree exactly matches original develop tree ec4f0c083b9e691d37499ead5652302b32c8b261; branch retained solely for historical evidence, no active probe workflow at its HEAD. Both hosted runners completed and disposable server/files cleaned by EXIT trap. Neither docs nor develop contains executable probe artifacts.
+
+### T01/T02 — platform and isolation verified
+
+T01 complete: actual base/PR/approval and verified disposable PHP 8.2 runner recorded. T02 complete for this **isolated platform feasibility**, not production deployment: PHP 8.2.36 (CLI and cli-server), GD 2.3.3 with PNG/JPEG/WebP read/write, fileinfo and native Argon2id; explicit temporary memory_limit=128M, upload_max_filesize=2M, post_max_size=4M, private directory mode 0700. All three formats roundtripped with no warnings; PNG/WebP synthetic alpha sample 40 preserved. Static image 2048x1024 -> 512x256, bytes 10804 -> 1211; 2048x2048 -> 512x512, 21342 -> 2267; 2049x1 rejected before GD decode. Native valid 8x8 PNG with CRC-correct legitimate ancillary tEXt metadata constructed at exactly 2097152 bytes; GD accepted and re-encoded to 115 bytes, known metadata marker absent. At 2097153 bytes selected policy rejected. Small images remained 8x8. Hash+verify full Argon2id 65536 KiB, time cost 4, threads 1: 207.25 and 256.09 ms. PHP-managed peak 10489856 bytes, max Linux process RSS 129216 and 129640 KiB respectively; sequential image then Argon hash/verify, no app boot, process peak includes native allocations. Do not equate PHP memory_limit or memory_get_peak_usage with process RSS, assume actual shared host supports same limits, or claim a production capacity benchmark. Repeat isolated full application request and host deployment checks later.
+
+### T03 — actual native multipart blocker
+
+Raw HTTP native parser tested under PHP8.2.36 with default POST parsing, explicit 2M file/4M body limits, no Laravel boot.
+
+| Submitted wire parts | Observable result |
+|---|---|
+| One scalar avatar | first.png, 115 bytes, error 0 |
+| Repeated scalar avatar | only second.png, 115 bytes, error 0 |
+| avatar[] twice | array first.png and second.png |
+| avatar[] then scalar avatar | second.png scalar only |
+| scalar avatar then avatar[] | array containing only second.png |
+| avatar + other distinct field | both visible |
+| _method=PUT + avatar | HTTP method POST and field PUT visible; Laravel effective method/CSRF not exercised |
+| Exact 2097152 bytes | error 0, reported size 2097152 |
+| 2097153 bytes alone | error 1 (UPLOAD_ERR_INI_SIZE), size 0 |
+| Zero-byte file | native error 0, size 0; application must reject |
+| Two exact-size files (body 4194600) | POST and FILES empty at 4M post limit |
+| Oversize first avatar then valid same-name avatar | only valid second.png, error 0; prior upload error no longer observable |
+| php://input after duplicate multipart native parsing | 0 bytes, unavailable to recover lost part in this tested configuration |
+
+Strict raw duplicate detection is **not feasible using only the observed native parsed request**. This is a confirmed contract-level blocker, not a Laravel FormRequest failure. T03 executed but remains unchecked; F03-14 remains Not Run. Do not claim max_file_uploads, avatar[] alone, or another FormRequest rule can detect all wire duplicates. Actual Laravel method override and CSRF remain later integration proof.
+
+### T04 — structural validation feasibility, one additional gap
+
+The test-only selected validation combined finfo, extension/expected format, bounds, GD result/warnings and limited format structure probes (PNG chunks/CRC/end/animation markers, WebP RIFF size/chunks/animation, JPEG start/end only). Rejected samples: empty, JPEG supplied as PNG, truncated PNG/WebP/JPEG, CRC-corrupt PNG, SVG/GIF, PNG+JPEG/JPEG+PNG/WebP+PNG with trailing bytes, animation marker fixtures and constructed two-frame APNG/WebP containers (not independently certified by another decoder). GD alone accepted several trailing/dual-format samples and truncated JPEG without warnings. **Supplemental JPEG+PNG+second EOI (860 bytes) passed the simplistic JPEG boundary probe and GD with zero warnings.** A terminal EOI check does not identify the real first image end. Canonical re-encode strips trailing data in served output but does not prove approved rejection at upload. T04 executed in preliminary isolation as authorized in parallel with T03, but remains unchecked: approved rejection criterion unresolved, no production validator created, no universal polyglot claim. Need stronger format-aware structural validation feasibility (JPEG segment and scan parsing respecting marker lengths/escaping/restarts; actual terminating EOI at end, reject extra payload and malformed streams; verify PNG chunk integrity/static limits and WebP RIFF/container/chunk bounds), bounded decoding then canonical encoding, positive and negative fixtures including this counterexample. No custom multipart parser or new library authorized; if adequate native-format validation cannot be established, return for approved design change, never silently lower the spec.
+
+### Review decision before T05 (proposed, NOT approved)
+
+1. Recommended V1 narrow transport contract: one effective scalar uploaded file in the native parsed request, no avatar[]/visible multiple or unknown file fields, validate the retained file's type/size and full request limit, reject zero-size and known errors. Native repeated same-name/mixed fields that collapse before application are outside the detection guarantee; only the retained valid scalar file can be saved, never more than one avatar; disclose the specific observed first-oversize masking behavior. This **changes the strict wire-duplicate rejection requirement** in approved spec/plan/tasks (especially F03-14), so obtain explicit user decision and revise only authorized owning documents before claiming readiness. No behavioral change made here. Alternative: keep strict wire rejection, require independently verified ingress solution or single-binary upload contract (would alter API/atomicity and require review); no custom parser/global PHP config or hosting change silently.
+2. Keep approved strict image behavior and selected bounds; demonstrate stronger JPEG structural check on disposable probe before declaring T04 resolved. T04 does not pass on current limited probe. Do not introduce Composer image package or rely solely on re-encoding. Review exact technical approach and any extra dependency separately.
+
+Current status **2/49 completed** (T01, T02), T03/T04 executed but blocked/unchecked, T05–T49 unchecked. All 19 feature acceptance scenarios Not Run. No app implementation, Composer changes, migrations, DB operations, docs PR merge, deploy, or actual hosting modification. Next: explicit contract/technical decision on both blockers and authorize any focused follow-up probe; then reconcile readiness and separate merge/implementation/package/protected-operation gates.

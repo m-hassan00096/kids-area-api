@@ -1,6 +1,6 @@
 # Identity Module — Module Reference
 
-> **Status:** Feature 01 and Feature 02 implemented and merged (PR #6 and PR #8). Feature 03 [spec.md](../../specs/identity/users-management/spec.md) explicitly approved on 2026-11-25 (including Avatar/search/API defaults); [plan.md](../../specs/identity/users-management/plan.md) approved 2026-11-25; [tasks.md](../../specs/identity/users-management/tasks.md) explicitly approved on 2026-11-25, 0/49 executed. Native multipart/image feasibility remains a blocking gate. No Feature 03 implementation authorized.
+> **Status:** Feature 01 and Feature 02 implemented and merged (PR #6 and PR #8). Feature 03 [spec.md](../../specs/identity/users-management/spec.md) explicitly approved on 2026-11-25 (including Avatar/search/API defaults); [plan.md](../../specs/identity/users-management/plan.md) approved 2026-11-25; [tasks.md](../../specs/identity/users-management/tasks.md) explicitly approved on 2026-11-25, 2/49 complete (T01/T02 verified), T03/T04 probe executed with confirmed native multipart and JPEG structural validation blockers; all 19 acceptance scenarios Not Run. See tasks.md §13. No Feature 03 implementation authorized.
 > **Path:** `docs/03-modules/identity.md`
 > **Scope:** One Kids Area location; Laravel 12 API-first modular monolith, MySQL 8 / InnoDB.
 > **Owning module:** `Modules/Identity`.

@@ -3,7 +3,7 @@
 > **Status:** APPROVED — accepted 2026-11-25 (user reply “تمام” to technical review). Material feasibility gates remain open; not Ready to Implement.
 > **Approved contract:** [spec.md](spec.md), user explicitly approved the entire spec, Avatar/search/API defaults and 19 acceptance scenarios on 2026-11-25.
 > **Baseline:** verified develop `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merged), docs PR #9 `docs/feature03-users-management-spec` from that commit. Latest actual pre-merge F02 CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files. Historical evidence only; Feature 03 runtime and all new checks Not Run.
-> **Delivery gate:** [tasks.md](tasks.md) explicitly approved on 2026-11-25. Technical choices and task list accepted; preliminary disposable exploration recorded in tasks.md §12, not target-platform proof. No platform/dependency installation, migration, feature implementation/acceptance-test execution, merge or deployment authorized.
+> **Delivery gate:** [tasks.md](tasks.md) explicitly approved on 2026-11-25. Technical choices and task list accepted; authorized temporary isolated target PHP8.2/GD probes recorded in tasks.md §§12–13. T01/T02 complete, T03/T04 blocked. No project dependency installation, migration, feature implementation/acceptance-test execution, merge or deployment authorized.
 
 ## 1. Current source and compatibility verification
 
@@ -176,4 +176,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** separately authorize exact target PHP8.2/GD isolated environment setup, then complete T01–T04. Preliminary PHP8.4 evidence in tasks.md §12; spec/plan/tasks approved, material readiness gates remain open. All 19 acceptance scenarios and new runtime checks remain Not Run.
+**Next:** review target-runtime evidence in tasks.md §13, decide strict wire vs parsed single-file contract and stronger format-aware validation feasibility. T01/T02 verified; T03/T04 still blocked. No behavioral/technical contract changed by evidence update. All 19 feature acceptance scenarios remain Not Run; no code.
