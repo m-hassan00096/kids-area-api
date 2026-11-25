@@ -227,4 +227,4 @@ Existing schema: users (name, username, nullable unique email/phone, hashed pass
 | F03-18 | HTTP envelopes Arabic/camelCase/X-Request-ID; no passwords/hashes/session IDs/raw multipart/storage keys/SQL in output or logs; native session protection and unrelated DB events intact. |
 | F03-19 | Real MySQL concurrency, forward avatar migration preserves existing founder/users and baseline RBAC, full Authentication/Identity/Foundation regression, route/permission/module scope, Pint and CI. No audit, Roles CRUD/permissions select, HR or token/queue/Redis/cron implementation. |
 
-All scenarios remain approved requirements, not executed results. T01–T07 complete; next T08/T09 forward schema and preservation. See tasks.md §16.
+All scenarios remain approved requirements, not executed results. T01–T07 complete; T08/T09 schema and preservation tests authored, verification pending. See tasks.md §§16–17.

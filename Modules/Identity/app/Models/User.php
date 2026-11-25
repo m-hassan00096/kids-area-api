@@ -22,7 +22,7 @@ class User extends Authenticatable
         'is_active',
     ];
 
-    protected $hidden = ['password', 'auth_version'];
+    protected $hidden = ['password', 'auth_version', 'avatar_key'];
 
     protected function casts(): array
     {

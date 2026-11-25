@@ -178,4 +178,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** T08/T09 forward avatar reference migration and preservation on the approved guarded fixture environment. See tasks.md §16.
+**Next:** T08/T09 avatar migration and preservation tests authored; verify CI before closing those tasks. See tasks.md §§16–17.
