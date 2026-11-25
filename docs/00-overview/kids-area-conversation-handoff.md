@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) remains DISCUSSION. Phased permission seeding, six-permission role-agnostic Last Viable Administrator Protection, and **deferring Audit Logs beyond Feature 01** are APPROVED. No Feature 01 spec/plan/tasks, implementation branch, code, or tests have been created.
+> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) remains DISCUSSION. Phased permission seeding, six-permission role-agnostic Last Viable Administrator Protection, deferring Audit Logs beyond Feature 01, and **founding Manager Bootstrap only when `users` is completely empty** are APPROVED. No Feature 01 spec/plan/tasks, implementation branch, code, or tests have been created.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -15,7 +15,7 @@
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
-- **Current docs PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (`docs/feature01-seeding-handoff` -> `develop`); captures phased permission catalogue, six-permission role-agnostic admin protection, and **deferred Audit implementation**. It remains open and **not merged**, pending explicit user permission.
+- **Current docs PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (`docs/feature01-seeding-handoff` -> `develop`); captures phased permissions, six-permission role-agnostic admin protection, deferred Audit, and empty-users-table Bootstrap restriction. It remains open and **not merged**, pending explicit user permission.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -103,21 +103,27 @@ The approved policy is now reflected in `docs/03-modules/identity.md` and `docs/
 
 **User selected A and then expressly deferred Audit Logs, on 2026-11-25.** Future Audit architecture is **one shared append-only system audit store**, with role/module-scoped read authorization, but **no Audit model/table/writer/API in Feature 01**. `identity.audit.view` remains one of the 10 agreed seeded technical permissions, without a working endpoint until the Audit feature. No false claim of complete auditability for founder bootstrap or future admin mutations performed before Audit delivery. **Reassess the production rollout gate for sensitive Users/Roles management before going live.** The previous requirement that Audit writes must exist from the first sensitive mutation is superseded **for delivery timing only**; the full future audit policy and security controls remain intact.
 
+### Approved decision: founding Manager Bootstrap requires completely empty Users table
+
+**User expressly approved (2026-11-25):** The one-time `identity:bootstrap-manager` Artisan command may create the first active Manager only when **zero rows exist in `users`**. If **any User** already exists (regardless of ID, activation, or Role), it **must abort without writing any User or changing an existing account**. The new founder must be **ID = 1**. If an empty table has a non-1 auto-increment next value, or another bootstrap run races to provision the first row, the command must fail safely without silently resetting IDs or generating another founder. Role/permission seeders remain additive and repeatable; bootstrap **is not** a repeatable account-creation operation. No credentials hard-coded in source. Exact transaction/lock handling and controlled credential input remain Feature 01 plan details.
+
+This approved rule is documented in both `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` on the open documentation PR.
+
 ### Next design topic (PROPOSED; not approved)
 
-Review **initial Manager Bootstrap**: safe creation of User ID 1, re-run behavior and collision handling. Then agree on foundational DB schema (`users`, Spatie roles/permissions/pivots) and transaction-safe shared admin serialization guard; no Audit schema is in scope.
+Clarify **bootstrap readiness behavior** if required seeded `manager` Role / approved Identity permissions are missing: (A) fail safely and instruct operator to execute reviewed permission/role seeders first; or (B) let bootstrap invoke the seeder automatically. Proposed A minimizes hidden side effects. After that, review foundational DB schema (`users`, Spatie roles/permissions/pivots) and the shared admin serialization guard. No Audit schema is in Feature 01 scope.
 
 ### Further details for Feature 01 plan (not silently decided)
 - Identity's 10 initial permissions and the exact **six-permission role-agnostic viability rule** are approved. The concrete implementation strategy, table names, lock-row schema and MySQL tests remain technical plan work.
 - Installed Spatie version and morph-pivot unique index compatibility; actual MySQL 8 constraints and safe lock strategy.
 - Audit schema, actor/target snapshot strategy and audit-write failure tests belong to the **deferred separate Audit feature**, not Feature 01. Future deletion dependencies and integrity rules remain mandatory.
-- First-manager bootstrap command credentials and idempotent/fail-safe behavior.
+- Approved bootstrap rejects any nonempty `users` table and requires founder ID 1; credentials input mechanism, missing-seeder readiness behavior, empty-table/non-1 sequence and concurrency tests remain to be specified in the Feature 01 plan.
 - Test harness and CI actual status. All unrun tests must be identified as Not Run.
 
 ## 6. Next action and restrictions
 
 1. Continue **discussion only** of Feature 01 scope, permission inventory and acceptance tests.
-2. Phased seeding/grants, six-permission role-agnostic viability, and **postponing Audit** are APPROVED. Continue with secure **Bootstrap User ID 1**, essential DB constraints, admin serialization and Feature 01 acceptance scenarios. Audit will be discussed as a separate future feature.
+2. Phased seeding/grants, six-permission role-agnostic viability, postponing Audit, and strict **empty-`users`-table Bootstrap** are APPROVED. Next determine behavior if prerequisite seeded RBAC definitions are missing, then essential DB constraints, admin serialization and Feature 01 acceptance scenarios. Audit remains a separate future feature.
 3. Only after approval, prepare/review `specs/identity/identity-core-rbac-foundation/spec.md`, then `plan.md`, then `tasks.md`.
 4. Do not create implementation branch or write code before approved gates; do not merge any PR without explicit approval.
 5. Update **this same GitHub handoff** at every approved decision, milestone or blocker; capture a timestamp, current verified branch/commit/PR state, *approved vs proposed* decisions, work actually done/tests run, current question, and exact next step. Do not use the handoff to override canonical docs or invent completed work.
