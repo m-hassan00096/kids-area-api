@@ -63,6 +63,7 @@ class AuthenticationApiBoundaryTest extends AuthenticationHttpTestCase
             $this->assertSame($status, $response->status);
             $this->assertSame('1', $response->header('X-Test-Redacted'));
             $this->assertSame($status === 503 ? '1' : '0', $response->header('X-Test-Correlated-Report'));
+            $this->assertSame($status === 503 ? '1' : '0', $response->header('X-Test-Error-Report-Count'));
             $this->assertSame($status === 503 ? __('api.errors.unavailable') : __('api.errors.forbidden'), $response->json()['message']);
         }
     }

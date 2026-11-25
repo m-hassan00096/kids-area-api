@@ -15,7 +15,9 @@ final class AuthController
     public function login(LoginRequest $request, LoginAction $action): JsonResponse
     {
         $data = $request->validated();
-        $result = $action->execute($request, $data['username'], $data['password']);
+        // FormRequest copies the inbound attributes into a separate bag.
+        // The original HTTP request carries finalization state to middleware.
+        $result = $action->execute(request(), $data['username'], $data['password']);
 
         return match ($result->status) {
             200 => ApiResponse::success(),

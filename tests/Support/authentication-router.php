@@ -252,6 +252,7 @@ if ($inspect) {
     $response->headers->set('X-Test-Native-Session-Query-Visible', $nativeVisible ? '1' : '0');
     $correlated = collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.' && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID'));
     $response->headers->set('X-Test-Correlated-Report', $correlated ? '1' : '0');
+    $response->headers->set('X-Test-Error-Report-Count', (string) collect($logs)->filter(fn ($log) => $log[0] === 'API operation failed.')->count());
     $response->headers->set('X-Test-Restore-Failure', collect($logs)->contains(fn ($log) => $log[0] === 'Login lock timeout restoration failed.') ? '1' : '0');
     $connection->disableQueryLog();
     foreach (DB::table('users')->pluck('password') as $hash) {

@@ -19,9 +19,13 @@ final class SensitiveQueryScope
         } finally {
             if ($dispatcher !== null) {
                 $connection->setEventDispatcher($dispatcher);
+            } else {
+                $connection->unsetEventDispatcher();
             }
             if ($logging) {
                 $connection->enableQueryLog();
+            } else {
+                $connection->disableQueryLog();
             }
         }
     }

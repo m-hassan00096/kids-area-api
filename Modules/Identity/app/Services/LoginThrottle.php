@@ -271,7 +271,9 @@ final class LoginThrottle
                         $this->state($current, $scope === self::IP ? self::IP_LIMIT : self::USERNAME_LIMIT, $at);
                     } catch (RuntimeException|JsonException) {
                         // Leave inconsistent rows for safe operator investigation.
-                        Log::warning('Inconsistent login throttle cleanup candidate.');
+                        Log::warning('Inconsistent login throttle cleanup candidate.', [
+                            'request_id' => app()->bound('request') ? RequestId::id(request()) : null,
+                        ]);
 
                         return;
                     }
@@ -284,7 +286,9 @@ final class LoginThrottle
                     throw $exception;
                 }
 
-                Log::warning('Login throttle cleanup deferred due to contention.');
+                Log::warning('Login throttle cleanup deferred due to contention.', [
+                    'request_id' => app()->bound('request') ? RequestId::id(request()) : null,
+                ]);
 
                 break;
             }
