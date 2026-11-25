@@ -2,6 +2,7 @@
 
 namespace Modules\Identity\Services;
 
+use App\Support\SensitiveQueryScope;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 use Modules\Identity\Models\User;
@@ -24,13 +25,15 @@ final class CredentialRevocation
             throw new RuntimeException('Invalid credential generation or hash.');
         }
 
-        $updated = DB::table('users')->where('id', $locked->id)
-            ->where('auth_version', $locked->auth_version)
-            ->update(['password' => $hash, 'auth_version' => $locked->auth_version + 1, 'updated_at' => now()]);
-        if ($updated !== 1) {
-            throw new RuntimeException('Credential generation was not updated.');
-        }
+        return SensitiveQueryScope::run(DB::connection(), function () use ($locked, $hash): int {
+            $updated = DB::table('users')->where('id', $locked->id)
+                ->where('auth_version', $locked->auth_version)
+                ->update(['password' => $hash, 'auth_version' => $locked->auth_version + 1, 'updated_at' => now()]);
+            if ($updated !== 1) {
+                throw new RuntimeException('Credential generation was not updated.');
+            }
 
-        return DB::table('sessions')->where('auth_user_id', $locked->id)->delete();
+            return DB::table('sessions')->where('auth_user_id', $locked->id)->delete();
+        });
     }
 }

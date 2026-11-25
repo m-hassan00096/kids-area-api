@@ -7,6 +7,8 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
+use Modules\Identity\Http\Middleware\FinalizeLoginSession;
 use Modules\Identity\Services\LoginThrottle;
 
 require __DIR__.'/../../vendor/autoload.php';
@@ -47,6 +49,23 @@ if (is_string($time) && ctype_digit($time)) {
 $barrierDir = getenv('IDENTITY_TEST_BARRIER_DIR');
 $barrier = $request->headers->get('X-Identity-Test-Barrier');
 $mode = $request->headers->get('X-Identity-Test-Mode');
+
+// Isolated test-only route: prove ordinary API query events remain visible
+// while real native session reads, writes and garbage collection are private.
+Route::middleware('api')->get('/api/v1/__auth-review-probe', static function () use ($mode) {
+    if ($mode === 'http-503') {
+        abort(503, 'synthetic-redaction-sentinel');
+    }
+    if ($mode === 'http-403') {
+        abort(403, 'synthetic-redaction-sentinel');
+    }
+    DB::selectOne('SELECT 1 AS synthetic_probe');
+
+    return response()->json(['success' => true]);
+});
+if ($mode === 'probe-events') {
+    config()->set('session.lottery', [1, 1]);
+}
 $prefix = null;
 if ($barrier !== null) {
     if (! is_string($barrierDir) || dirname($barrierDir) !== sys_get_temp_dir()
@@ -117,10 +136,17 @@ $count = 0;
 $credentialReads = 0;
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$secrets, &$timing): void {
+$restoreStatements = 0;
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$secrets, &$timing, &$restoreStatements, $request): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     $ns = hrtime(true);
+    if (str_starts_with($sql, 'set session innodb_lock_wait_timeout =')) {
+        $restoreStatements++;
+        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout'], true)) {
+            throw new RuntimeException('Synthetic timeout restoration failure.');
+        }
+    }
     if ($timing['first_throttle_sql'] !== null && $timing['after_throttle_sql'] === null) {
         $timing['after_throttle_sql'] = $ns;
     }
@@ -155,6 +181,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         'hold-late-insert' => $activity,
         'hold-native-save' => $nativeSave,
         'fault-native-insert' => $nativeInsert,
+        'fault-final-native-save' => $nativeSave && DB::transactionLevel() === 0 && $request->attributes->has(FinalizeLoginSession::CANDIDATE),
         default => false,
     };
     if (! $hit) {
@@ -197,6 +224,15 @@ if ($timing['manager_start'] !== null) {
 if ($inspect) {
     $restored = $connection->logging() && $connection->getEventDispatcher() !== null;
     $queryLog = $connection->getQueryLog();
+    $eventVisible = collect($queries)->contains(fn ($query) => str_contains($query[0], 'synthetic_probe'));
+    $logVisible = collect($queryLog)->contains(fn ($query) => str_contains($query['query'], 'synthetic_probe'));
+    $nativeVisible = collect($queries)->contains(fn ($query) => str_contains(strtolower($query[0]), 'sessions'))
+        || collect($queryLog)->contains(fn ($query) => str_contains(strtolower($query['query']), 'sessions'));
+    $response->headers->set('X-Test-Business-Query-Visible', $eventVisible && $logVisible ? '1' : '0');
+    $response->headers->set('X-Test-Native-Session-Query-Visible', $nativeVisible ? '1' : '0');
+    $correlated = collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.' && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID'));
+    $response->headers->set('X-Test-Correlated-Report', $correlated ? '1' : '0');
+    $response->headers->set('X-Test-Restore-Failure', collect($logs)->contains(fn ($log) => $log[0] === 'Login lock timeout restoration failed.') ? '1' : '0');
     $connection->disableQueryLog();
     foreach (DB::table('users')->pluck('password') as $hash) {
         $secrets[] = $hash;

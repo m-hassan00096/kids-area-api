@@ -37,9 +37,9 @@ abstract class AuthenticationHttpTestCase extends IdentityDatabaseTestCase
         parent::tearDown();
     }
 
-    protected function server(bool $proxy = false, bool $secure = false, bool $fullCost = false): AuthenticationHttpServer
+    protected function server(bool $proxy = false, bool $secure = false, bool $fullCost = false, bool $splitOrigins = false): AuthenticationHttpServer
     {
-        $server = new AuthenticationHttpServer($this->barrierDir, $proxy, $secure, $fullCost);
+        $server = new AuthenticationHttpServer($this->barrierDir, $proxy, $secure, $fullCost, $splitOrigins);
         $this->servers[] = $server;
 
         return $server;

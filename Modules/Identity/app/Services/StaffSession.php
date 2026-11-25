@@ -2,6 +2,7 @@
 
 namespace Modules\Identity\Services;
 
+use App\Support\SensitiveQueryScope;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,19 +38,19 @@ final class StaffSession
             return null;
         }
 
-        return DB::table('sessions as s')->useWritePdo()
+        return SensitiveQueryScope::run(DB::connection(), fn () => DB::table('sessions as s')->useWritePdo()
             ->join('users as u', 'u.id', '=', 's.auth_user_id')
             ->where('s.id', $request->session()->getId())
             ->where('s.auth_user_id', $user->id)
             ->whereColumn('s.auth_version', 'u.auth_version')
             ->where('s.auth_last_activity', '>', $at - self::IDLE_SECONDS)
-            ->first(['s.auth_user_id', 's.auth_version', 's.auth_last_activity']);
+            ->first(['s.auth_user_id', 's.auth_version', 's.auth_last_activity']));
     }
 
     public function hasAuthorityMarker(Request $request): bool
     {
-        return DB::table('sessions')->useWritePdo()->where('id', $request->session()->getId())
-            ->whereNotNull('auth_user_id')->exists();
+        return SensitiveQueryScope::run(DB::connection(), fn () => DB::table('sessions')->useWritePdo()->where('id', $request->session()->getId())
+            ->whereNotNull('auth_user_id')->exists());
     }
 
     public function requireBinding(Request $request, int $at): object
@@ -65,11 +66,11 @@ final class StaffSession
 
     public function touch(Request $request, object $binding, int $at): void
     {
-        DB::table('sessions')->where('id', $request->session()->getId())
+        SensitiveQueryScope::run(DB::connection(), fn () => DB::table('sessions')->where('id', $request->session()->getId())
             ->where('auth_user_id', $binding->auth_user_id)
             ->where('auth_version', $binding->auth_version)
             ->where('auth_last_activity', '>', $at - self::IDLE_SECONDS)
-            ->update(['auth_last_activity' => DB::raw('GREATEST(auth_last_activity, '.(int) $at.')')]);
+            ->update(['auth_last_activity' => DB::raw('GREATEST(auth_last_activity, '.(int) $at.')')]));
     }
 
     public function retire(Request $request): void

@@ -14,9 +14,11 @@ final class AuthenticationHttpServer
 
     public readonly string $origin;
 
+    public readonly ?string $hostOverride;
+
     private Process $process;
 
-    public function __construct(string $barrierDir, bool $proxy = false, bool $secure = false, bool $fullCost = false)
+    public function __construct(string $barrierDir, bool $proxy = false, bool $secure = false, bool $fullCost = false, bool $splitOrigins = false)
     {
         if (! app()->environment('testing') || DB::connection()->getDatabaseName() !== 'kids_area_test'
             || DB::connection()->getConfig('username') !== 'kids_area_ci'
@@ -32,7 +34,10 @@ final class AuthenticationHttpServer
         fclose($socket);
 
         $this->url = 'http://'.$address;
-        $this->origin = ($secure ? 'https://' : 'http://').$address;
+        $secure = $secure || $splitOrigins;
+        $apiOrigin = $splitOrigins ? 'https://api.kids.example.test' : ($secure ? 'https://' : 'http://').$address;
+        $this->origin = $splitOrigins ? 'https://staff.kids.example.test' : $apiOrigin;
+        $this->hostOverride = $splitOrigins ? 'api.kids.example.test' : null;
         $connection = DB::connection();
         $this->process = new Process(
             [PHP_BINARY, '-S', $address, base_path('tests/Support/authentication-router.php')],
@@ -41,7 +46,7 @@ final class AuthenticationHttpServer
                 'APP_ENV' => 'testing',
                 'APP_DEBUG' => 'true',
                 'APP_KEY' => (string) config('app.key'),
-                'APP_URL' => $this->origin,
+                'APP_URL' => $apiOrigin,
                 'APP_LOCALE' => 'ar',
                 'APP_FALLBACK_LOCALE' => 'ar',
                 'DB_CONNECTION' => 'mysql',
@@ -53,11 +58,11 @@ final class AuthenticationHttpServer
                 'DB_URL' => '',
                 'SESSION_DRIVER' => 'database',
                 'SESSION_SECURE_COOKIE' => $secure ? 'true' : 'false',
-                'SESSION_DOMAIN' => '',
+                'SESSION_DOMAIN' => $splitOrigins ? '.kids.example.test' : '',
                 'CACHE_STORE' => 'array',
                 'QUEUE_CONNECTION' => 'sync',
-                'IDENTITY_API_ORIGIN' => $this->origin,
-                'IDENTITY_FRONTEND_ORIGINS' => $this->origin,
+                'IDENTITY_API_ORIGIN' => $splitOrigins ? $apiOrigin.':443' : $apiOrigin,
+                'IDENTITY_FRONTEND_ORIGINS' => $splitOrigins ? $this->origin.':443' : $this->origin,
                 'IDENTITY_TRUSTED_PROXIES' => $proxy || $secure ? '127.0.0.1' : '',
                 'IDENTITY_DUMMY_HASH' => $fullCost ? '' : self::TEST_DUMMY,
                 'ARGON_MEMORY' => $fullCost ? '65536' : '8192',

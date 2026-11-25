@@ -105,4 +105,32 @@ class AuthenticationPasswordTest extends AuthenticationHttpTestCase
             $this->assertSame(401, $browser->me()->status);
         }
     }
+
+    public function test_post_commit_native_save_or_restore_failure_retires_only_login_candidate(): void
+    {
+        $user = $this->user('Staff.Admin');
+        $server = $this->server();
+        $unaffected = $this->browser($server);
+        $this->assertSame(200, $unaffected->login('Staff.Admin')->status);
+        foreach (['fault-final-native-save', 'fault-restore-after-commit'] as $mode) {
+            $browser = $this->browser($server);
+            $response = $browser->login('Staff.Admin', options: ['headers' => [
+                'X-Identity-Test-Mode' => $mode,
+                'X-Identity-Test-Inspect' => '1',
+            ]]);
+            $this->assertSame(500, $response->status);
+            $this->assertSame('1', $response->header('X-Test-Redacted'));
+            $this->assertSame('1', $response->header('X-Test-Correlated-Report'));
+            if ($mode === 'fault-restore-after-commit') {
+                $this->assertSame('1', $response->header('X-Test-Restore-Failure'));
+            }
+            $this->assertFalse(collect($response->headers['set-cookie'] ?? [])->contains(fn ($header) => str_starts_with($header, config('session.cookie').'=')));
+            $this->assertSame(1, DB::table('sessions')->where('auth_user_id', $user->id)->count());
+            $this->assertSame(401, $browser->me()->status);
+            $this->assertSame(200, $unaffected->me()->status);
+            $this->assertSame(204, $browser->handshake()->status);
+            $this->assertSame(200, $browser->login('Staff.Admin')->status);
+            $this->assertSame(200, $browser->request('POST', '/api/v1/auth/logout')->status);
+        }
+    }
 }

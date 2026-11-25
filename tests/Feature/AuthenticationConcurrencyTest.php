@@ -257,6 +257,70 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
         $this->assertSame(intdiv($b->timeMs, 1000), (int) $this->binding($b)->auth_last_activity);
     }
 
+    public function test_late_native_save_after_exact_idle_expiry_cannot_restore_authority(): void
+    {
+        $staff = $this->user('Staff.Admin');
+        $a = $this->browser($this->server());
+        $other = $this->browser($this->server());
+        $other->timeMs = $a->timeMs;
+        $this->assertSame(200, $a->login('Staff.Admin')->status);
+        $this->assertSame(200, $other->login('Staff.Admin')->status);
+        $oldId = $a->sessionId();
+        $b = clone $a;
+        $b->server = $other->server;
+        $a->timeMs += 43199000;
+        $b->timeMs += 43200000;
+        // The unrelated device has qualifying activity before its own expiry.
+        $other->timeMs = $a->timeMs;
+        $this->assertSame(200, $other->me()->status);
+
+        [$first, $second] = $this->race(
+            $a->prepare('GET', '/api/v1/auth/me', options: $this->raceOptions('hold-late-insert', 'first')),
+            $b->prepare('GET', '/api/v1/auth/me', options: $this->raceOptions('observe', 'second')),
+            null,
+        );
+        $this->assertSame(200, $first->status);
+        $this->assertSame(401, $second->status);
+        $row = DB::table('sessions')->where('id', $oldId)->first();
+        $this->assertNotNull($row, 'Native late insert must actually be exercised.');
+        $this->assertNull($row->auth_user_id);
+        $this->assertNull($row->auth_version);
+        $this->assertNull($row->auth_last_activity);
+        $a->timeMs = $b->timeMs;
+        $this->assertSame(401, $a->me()->status);
+        $other->timeMs = $b->timeMs;
+        $this->assertSame(200, $other->me()->status);
+        $this->assertSame(1, DB::table('sessions')->where('auth_user_id', $staff->id)->count());
+    }
+
+    public function test_original_verified_timeout_survives_failed_setting_restore(): void
+    {
+        $this->user('Staff.Admin');
+        $browser = $this->browser($this->server(proxy: true));
+        $ip = '198.51.100.91';
+        $throttle = app(LoginThrottle::class);
+        $this->assertSame(401, $throttle->attempt('Prior.User', $ip, fn () => false)->status);
+        $digest = $throttle->digest(2, $ip);
+        DB::beginTransaction();
+        try {
+            DB::table('identity_login_throttles')->where('scope', 2)->where('key_digest', $digest)->lockForUpdate()->first();
+            $response = $browser->login('Staff.Admin', options: ['headers' => [
+                'X-Forwarded-For' => $ip,
+                'X-Identity-Test-Inspect' => '1',
+                'X-Identity-Test-Mode' => 'fault-restore-with-timeout',
+            ]]);
+            $this->assertSame(503, $response->status);
+            $this->assertSame('0', $response->header('X-Test-Credential-Reads'));
+            $this->assertSame('1', $response->header('X-Test-Restore-Failure'));
+            $this->assertSame('1', $response->header('X-Test-Redacted'));
+            $this->assertSame('1', $response->header('X-Test-Correlated-Report'));
+        } finally {
+            DB::rollBack();
+        }
+        $this->assertSame(0, DB::table('sessions')->whereNotNull('auth_user_id')->count());
+        $this->assertFalse(DB::table('identity_login_throttles')->where('scope', 1)->where('key_digest', $throttle->digest(1, 'Staff.Admin'))->exists());
+    }
+
     private function raceOptions(string $mode, string $barrier, ?string $ip = null): array
     {
         $headers = ['X-Identity-Test-Mode' => $mode, 'X-Identity-Test-Barrier' => $barrier];
@@ -312,7 +376,7 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
                         $match = match ($contested) {
                             'manager' => str_contains($sql, 'from roles') && str_contains($sql, 'for update'),
                             'throttle' => str_contains($sql, 'identity_login_throttles') && (str_starts_with($sql, 'insert') || str_contains($sql, 'for update')),
-                            'cleanup' => str_starts_with($sql, 'delete from identity_login_throttles'),
+                            'cleanup' => str_contains($sql, 'identity_login_throttles') && str_contains($sql, 'for update'),
                         };
                         if ($match) {
                             return true;

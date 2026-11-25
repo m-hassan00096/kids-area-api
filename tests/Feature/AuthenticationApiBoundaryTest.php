@@ -50,4 +50,36 @@ class AuthenticationApiBoundaryTest extends AuthenticationHttpTestCase
         ApiResponse::text('identity.another_nonexistent_test_message');
         $this->assertCount(1, $warnings);
     }
+
+    public function test_http_503_is_reported_once_with_request_id_while_403_is_not(): void
+    {
+        $browser = $this->browser($this->server());
+        foreach ([503, 403] as $status) {
+            $response = $browser->request('GET', '/api/v1/__auth-review-probe', options: ['headers' => [
+                'X-Identity-Test-Mode' => 'http-'.$status,
+                'X-Identity-Test-Inspect' => '1',
+                'Accept' => 'text/html',
+            ]]);
+            $this->assertSame($status, $response->status);
+            $this->assertSame('1', $response->header('X-Test-Redacted'));
+            $this->assertSame($status === 503 ? '1' : '0', $response->header('X-Test-Correlated-Report'));
+            $this->assertSame($status === 503 ? __('api.errors.unavailable') : __('api.errors.forbidden'), $response->json()['message']);
+        }
+    }
+
+    public function test_unrelated_api_preserves_query_events_while_native_session_io_remains_private(): void
+    {
+        $this->user('Staff.Admin');
+        $browser = $this->browser($this->server());
+        $this->assertSame(200, $browser->login('Staff.Admin')->status);
+        $response = $browser->request('GET', '/api/v1/__auth-review-probe', options: ['headers' => [
+            'X-Identity-Test-Mode' => 'probe-events',
+            'X-Identity-Test-Inspect' => '1',
+        ]]);
+        $this->assertSame(200, $response->status);
+        $this->assertSame('1', $response->header('X-Test-Business-Query-Visible'));
+        $this->assertSame('0', $response->header('X-Test-Native-Session-Query-Visible'));
+        $this->assertSame('1', $response->header('X-Test-Redacted'));
+        $this->assertSame(200, $browser->me()->status);
+    }
 }

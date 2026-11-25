@@ -198,7 +198,7 @@ final class LoginThrottle
 
         // Validate the persisted relationship before pruning expired failures.
         // A corrupt deadline must not clear an otherwise active block.
-        if (($times !== [] && $expiry !== end($times) + self::WINDOW)
+        if (($times !== [] && ($expiry !== end($times) + self::WINDOW || end($times) - reset($times) >= self::WINDOW))
             || ($blocked !== null && (count($times) !== $limit || $blocked !== $expiry))
             || ($blocked === null && count($times) >= $limit)) {
             throw new RuntimeException('Inconsistent login throttle state.');

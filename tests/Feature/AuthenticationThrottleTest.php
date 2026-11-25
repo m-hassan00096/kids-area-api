@@ -137,4 +137,39 @@ class AuthenticationThrottleTest extends AuthenticationHttpTestCase
         $this->assertSame(0, DB::table('sessions')->whereNotNull('auth_user_id')->count());
         $this->assertSame(1, DB::table('identity_login_throttles')->count());
     }
+
+    public function test_inconsistent_well_typed_limiter_state_cannot_be_used_or_cleaned_away(): void
+    {
+        $this->user('Exact.Admin');
+        $browser = $this->browser($this->server());
+        $throttle = app(LoginThrottle::class);
+        $now = $browser->timeMs;
+        $key = ['scope' => 1, 'key_digest' => $throttle->digest(1, 'Exact.Admin')];
+        $five = array_fill(0, 5, $now);
+        $states = [
+            ['failure_times' => json_encode($five), 'blocked_until_ms' => $now + 60000, 'expires_at_ms' => $now - 1],
+            ['failure_times' => json_encode($five), 'blocked_until_ms' => null, 'expires_at_ms' => $now + 60000],
+            ['failure_times' => json_encode([$now]), 'blocked_until_ms' => $now + 60000, 'expires_at_ms' => $now + 60000],
+            ['failure_times' => json_encode($five), 'blocked_until_ms' => $now - 1, 'expires_at_ms' => $now + 60000],
+        ];
+        foreach ($states as $state) {
+            DB::table('identity_login_throttles')->updateOrInsert($key, $state);
+            $response = $browser->login('Exact.Admin', options: ['headers' => ['X-Identity-Test-Inspect' => '1']]);
+            $this->assertSame(500, $response->status);
+            $this->assertSame('0', $response->header('X-Test-Credential-Reads'));
+            $this->assertSame('1', $response->header('X-Test-Redacted'));
+            Carbon::setTestNow(Carbon::createFromTimestampMs($now, 'UTC'));
+            try {
+                $throttle->cleanup();
+            } finally {
+                Carbon::setTestNow();
+            }
+            $this->assertTrue(DB::table('identity_login_throttles')->where($key)->exists());
+            $this->assertSame(0, DB::table('sessions')->whereNotNull('auth_user_id')->count());
+        }
+        DB::table('identity_login_throttles')->where($key)->update([
+            'failure_times' => json_encode($five), 'blocked_until_ms' => $now + 60000, 'expires_at_ms' => $now + 60000,
+        ]);
+        $this->assertSame(429, $browser->login('Exact.Admin')->status);
+    }
 }

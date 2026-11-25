@@ -28,6 +28,9 @@ final class AuthenticationBrowser
         if (str_starts_with($server->origin, 'https:')) {
             $headers['X-Forwarded-Proto'] = 'https';
         }
+        if ($server->hostOverride !== null) {
+            $headers['Host'] = $server->hostOverride;
+        }
         if ($this->cookies !== []) {
             $headers['Cookie'] = implode('; ', array_map(fn ($name, $value) => $name.'='.$value, array_keys($this->cookies), $this->cookies));
         }

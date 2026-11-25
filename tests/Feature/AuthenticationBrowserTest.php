@@ -294,4 +294,59 @@ class AuthenticationBrowserTest extends AuthenticationHttpTestCase
         $this->assertSame(401, $one->me()->status);
         $this->assertSame(200, $two->me()->status);
     }
+
+    public function test_canonical_default_ports_and_cross_subdomain_browser_flow(): void
+    {
+        $this->user('Staff.Admin');
+        $server = $this->server(splitOrigins: true);
+        $browser = $this->browser($server, false);
+        $preflight = $browser->request('OPTIONS', '/api/v1/auth/login', options: ['headers' => [
+            'Access-Control-Request-Method' => 'POST',
+            'Access-Control-Request-Headers' => 'content-type,x-xsrf-token',
+        ]]);
+        $this->assertSame(204, $preflight->status);
+        $this->assertSame($server->origin, $preflight->header('Access-Control-Allow-Origin'));
+        $this->assertSame('true', $preflight->header('Access-Control-Allow-Credentials'));
+        $this->assertSame(0, DB::table('sessions')->count());
+        $handshake = $browser->handshake();
+        $this->assertSame(204, $handshake->status);
+        $this->assertSame($server->origin, $handshake->header('Access-Control-Allow-Origin'));
+        $this->assertTrue(collect($handshake->headers['set-cookie'] ?? [])->contains(fn ($cookie) => str_contains(strtolower($cookie), 'domain=.kids.example.test') || str_contains(strtolower($cookie), 'domain=kids.example.test')));
+        $this->assertSame(403, $browser->login('Staff.Admin', options: ['headers' => ['Origin' => 'https://unapproved.kids.example.test']])->status);
+        $this->assertSame(403, $browser->login('Staff.Admin', options: ['headers' => ['Referer' => 'https://api.kids.example.test/']])->status);
+        $login = $browser->login('Staff.Admin', options: ['headers' => ['Referer' => $server->origin.':443/login']]);
+        $this->assertSame(200, $login->status);
+        $this->assertSame($server->origin, $login->header('Access-Control-Allow-Origin'));
+        $this->assertSame(200, $browser->me(['headers' => ['Origin' => null, 'Referer' => $server->origin.'/dashboard']])->status);
+    }
+
+    public function test_old_csrf_tokens_are_rejected_after_each_rotation_and_writes_require_csrf(): void
+    {
+        $user = $this->user('Staff.Admin');
+        $browser = $this->browser($this->server());
+        $initial = rawurldecode($browser->cookies['XSRF-TOKEN']);
+        foreach (['missing', 'bad'] as $csrf) {
+            $this->assertSame(419, $browser->login('Staff.Admin', options: ['csrf' => $csrf])->status);
+        }
+        $this->assertSame(0, DB::table('identity_login_throttles')->count());
+        $this->assertSame(200, $browser->login('Staff.Admin')->status);
+        $this->assertSame(419, $browser->request('POST', '/api/v1/auth/logout', options: ['headers' => ['X-XSRF-TOKEN' => $initial]])->status);
+        $change = ['currentPassword' => 'test-fixture-only-password', 'password' => 'new-synthetic-password', 'passwordConfirmation' => 'new-synthetic-password'];
+        foreach (['missing', 'bad'] as $csrf) {
+            $this->assertSame(419, $browser->request('POST', '/api/v1/auth/logout', options: ['csrf' => $csrf])->status);
+            $this->assertSame(419, $browser->request('PUT', '/api/v1/profile/password', $change, ['csrf' => $csrf])->status);
+        }
+        $this->assertSame(1, $user->fresh()->auth_version);
+        $this->assertSame(200, $browser->me()->status);
+
+        $beforeLogout = rawurldecode($browser->cookies['XSRF-TOKEN']);
+        $this->assertSame(200, $browser->request('POST', '/api/v1/auth/logout')->status);
+        $this->assertSame(419, $browser->login('Staff.Admin', options: ['headers' => ['X-XSRF-TOKEN' => $beforeLogout]])->status);
+        $this->assertSame(200, $browser->login('Staff.Admin')->status);
+        $beforeChange = rawurldecode($browser->cookies['XSRF-TOKEN']);
+        $this->assertSame(200, $browser->request('PUT', '/api/v1/profile/password', $change)->status);
+        $this->assertSame(419, $browser->login('Staff.Admin', 'new-synthetic-password', ['headers' => ['X-XSRF-TOKEN' => $beforeChange]])->status);
+        $this->assertSame(2, $user->fresh()->auth_version);
+        $this->assertSame(200, $browser->login('Staff.Admin', 'new-synthetic-password')->status);
+    }
 }
