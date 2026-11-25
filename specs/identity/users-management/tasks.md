@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 10/49 tasks complete (T01–T10); 19/19 acceptance scenarios Not Run. T08/T09 verified (§18), T10 verified (§18.1). Next T11 capability before target lookup. No production or merge.
+> **Progress:** 10/49 complete (T01–T10); T11–T13 implementation in progress; 19/19 acceptance scenarios Not Run. No production or merge.
 
 ## 1. Gates and evidence rules
 
@@ -288,3 +288,7 @@ T10 implemented exact seven operations plus Laravel implicit HEAD; module CRUD r
 ### 18.1 T10 actual transport and regression evidence
 
 T10 protected transport verified on exact source commit `ba0021cc80651de95dec137026cbc4cef3b7545e`, [CI 45679742034](https://github.com/m-hassan00096/kids-area-api/actions/runs/45679742034), job 139436791612 completed Success, actual logs reviewed. All four UsersManagementTransportTest cases passed: exact route inventory and existing staff middleware; first-party/guest failures and disabled staff; credentialed canonical DELETE preflight without creating session; real native cookie/CSRF for POST/PUT/DELETE and multipart POST `_method=PUT` with PNG, unrelated/header/query/JSON overrides rejected, invalid target paths 404, no separate POST update or user mutation. Auth 41/1440 assertions; Identity 56/827; full 109/2536; Pint 107 files; locked install/platform/audit, forward migration, module and route cache/list checks passed. T10 complete. Seven approved operations registered (+ implicit HEAD), no new permissions. Temporary fail-closed 503 controllers only; capability-before-target T11, normalization T12, sensitive diagnostics T13, actual business operations/Select Registry/avatar storage and full acceptance scenarios remain later tasks. 10/49 complete (T01–T10), 19/19 full acceptance scenarios Not Run. No production, hosting or merge.
+
+## 19. T11–T13 implementation slice (verification pending)
+
+User authorized only T11–T13 before T14. Exact per-route capability on fresh staff_context, explicit bounded primary target projection on original request after permission (no implicit binding or name bypass). Users/Selects skip generic trim/null middleware; Users boundary normalizes present fields and approved multipart coercions, preserving credentials and contact exactness, omitted keys and typed false; required-field/uniqueness/role/state/image validation belongs to T14/T22/T26 and later Actions. Known pinned Spatie invalid filter/sort/include/fields map safe 422; unknown package errors safe 500. Query/event suppression limited to dedicated Users PII/credential/key routes and existing Auth/Profile; native session handling unchanged. Tasks remain unchecked until actual tests, Pint and CI; no business CRUD, no T14, no production or merge.

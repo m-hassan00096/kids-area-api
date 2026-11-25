@@ -4,8 +4,10 @@ use Illuminate\Support\Facades\Route;
 use Modules\Identity\Http\Controllers\AuthController;
 use Modules\Identity\Http\Controllers\ProfileController;
 use Modules\Identity\Http\Controllers\UsersController;
+use Modules\Identity\Http\Middleware\NormalizeUsersInput;
 use Modules\Identity\Http\Middleware\RequireStaffSession;
 use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
+use Modules\Identity\Http\Middleware\RequireUsersCapability;
 
 Route::middleware(RequireStatefulBrowser::class)->group(function (): void {
     Route::post('auth/login', [AuthController::class, 'login']);
@@ -14,13 +16,19 @@ Route::middleware(RequireStatefulBrowser::class)->group(function (): void {
         Route::get('auth/me', [AuthController::class, 'me']);
         Route::put('profile/password', [ProfileController::class, 'password']);
 
-        Route::get('users', [UsersController::class, 'index']);
-        Route::post('users', [UsersController::class, 'store']);
+        Route::get('users', [UsersController::class, 'index'])
+            ->middleware([RequireUsersCapability::class.':identity.users.view', NormalizeUsersInput::class]);
+        Route::post('users', [UsersController::class, 'store'])
+            ->middleware([RequireUsersCapability::class.':identity.users.create', NormalizeUsersInput::class]);
         Route::prefix('users/{user}')->where(['user' => '[1-9][0-9]*'])->group(function (): void {
-            Route::get('/', [UsersController::class, 'show']);
-            Route::put('/', [UsersController::class, 'update']);
-            Route::delete('/', [UsersController::class, 'destroy']);
-            Route::get('avatar', [UsersController::class, 'avatar']);
+            Route::get('/', [UsersController::class, 'show'])
+                ->middleware([RequireUsersCapability::class.':identity.users.view', NormalizeUsersInput::class]);
+            Route::put('/', [UsersController::class, 'update'])
+                ->middleware([RequireUsersCapability::class.':identity.users.update', NormalizeUsersInput::class]);
+            Route::delete('/', [UsersController::class, 'destroy'])
+                ->middleware([RequireUsersCapability::class.':identity.users.delete', NormalizeUsersInput::class]);
+            Route::get('avatar', [UsersController::class, 'avatar'])
+                ->middleware([RequireUsersCapability::class.':identity.users.view', NormalizeUsersInput::class]);
         });
     });
 });

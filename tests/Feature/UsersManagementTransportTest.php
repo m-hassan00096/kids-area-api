@@ -96,10 +96,10 @@ class UsersManagementTransportTest extends AuthenticationHttpTestCase
 
         foreach ([['POST', '/api/v1/users'], ['PUT', '/api/v1/users/1'], ['DELETE', '/api/v1/users/1']] as [$method, $path]) {
             foreach (['missing', 'bad'] as $csrf) {
-                $this->assertSame(419, $browser->request($method, $path, [], ['csrf' => $csrf])->status);
+                $this->assertSame(419, $browser->request($method, $path, options: ['raw' => '{}', 'csrf' => $csrf])->status);
             }
             // Authorized transport reaches the fail-closed placeholder; no CRUD exists yet.
-            $this->assertSame(503, $browser->request($method, $path, [])->status);
+            $this->assertSame(503, $browser->request($method, $path, options: ['raw' => '{}'])->status);
         }
 
         $boundary = 'kids-users-transport-test';

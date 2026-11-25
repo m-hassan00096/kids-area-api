@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: F03 active draft PR #10, 10/49 tasks complete T01–T10. Avatar schema/preservation CI 45678811050 and protected transport CI 45679742034 passed (109 tests / 2536 assertions, Pint 107). Next T11 capability before target lookup. Fail-closed controllers pending further implementation; 19 acceptance scenarios Not Run. No production or feature merge.
+> Status: F03 draft PR #10; 10/49 complete T01–T10. User requested T11–T13 only; implementing permission-before-target, scoped input/errors and sensitive diagnostics. Verification pending. 19 acceptance scenarios Not Run; no T14, production or merge.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.

@@ -10,6 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Spatie\QueryBuilder\Exceptions\InvalidFieldQuery;
+use Spatie\QueryBuilder\Exceptions\InvalidFilterQuery;
+use Spatie\QueryBuilder\Exceptions\InvalidIncludeQuery;
+use Spatie\QueryBuilder\Exceptions\InvalidQuery;
+use Spatie\QueryBuilder\Exceptions\InvalidSortQuery;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
@@ -18,6 +23,30 @@ final class ApiErrors
     public static function applies(Request $request): bool
     {
         return $request->is('api/*', 'sanctum/csrf-cookie');
+    }
+
+    private static function invalidQueryField(Throwable $exception): ?string
+    {
+        return match ($exception::class) {
+            InvalidFilterQuery::class => 'filter',
+            InvalidSortQuery::class => 'sort',
+            InvalidIncludeQuery::class => 'include',
+            InvalidFieldQuery::class => 'fields',
+            default => null,
+        };
+    }
+
+    public static function status(Throwable $exception): int
+    {
+        return match (true) {
+            $exception instanceof ValidationException, self::invalidQueryField($exception) !== null => 422,
+            $exception instanceof BusinessException => $exception->httpStatus,
+            $exception instanceof AuthenticationException => 401,
+            // Do not assume a new package exception is a recognized input failure.
+            $exception instanceof InvalidQuery => 500,
+            $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
+            default => 500,
+        };
     }
 
     public static function render(Throwable $exception, Request $request): ?JsonResponse
@@ -37,6 +66,10 @@ final class ApiErrors
                     : ApiResponse::text('api.errors.validation'), $messages);
             }
             $message = ApiResponse::text('api.errors.validation');
+        } elseif (($field = self::invalidQueryField($exception)) !== null) {
+            $status = 422;
+            $message = ApiResponse::text('api.errors.validation');
+            $errors = [$field => [$message]];
         } elseif ($exception instanceof BusinessException) {
             $status = $exception->httpStatus;
             $message = $exception->getMessage();
@@ -44,12 +77,8 @@ final class ApiErrors
                 $errors = ['code' => $exception->errorCode];
             }
         } else {
-            $status = match (true) {
-                $exception instanceof AuthenticationException => 401,
-                $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
-                default => 500,
-            };
-            if ($exception instanceof HttpExceptionInterface) {
+            $status = self::status($exception);
+            if ($exception instanceof HttpExceptionInterface && ! $exception instanceof InvalidQuery) {
                 $headers = $exception->getHeaders();
             }
             $key = match ($status) {
@@ -80,13 +109,7 @@ final class ApiErrors
 
         // Do not hand exception objects, request parameters, raw SQL or bindings
         // to Laravel's default exception logger on the API boundary.
-        $status = match (true) {
-            $exception instanceof BusinessException => $exception->httpStatus,
-            $exception instanceof ValidationException => 422,
-            $exception instanceof AuthenticationException => 401,
-            $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
-            default => 500,
-        };
+        $status = self::status($exception);
         if ($status >= 500) {
             Log::error('API operation failed.', [
                 'request_id' => RequestId::id(request()),
