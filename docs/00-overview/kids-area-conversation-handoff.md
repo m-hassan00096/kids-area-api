@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01 implemented, verified and merged in PR #6 into develop at f5d740b6 (2026-11-25). Latest verified pre-merge CI 45618607042 passed 56 focused / 61 full tests, 830 full assertions, Pint 54 files. Feature 02 Authentication: user approved database sessions, all-session logout on password change, 5/60s username and 30/60s IP failure limits, and omission of top-level User ID from Me. Draft spec on docs/feature02-authentication-spec for review; no Feature 02 code, dependency installation, tests or merge.
+> Status: Feature 01 implemented, verified and merged in PR #6 into develop at f5d740b6 (2026-11-25); latest pre-merge CI 45618607042 passed. Feature 02 Authentication **spec.md APPROVED by user on 2026-11-25**, including 18 acceptance scenarios and exact API/error/throttle contracts; **plan.md DRAFT for technical review** on docs/feature02-authentication-spec, PR #7. No Feature 02 code, dependencies, migrations, tasks.md, tests or merge.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -17,7 +17,7 @@
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
 - **Documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 merged into develop at b6031c88a0c30560f11803a1c4dba8e0138a7185. Approved spec/plan/tasks preserved.
 - **Implementation PR #6:** https://github.com/m-hassan00096/kids-area-api/pull/6 merged into develop at f5d740b6ace3e10ec63a5a69844856b3d241ecd0. Latest pre-merge CI https://github.com/m-hassan00096/kids-area-api/actions/runs/45618607042 passed.
-- **Feature 02 documentation branch:** docs/feature02-authentication-spec; draft spec at specs/identity/authentication/spec.md, not merged.
+- **Feature 02 documentation PR #7:** https://github.com/m-hassan00096/kids-area-api/pull/7 (docs/feature02-authentication-spec -> develop); approved spec.md and draft plan.md in specs/identity/authentication; open/unmerged.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -144,14 +144,14 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 
 ## 6. Current topic — Feature 02 Authentication
 
-User expressly authorized merge of PR #6, adopted the three Authentication proposals and requested a draft spec only; subsequent correction explicitly removes the top-level User id from Me. Approved decisions recorded in the owning Identity reference on this documentation branch. Feature 02 draft: [spec.md](../../specs/identity/authentication/spec.md). Endpoint names, minimal Me payload (nested Role ID retained as in proposal), login success data [], exact error/threshold boundary behavior and 18 acceptance scenarios are proposed for review; no new scope silently implemented.
+User expressly approved [spec.md](../../specs/identity/authentication/spec.md) on 2026-11-25 and requested technical plan only, no code/PR merge. The spec's four routes + native CSRF handshake, minimal Me payload (no top-level User ID, nested Role ID), Login data [], authenticated re-login 409, wrong current password 422, threshold-triggering failure 401 then 429, all-session logout after password change and 18 acceptance cases are approved.
 
-- Database sessions (MySQL), 12-hour idle expiry, stateful cookie/CSRF, Login/Logout/Me/Profile password, Arabic safe errors and current eligibility; no public token or password reset.
-- Password change logs out every affected User session including current; old concurrent session writes cannot restore valid authentication. Username 5 failures / 60s and IP 30 failures / 60s, one-minute temporary block; exact enforcement strategy belongs to technical plan.
-- No Feature 02 code, Sanctum install, migrations, plan.md, tasks.md or tests. No production authorization.
+[plan.md](../../specs/identity/authentication/plan.md) is a DRAFT for technical review. It proposes Sanctum ^4.5 (candidate 4.5.0 source declares Laravel 12/PHP 8.2 support, no install/Composer resolution), native DB session handler with users.auth_version and explicit auth-owner/version/activity metadata in sessions; no extra grant table. Ordinary successful authenticated activity, not native/anonymous/failed session writes, renews idle time. Strict two-key rolling-window admission through a single temporary Identity throttle table, IP then username row locks through the credential outcome (5/30, 60s block), no Redis/cron; performance and 5s wait/503 behavior require review. Use existing manager mutex only for final Login and password changes; ordinary reads do not globally lock. Explicit cookie-only gate, centralized Arabic error/correlation and sensitive log redaction. Verified source inspection of actual merged repository and public Laravel/Sanctum versions; no Authentication runtime verification.
+
+Known technical review points: session metadata FK exception, native save/rollback handling, version-based revocation, 2xx activity boundary, atomic two-key limiter contention/cleanup, origin/cookie/proxy config, actual dependency/hosting compatibility. Real MySQL independent-process races and genuine HTTP cookie/CSRF tests are required (Laravel unit test CSRF bypass cannot be used as proof). No code, Sanctum install, migrations, tests or tasks.md. All 18 acceptance cases Not Run.
 
 ## 7. Next action and restrictions
 
-1. Review/approve the Feature 02 draft spec on docs/feature02-authentication-spec, including exact contract choices. Keep documentation PR open and unmerged pending explicit approval. Do not reopen approved decisions.
-2. Prepare plan.md only after spec approval; define verified compatible Sanctum version, sessions/revocation and rate-limit concurrency, configuration and test strategy. Review tasks.md after plan approval. Dependency install and implementation require separate approval.
-3. No live founder provisioning, real data, production migrations, deployment or unapproved merge. Audit remains deferred and a live-rollout control gap.
+1. Review/approve the draft technical plan on PR #7. Spec is approved; do not reopen its settled rules.
+2. After explicit plan approval prepare/review tasks.md. Obtain separate documentation merge, package-install and implementation authorization; no merge or code yet.
+3. No live founder provisioning, real data, production migrations/deployment. Audit remains deferred and a live-rollout control gap. Verify actual hosting/TLS/Argon2id/MySQL configuration separately.

@@ -1,10 +1,10 @@
 # Feature 02 — Authentication
 
-> **Status:** DRAFT — for user review and explicit approval (2026-11-25).
+> **Status:** APPROVED — user explicitly approved the complete Feature 02 specification on 2026-11-25.
 > **Owner:** Modules/Identity.
 > **Baseline:** Feature 01 implementation merged via PR #6 into develop at `f5d740b6ace3e10ec63a5a69844856b3d241ecd0`. The latest verified pre-merge CI (45618607042) passed 61 tests / 830 assertions and Pint. These results are Feature 01/Foundation evidence, not Authentication implementation evidence.
 > **Sources:** [Identity Module Reference](../../../docs/03-modules/identity.md), [API Standards](../../../docs/02-standards/api-standards.md), [Error Handling Standards](../../../docs/02-standards/error-handling-standards.md), [Permissions Standards](../../../docs/02-standards/permissions-standards.md), [Localization Standards](../../../docs/02-standards/localization-standards.md), [Backend Architecture](../../../docs/01-architecture/backend-architecture.md), [AI Workflow Rules](../../../docs/02-standards/ai-workflow-rules.md), [Feature 01](../identity-core-rbac-foundation/spec.md).
-> **Delivery gate:** The four latest user decisions below are approved. This complete spec and its proposed contract details still require review/approval, then a separate technical plan and task list before implementation. No Sanctum installation, code, migration, executed Authentication tests, PR merge or production operation is authorized by this draft.
+> **Delivery gate:** The complete spec, including its endpoint/payload contracts, error/threshold boundary choices and 18 acceptance scenarios, is approved. [plan.md](plan.md) is a technical draft for separate review; tasks.md follows plan approval. No Sanctum installation, code, migration, executed Authentication tests, PR merge or production operation is authorized.
 
 ## 1. Purpose and scope
 
@@ -34,7 +34,7 @@ Out of scope: Users CRUD or administrator password-reset API (Feature 03), Roles
 3. Five failed login attempts per exact username within one minute; one-minute temporary throttle. Additional limit: thirty failed attempts per client IP within one minute across usernames; one-minute temporary throttle.
 4. Remove the top-level User `id` from the `me` response. This is not removal of the internal users.id column, Role ID, or founder protection.
 
-## 3. Proposed endpoint contract
+## 3. Approved endpoint contract
 
 All application endpoints use /api/v1. The native Sanctum CSRF-cookie endpoint is the explicit framework handshake exception, not a new business endpoint.
 
@@ -46,7 +46,7 @@ All application endpoints use /api/v1. The native Sanctum CSRF-cookie endpoint i
 | GET | /api/v1/auth/me | Authenticated current eligible staff session | 200, minimal self Resource |
 | PUT | /api/v1/profile/password | Authenticated current eligible staff session + valid CSRF | 200, Arabic success message, data []; affected User's sessions revoked |
 
-These exact application route names/methods and payload shapes are proposed for this spec's approval; the functional requirements in section 2 are already approved. Login/Logout/Me use the shared API envelope. No /api/v1/users/{user}/password endpoint. A subsequent Users PUT may reset another User's password under approved rules, but does not exist here.
+These application route names/methods and payload shapes are approved alongside the functional requirements in section 2. Login/Logout/Me use the shared API envelope. No /api/v1/users/{user}/password endpoint. A subsequent Users PUT may reset another User's password under approved rules, but does not exist here.
 
 ### 3.1 Login
 
@@ -73,7 +73,7 @@ Successful Login (HTTP 200):
 }
 ```
 
-Draft behavior for an already authenticated eligible browser: refuse re-login/account switching with 409 and require explicit Logout first; never silently overwrite another active browser session. A stale/invalid authenticated context does not become valid merely by calling Login; use the safe revocation/re-authentication path. Review this small contract detail with the spec.
+Approved behavior for an already authenticated eligible browser: refuse re-login/account switching with 409 and require explicit Logout first; never silently overwrite another active browser session. A stale/invalid authenticated context does not become valid merely by calling Login; use the safe revocation/re-authentication path.
 
 ### 3.2 Me
 
@@ -100,8 +100,8 @@ Returns only the caller's own access context. Example (illustrative role ID and 
 }
 ```
 
-- **Do not expose User id as data.id.** Keep Role id as the proposed nested role identifier, not the User identifier. Use exact stored name, username and Role alias; public fields are camelCase.
-- permissions is a deduplicated array of currently effective technical role-granted names (proposed stable lexical order); [] is valid. Do not infer permissions from role name, merge direct grants, add wildcards, return arbitrary relations, or cache stale authorization state.
+- **Do not expose User id as data.id.** Keep Role id as the approved nested role identifier, not the User identifier. Use exact stored name, username and Role alias; public fields are camelCase.
+- permissions is a deduplicated array of currently effective technical role-granted names (stable lexical order); [] is valid. Do not infer permissions from role name, merge direct grants, add wildcards, return arbitrary relations, or cache stale authorization state.
 - No contact fields, password/hash, cookies, session IDs, pivot internals, audit history or employee/business data in this Resource. The frontend may use permissions for display only; backend checks remain authoritative. GET success message is empty.
 - Return current grants on the first newly authorized request after committed changes. Account/role/anomaly checks fail closed even if a previously rendered UI still shows an old role/permission.
 
@@ -122,13 +122,13 @@ Request:
 ```
 
 - Only the authenticated User may change their own password. No target ID, role change, email/phone edit, or administrative-reset parameter is accepted.
-- Validate required strings, minimum eight characters for password, exact confirmation; never trim secrets. Wrong current password yields a safe 422 field error on currentPassword (draft contract choice); unchanged credentials and sessions. Invalid fields use camelCase errors.
+- Validate required strings, minimum eight characters for password, exact confirmation; never trim secrets. Wrong current password yields a safe 422 field error on currentPassword; unchanged credentials and sessions. Invalid fields use camelCase errors.
 - Verify current password against actual fresh credentials; make the approved write and logical all-session revocation coherent/atomic. Any failed write or failed required revocation leaves the old valid state, not a half-completed password change. No plaintext or hashes in responses or logs.
 - On successful change, *all* previous authenticated sessions of this User are invalid, including the initiating browser and any older session that an in-flight request attempts to save. Other Users' sessions remain valid. Require login again using the new password; old password no longer works.
 - Two competing password changes using the same current password must not both succeed if the first changes it; recheck fresh credentials under the approved transaction/serialization strategy. Password-change versus concurrent login/session-save races must not revive old authentication. The plan selects the concrete revocation/version-check strategy and safe transaction/lock order, rather than treating a simple session-row deletion as sufficient.
 - The reusable revocation contract must support future administrative resets, without implementing Users CRUD. No hidden recovery route.
 
-Successful password change (HTTP 200; wording proposed):
+Successful password change (HTTP 200; localized wording):
 
 ```json
 {
@@ -154,7 +154,7 @@ Approved behavior:
 - Per exact username, five failed valid-form credential attempts within 60 seconds, including attempts for non-existing identifiers and unusable accounts. Crossing the threshold triggers a 60-second temporary block; attempts while blocked return 429 without checking credentials. Case variants remain separate username identities, not case-folded.
 - Per trusted resolved client IP, thirty failed login attempts within 60 seconds across usernames trigger an additional 60-second temporary block. Either active block denies Login; do not log or reveal whether the username exists or which counter caused the denial.
 - No permanent account lock, no User mutation, no lockout based only on successful Logins. Respect Retry-After for 429; avoid leaking sensitive counter metadata. Scope rate limiting to Login, not business endpoints.
-- Draft boundary proposal: the fifth/30th failure receives the normal 401 failure and starts the corresponding block; subsequent attempts, even with correct credentials, receive 429 while either block is active. A blocked attempt does not prolong the block; after its expiry, resume under applicable limits. A successful Login may reset that username's failure state but must not clear the shared IP failure state (so an attacker cannot bypass the IP limit using one correct account). Malformed form/invalid CSRF follows 422/419 without credential verification; plan must avoid any security bypass through malformed payloads. These precise counting semantics are for spec review.
+- Approved threshold boundaries: the fifth/30th failure receives the normal 401 failure and starts the corresponding block; subsequent attempts, even with correct credentials, receive 429 while either block is active. A blocked attempt does not prolong the block; after its expiry, resume under applicable limits. A successful Login may reset that username's failure state but must not clear the shared IP failure state (so an attacker cannot bypass the IP limit using one correct account). Malformed form/invalid CSRF follows 422/419 without credential verification; plan must avoid any security bypass through malformed payloads. These counting semantics are approved; the implementation mechanism belongs to the plan.
 - Use trusted proxy configuration to resolve client IP, not untrusted forwarded headers. Implement atomic cross-request counters and check/increment behavior under real concurrent attempts; verify threshold behavior, bounded temporary storage and safe expiry without Redis/cron. Exact cache/store, key privacy, window algorithm, serialization and infrastructure trade-offs belong to plan.md. Do not select a new dependency or speculative rate-limit table in this spec.
 
 ## 6. Shared API responses, errors and logging
@@ -167,7 +167,7 @@ Implement the existing shared standards once: minimal App\\Support\\ApiResponse 
 | Unknown/incorrect credentials or ineligible Login | 401 | Identical safe Arabic message, errors [] |
 | Missing/expired authenticated session (valid CSRF where applicable) | 401 | Standard auth error |
 | Authenticated inactive/invalid role/direct-grant context, missing permission or unapproved stateful access | 403 | Safe generic forbidden response |
-| Already authenticated Login | 409 | Draft contract; explicit logout required |
+| Already authenticated Login | 409 | Explicit logout required |
 | CSRF mismatch on browser write | 419 | Standard Arabic JSON failure, no side effect |
 | Missing/invalid fields, incorrect currentPassword | 422 | camelCase validation errors |
 | Either Login throttle active | 429 | Safe Arabic response and accurate Retry-After |
@@ -206,9 +206,9 @@ Example 429:
 }
 ```
 
-Examples define proposed safe wording; use localization keys, not hardcoded duplicated messages. Failure has no data field; success has exactly one data field and no errors. No top-level code. Any stable business code, if needed, remains inside errors.code per existing standard.
+Examples define safe wording; use localization keys, not hardcoded duplicated messages. Failure has no data field; success has exactly one data field and no errors. No top-level code. Any stable business code, if needed, remains inside errors.code per existing standard.
 
-## 7. Acceptance scenarios (proposed, all Not Run)
+## 7. Approved acceptance scenarios (all Not Run)
 
 | ID | Scenario / required observable result |
 |---|---|
@@ -219,7 +219,7 @@ Examples define proposed safe wording; use localization keys, not hardcoded dupl
 | F02-05 | Five failed attempts for one exact username in 60s, including distributed IPs and unknown names; next attempt denied 429 for 60s, correct credentials blocked during limit, Retry-After correct, no persistent User lock; after expiry valid Login can succeed subject to IP limit. |
 | F02-06 | Thirty failed attempts across identifiers from same trusted client IP trigger IP throttle; independent IP remains usable unless username limit applies; username case variants distinct; successful Login cannot reset shared IP failure state; blocked attempts do not extend lock. |
 | F02-07 | Concurrent failures cannot bypass either threshold; atomic check/accounting and safe expiry verified on actual configured shared test store, with independent processes/connections; trust only approved proxy headers. |
-| F02-08 | Me returns exactly the proposed minimal self Resource, **no top-level User ID**, no secret/contact/pivot data; role id is nested only, lexical deduplicated actual role grants, [] for eligible Reception; no artificial Manager bypass. |
+| F02-08 | Me returns exactly the approved minimal self Resource, **no top-level User ID**, no secret/contact/pivot data; role id is nested only, lexical deduplicated actual role grants, [] for eligible Reception; no artificial Manager bypass. |
 | F02-09 | Fresh protected access blocks the next newly authorized request after User/Role deactivation or invalid role/direct grant state; changed role grants visible immediately after commit despite warmed cache. |
 | F02-10 | MySQL-backed separate sessions for two or more devices; genuine authenticated activity before idle boundary refreshes session; at 720 minutes of inactivity session invalid; unauthenticated/idle/failed request cannot preserve it; physical expired-row cleanup timing not relied on. |
 | F02-11 | Logout invalidates only current session and CSRF state, old cookie unusable; other device remains valid; repeated/missing-auth behavior matches 401/419 as applicable. |
@@ -231,7 +231,7 @@ Examples define proposed safe wording; use localization keys, not hardcoded dupl
 | F02-17 | Shared envelope and Arabic errors for 401/403/404/405/409/419/422/429/500 as applicable; X-Request-ID, proper headers, no HTML, no raw exception/SQL, no leaked plaintext/hash/session cookie/session IDs; synthetic failure log redaction. |
 | F02-18 | Scope regression: Feature 01 protections, seeder and bootstrap behavior still pass; no new permission grants, token table/issuance, Users/Roles/Selects CRUD, Audit implementation, public reset, remember me, queue/Redis/cron or real data operations. |
 
-The plan must map every acceptance scenario to executable test cases, including tests with real stateful cookie/CSRF middleware enabled (not just a mocked actingAs path), time control for idle/throttle boundaries and MySQL concurrency. Preserve Feature 01/Foundation tests except the deliberately superseded Feature 01 absence checks for this now-approved feature, updated explicitly in its implementation PR. Use isolated synthetic fixtures; no test or runtime check claimed in this draft.
+The plan must map every acceptance scenario to executable test cases, including tests with real stateful cookie/CSRF middleware enabled (not just a mocked actingAs path), time control for idle/throttle boundaries and MySQL concurrency. Preserve Feature 01/Foundation tests except the deliberately superseded Feature 01 absence checks for this now-approved feature, updated explicitly in its implementation PR. Use isolated synthetic fixtures; no Feature 02 test or runtime check claimed in this specification.
 
 ## 8. Technical details deferred to plan and explicit gates
 
@@ -241,4 +241,4 @@ The plan must map every acceptance scenario to executable test cases, including 
 - Define safe API error mapping, X-Request-ID generation and sanitization; reuse existing localization and BusinessException. Review any conflict with canonical standards instead of silently changing them.
 - Define precise implementation files, migrations, dependency order, test harness and CI verification in plan.md/tasks.md. No live environment/real staff data or deployment configuration; actual hosting domains, proxy/TLS, Argon2id and database compatibility still need verification separately.
 
-**Next:** review and approve this draft spec, including the proposed endpoint/payload contracts and minor error/throttle-boundary choices. Then prepare plan.md, then tasks.md for review. Authentication code has not started.
+**Next:** review/approve the technical draft [plan.md](plan.md), then prepare/review tasks.md. Authentication code has not started.

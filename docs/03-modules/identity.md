@@ -1,6 +1,6 @@
 # Identity Module — Module Reference
 
-> **Status:** Approved V1 functional decisions. Feature 01 specification, plan, tasks and implementation merged; Feature 02 approved authentication decisions recorded, with its detailed specification draft for review (2026-11-25).
+> **Status:** Approved V1 functional decisions. Feature 01 specification, plan, tasks and implementation merged; Feature 02 complete Authentication specification approved on 2026-11-25; technical plan draft pending review.
 > **Path:** `docs/03-modules/identity.md`
 > **Scope:** One Kids Area location; Laravel 12 API-first modular monolith, MySQL 8 / InnoDB.
 > **Owning module:** `Modules/Identity`.
@@ -63,7 +63,7 @@ An effective technical permission authorizes an attempted action. Required recor
 - **Approved 2026-11-25:** Use database-backed sessions on MySQL 8, viable on cPanel, without Redis, queues, workers or cron. Exact session table, indexes, cleanup and cross-session revocation mechanism belong to the Auth plan.
 - Enforce HTTPS, secure cookie flags, correct SameSite/domain scope, explicitly allowed stateful frontend origins, credentials-aware CORS, CSRF failure mapping (including `419` where applicable), and no HTML redirect for Laravel-handled API errors.
 - **Domain names and exact Cookie/CORS settings remain deployment-specific**, to be configured when the frontend origin is known. They do not reopen the approved Cookie/Session transport decision.
-- **Approved 2026-11-25:** The authenticated `me` Resource omits the top-level User `id`. This is a public payload choice only, not a schema change. Keep the canonical internal User ID and founding ID-1 protection unchanged. The draft Authentication spec defines the remaining Resource fields for review.
+- **Approved 2026-11-25:** The authenticated `me` Resource omits the top-level User `id`. This is a public payload choice only, not a schema change. Keep the canonical internal User ID and founding ID-1 protection unchanged. The approved [Authentication spec](../../specs/identity/authentication/spec.md) defines the remaining Resource fields, including nested Role id, stored name/username/alias and actual permission keys; no top-level User id.
 
 ### 3.4 Initial Manager bootstrap and loss of access
 
