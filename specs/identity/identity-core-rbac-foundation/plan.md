@@ -1,6 +1,6 @@
 # Feature 01 — Identity Core & RBAC Foundation — Technical Plan
 
-> **Status:** DRAFT — for explicit technical review/approval (2026-11-25). Functional [spec.md](spec.md) approved by user. No implementation, dependency installation, migrations, tests or merge authorized by this draft.
+> **Status:** APPROVED — user explicitly approved this technical plan on 2026-11-25. Functional [spec.md](spec.md) also approved; [tasks.md](tasks.md) drafted for separate review. The user expressly requested documentation only: no implementation, dependency installation, migrations, tests or merge.
 > **Owner:** Modules/Identity; Laravel 12, PHP >=8.2, MySQL 8/InnoDB, nwidart ^12; single location, shared hosting.
 > **Sources:** [Identity reference](../../../docs/03-modules/identity.md), [workflow](../../../docs/02-standards/ai-workflow-rules.md), [database](../../../docs/02-standards/database-standards.md), [permissions](../../../docs/02-standards/permissions-standards.md), [code](../../../docs/02-standards/code-standards.md), [localization](../../../docs/02-standards/localization-standards.md). Project-specific Kids Area documents take precedence over reference projects.
 
@@ -8,15 +8,15 @@
 
 Inspected PR #5 on docs/feature01-seeding-handoff, targeting develop (base 48211e74058c9effe496068f9ab2f33c8e3174d0). The repository contains a Laravel foundation, Modules/.gitkeep only, no root database/migrations directory, empty root DatabaseSeeder, and an auth provider referencing missing App\\Models\\User. composer.json requires PHP ^8.2, Laravel ^12.0 and nwidart ^12.0; no Spatie Permission or Sanctum dependency. phpunit.xml and CI already target PHP 8.2 / MySQL 8; CI checks no business modules and must be deliberately updated. No runtime/vendor or actual live database inspected.
 
-- Proposed dependency: spatie/laravel-permission ^6.0, compatible with Laravel 12/PHP 8.2; confirm exact resolved version, security/platform constraints and its migration/config/trait APIs against the installed release before writing dependent code. Include composer.json and composer.lock only after explicit package-install authorization. Do not install Sanctum until Feature 02; no other runtime or development packages.
+- Approved dependency choice (installation separately authorized): spatie/laravel-permission ^6.0, compatible with Laravel 12/PHP 8.2; confirm exact resolved version, security/platform constraints and its migration/config/trait APIs against the installed release before writing dependent code. Include composer.json and composer.lock only after explicit package-install authorization. Do not install Sanctum until Feature 02; no other runtime or development packages.
 - Use the installed module generator/PSR-4 conventions and check composer autoload discovery; verify generated paths and module enabled state. Remove only unused newly generated scaffolding; never create an App\\Models\\User fallback. If module discovery/autoload requires an unapproved extra dependency, report it before installing.
-- Manual feature documents (no Spec Kit CLI or .specify requirement). After plan approval, prepare tasks.md with traceability and separate review; after required approvals/merge of the docs, branch from actual develop for implementation and PR back to develop. Never merge or deploy implicitly.
+- Manual feature documents (no Spec Kit CLI or .specify requirement). The plan is approved; tasks.md is drafted with traceability for separate review. After required approvals/merge of the docs, branch from actual develop for implementation and PR back to develop. Never merge or deploy implicitly.
 
 ## 2. Schema and persistence
 
 All tables InnoDB; UTF-8 (utf8mb4) by default, explicit per-column comparison semantics. The migration path is module-owned, with Spatie's actual published migration/config integrated once. No duplicate default users migration, jobs, password reset, token, sessions or cache tables in this feature. Review migrations and registered ordering before executing on isolated DB; never edit deployed migrations.
 
-| users column | Proposed MySQL definition | Rule |
+| users column | Approved MySQL definition (verify compatibility) | Rule |
 |---|---|---|
 | id | BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY | DB-generated; founder must obtain 1 |
 | name | VARCHAR(255) NOT NULL | Non-empty human display name, not unique |
@@ -27,11 +27,11 @@ All tables InnoDB; UTF-8 (utf8mb4) by default, explicit per-column comparison se
 | is_active | BOOLEAN NOT NULL DEFAULT TRUE | Boolean cast |
 | created_at / updated_at | Laravel timestamps | UTC |
 
-Technical choices (lengths/collations) are proposed for review. Verify column character sets, collations, representative equality, strict SQL mode, uniqueness across inactive users, multiple NULLs and indexing on actual MySQL 8. For username use exact regex anchors and reject whitespace/invalid characters; do not lowercase, silently trim an invalid username, or apply a default case-insensitive lookup. For phone reject any supplied nonempty value not exactly 11 ASCII digits (including surrounding whitespace, Arabic-Indic digits, +20). Map omitted/null/empty optional contacts to NULL; do not coerce a nonempty invalid phone to a valid one. Validate email syntax and length before write, preserve case; reject invalid nonempty inputs. Apply the same comparison/validation rules to later Users actions and Feature 02 Login; HTTP request normalization must not silently alter these identifiers. Name max 255; password >=8 characters, no composition rule, no trimming. Select Laravel's secure hash configuration and confirm it can handle accepted password input without silent truncation; avoid logging inputs. No soft-deletes or additional identity fields, since approved future deletion is conditional hard delete/deactivate. Do not add redundant role_id or speculative indexes.
+Technical choices (lengths/collations) are approved subject to the planned compatibility verification. Verify column character sets, collations, representative equality, strict SQL mode, uniqueness across inactive users, multiple NULLs and indexing on actual MySQL 8. For username use exact regex anchors and reject whitespace/invalid characters; do not lowercase, silently trim an invalid username, or apply a default case-insensitive lookup. For phone reject any supplied nonempty value not exactly 11 ASCII digits (including surrounding whitespace, Arabic-Indic digits, +20). Map omitted/null/empty optional contacts to NULL; do not coerce a nonempty invalid phone to a valid one. Validate email syntax and length before write, preserve case; reject invalid nonempty inputs. Apply the same comparison/validation rules to later Users actions and Feature 02 Login; HTTP request normalization must not silently alter these identifiers. Name max 255; password >=8 characters, no composition rule, no trimming. Select Laravel's secure hash configuration and confirm it can handle accepted password input without silent truncation; avoid logging inputs. No soft-deletes or additional identity fields, since approved future deletion is conditional hard delete/deactivate. Do not add redundant role_id or speculative indexes.
 
 Spatie: native roles, permissions, model_has_roles, model_has_permissions, role_has_permissions; Teams disabled; web guard. Preserve vendor indexes/FKs; use installed schema/config table names and key types, ensure role_id/permission_id use matching unsigned keys. Add roles.alias_name and permissions.alias_name (VARCHAR(255), required; Arabic display text) and roles.is_active (boolean default true). Use small Role/Permission models extending the vendor classes as needed, and configure config/permission.php to reference them. Add a separate compatible unique index on model_has_roles(model_type, model_id), preserving native PK. That index covers every morph type in this one-staff-model system; verify actual installed keys/lengths and no duplicate rows before adding to a populated schema. Do not replace Spatie pivots with custom RBAC; no extra guard table, teams or direct User permissions. A polymorphic pivot has no native user FK; future user deletion actions must handle association cleanup using the supported APIs. No cascading deletion of future business history.
 
-## 3. Minimal code boundaries (proposed file names)
+## 3. Minimal code boundaries (illustrative file names)
 
 - Modules/Identity/app/Models/User.php: canonical Authenticatable with HasRoles, explicit web guard, hidden password, boolean is_active, approved fields and factory integration. Update config/auth.php provider to canonical model; do not permit a second model override. No login/session endpoints.
 - Models/Role.php and Permission.php: minimal vendor extensions for approved attributes only; migrations and seeders in module database directories; root DatabaseSeeder explicitly calls module seeder.
@@ -42,7 +42,7 @@ Spatie: native roles, permissions, model_has_roles, model_has_permissions, role_
 
 ## 4. Catalogue and seeding
 
-| Permission | Proposed Arabic alias |
+| Permission | Approved Arabic alias |
 |---|---|
 | identity.users.view | عرض المستخدمين |
 | identity.users.create | إنشاء مستخدم |
@@ -63,7 +63,7 @@ Use Spatie APIs for role grants and user assignments. Bypass stale cached permis
 
 ## 5. One-time bootstrap command
 
-Proposed invocation after approved migration and separate seeding:
+Approved invocation design after separately authorized implementation, migration and seeding:
 ```sh
 php artisan db:seed
 php artisan identity:bootstrap-manager
@@ -114,11 +114,11 @@ Existing .github/workflows/ci.yml uses mysql:8.0, PHP 8.2, Composer lock validat
 
 ## 8. Gates, risks and explicit non-goals
 
-- Plan choices pending approval: Spatie ^6 with exact lock resolved at implementation, schema types/collations and lengths, alias labels, NULL normalization, manager-row lock, no automatic bootstrap retry/reset and command interaction, minimal class naming and CI adjustments. Verify compatibility before implementation; report any conflict rather than silently changing decisions. No package install authorized solely by this plan; explicit dependency approval required.
+- Plan choices approved: Spatie ^6 with exact lock resolved at implementation, schema types/collations and lengths, alias labels, NULL normalization, manager-row lock, no automatic bootstrap retry/reset and command interaction, minimal class naming and CI adjustments. Verify compatibility before implementation; report any conflict rather than silently changing decisions. No package install authorized solely by this plan; explicit dependency approval required.
 - If existing/dirty schema, collation compatibility, unavailable metadata privilege, module autoload, or concurrency harness cannot be verified, stop affected work and record blocker in tasks.md. Production backups/restore and live provisioning separately authorized.
 - Founder protection rules remain approved; full HTTP enforcement belongs to Features 02–04. No Sanctum install/login/session/CSRF/profile, Users/Roles CRUD, selects, Audit storage/writer/API, other module keys or operational features. Audit absence remains known production control gap; review before live privileged admin rollout.
 - No production operations, no destructive migration or SQL, no Redis/queues/cron/WebSockets, no sentinel table, no automatic sequence reset.
-- Next: explicit technical plan review and approval; then draft/review tasks.md; then implementation approvals, tests and PR. No tasks checked and no tests run here.
+- Next: review the drafted tasks.md; obtain separate dependency/implementation and documentation merge authorization before any code. Then execute and verify reviewed tasks on the dedicated implementation branch. No tasks checked and no tests run here.
 
 ### Technical references
 
