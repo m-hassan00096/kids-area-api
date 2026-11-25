@@ -237,22 +237,28 @@ Spatie does **not** enforce a custom `roles.is_active` flag by default. A disabl
 
 **Approved:** never allow a committed change to leave **zero viable administrators capable of managing staff access**.
 
-A viable manager (under the V1 starting-role policy; **not the only Manager User**) must have:
+A **viable administrative User** must meet **all** of the following:
 
 1. A usable, active staff User account, not disabled/deleted.
-2. Exactly one role, active and assigned to the User.
-3. The approved `manager` role and the **effective set of essential access-management permissions** from the Identity/RBAC feature spec; it must not be a merely named Manager with missing administrative capabilities.
+2. Exactly **one assigned active Role**, with no invalid direct grants or multi-role anomaly.
+3. Effective membership, through that Role, of **all six approved essential technical permissions**:
+   - `identity.users.view`
+   - `identity.users.create`
+   - `identity.users.update`
+   - `identity.roles.index`
+   - `identity.roles.show`
+   - `identity.roles.update`
 
-The exact minimal critical permission set, plus whether a future custom role may count as a viable administrative path, will be finalized by the Identity/RBAC feature spec. **No unconditional manager privilege is implied.**
+**Role name does not matter.** An active User in `manager`, an eligible custom Role or any other active Role can count if its effective permissions include **all six**. Having fewer than six does not count. `identity.users.delete`, `identity.roles.delete` and `identity.audit.view` are **not** required for this viability check. This is not a new super-admin grant; each action still requires its own explicit permission and business checks.
 
 **Prohibited outcomes include:**
 
-- Disabling or deleting the last viable Manager's account.
-- Reassigning the last viable Manager to a nonadministrative role.
-- Disabling the Manager role if that removes the last viable administrative path.
-- Removing the necessary admin permissions from the Manager role, including changes that indirectly strand all viable Managers.
-- Replacing a manager grant mapping through deployment seeding without the required protection.
-- Bypassing this check through a bulk update, alternate Action, CLI admin operation or seed-update path.
+- Disabling or deleting the final viable administrative User.
+- Reassigning that User to a Role without all six capabilities.
+- Disabling an assigned custom Role when doing so would remove the last viable path (seeded `manager`/`reception` cannot be disabled under their separate invariant).
+- Revoking any of the six essential grants from a Role if that strands every viable administrator, including through indirect changes affecting several Users.
+- Replacing Role grant mappings during deployment/seed updates or bypassing the invariant through another Action, CLI operation, bulk write or racing update.
+- Treating protected User ID 1 as automatically viable merely because it cannot be disabled/deleted: its effective six permissions must still be checked.
 
 **Concurrency and transaction requirements**
 
@@ -518,7 +524,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Select Registry | Unknown key `422`; any forbidden key `403` with **no partial options** |
 | Role management | Only authorized actor can manage each eligible Role/permission set |
 | Administrative grants | `identity.roles.update` may grant any predefined Permission (including not personally held); `identity.users.update` may manage other Managers except User ID 1; test Last Manager safeguards |
-| Last Manager | Cannot disable, reassign or remove essential permissions from last viable administrator |
+| Last viable administrator | Any active single-Role User (including custom Roles) with all six essential effective permissions counts; no concurrent mutation may leave zero viable paths |
 | True concurrency | Two independently overlapping MySQL transactions cannot remove two final Managers |
 | Admin-grant race | Concurrent role permission removals honor the same serialization invariant |
 | Cache coherence | Role permission revocation during an active session is enforced on subsequent requests |
@@ -577,7 +583,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 
 1. Exact technical permission list and its owner module; initial `manager`/`reception` assignments.
 2. Exact request/Policy enforcement for the **already approved** broad `identity.roles.update` catalogue-grant scope, Users CRUD scope, and protected User ID 1; confirm target changes with audits and Last Manager Protection.
-3. Minimal essential access-management capabilities for Last Manager Protection; secure one-time first-admin bootstrap at User ID 1 and a documented **manual technical recovery** runbook (no extra recovery command).
+3. Implement the **approved six essential access-management capabilities and Role-name-independent viability predicate**; specify shared InnoDB locking; secure one-time first-admin bootstrap at User ID 1 and a documented **manual technical recovery** runbook (no extra recovery command).
 4. Request/Resource/Action contracts for users, roles, role assignments, audits and account status; no endpoints invented in this standards file.
 5. Actual Spatie package version and published table structure; index/migration plan, guard settings, model class/trait and Teams configuration.
 6. Exact locking serialization strategy and MySQL test harness for parallel mutations; approved failure messages/machine codes.
