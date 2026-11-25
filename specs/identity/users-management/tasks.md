@@ -1,6 +1,6 @@
 # Feature 03 — Users Management: Execution Tasks
 
-> **Status:** DRAFT — for task-list review (2026-11-25).
+> **Status:** APPROVED — user explicitly approved the full task list on 2026-11-25, for documentation only; no execution or PR #9 merge authorized.
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop 8174097e93069cc20ae258ba236cf7acd8d37fb3, PR #8 merged; docs PR #9 open. Historical F02 CI 45638942711 passed 102 tests/2289 assertions, Pint 101. No F03 execution. 
@@ -8,7 +8,7 @@
 
 ## 1. Gates and evidence rules
 
-Review tasks before execution. T01–T04 require separate authorization of narrowly scoped isolated feasibility probes, no live host, no feature code or probe code on docs branch. T02 native platform and T03/T04 multipart/image safety are hard readiness gates; if wire duplicates collapse or approved rejection cannot be proven, record evidence and seek explicit reviewed ingress/design/contract resolution, no silent weakening, custom parser or global host change. Isolated evidence does not certify live hosting. T05 separate docs merge and implementation approvals; no feature code before material unknowns resolved. T06 separate exact dependency/platform approval; stop on unapproved solver change. T07 verify isolated testing and separate protected disposable reset/cleanup authorization. No production operations or sensitive data. Dependencies use IDs/ranges inclusive. Completion requires actual tests/source/CI evidence, not test files or checkboxes. No required check waived; no Ready for Review on failed/unrun checks. Test authoring can accompany code but mark complete only after execution. Preserve approved contracts and scope.
+Task-list review explicitly approved on 2026-11-25. T01–T04 still require separate authorization of narrowly scoped isolated feasibility probes, no live host, no feature code or probe code on docs branch. T02 native platform and T03/T04 multipart/image safety are hard readiness gates; if wire duplicates collapse or approved rejection cannot be proven, record evidence and seek explicit reviewed ingress/design/contract resolution, no silent weakening, custom parser or global host change. Isolated evidence does not certify live hosting. T05 separate docs merge and implementation approvals; no feature code before material unknowns resolved. T06 separate exact dependency/platform approval; stop on unapproved solver change. T07 verify isolated testing and separate protected disposable reset/cleanup authorization. No production operations or sensitive data. Dependencies use IDs/ranges inclusive. Completion requires actual tests/source/CI evidence, not test files or checkboxes. No required check waived; no Ready for Review on failed/unrun checks. Test authoring can accompany code but mark complete only after execution. Preserve approved contracts and scope.
 
 ## 2. Phase A — Approval, preliminary feasibility and preparation (T01–T07)
 
@@ -153,7 +153,7 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 | Gate | Status |
 |---|---|
 | Spec and technical plan | Approved 2026-11-25; feasibility not proved |
-| Task review | Pending |
+| Task review | Approved — explicit user approval 2026-11-25 |
 | T01–T04 isolated feasibility authorization/evidence | Pending / Not Run; blocking native multipart/image/platform checks |
 | T05 documentation merge and implementation | Not authorized / Not Run |
 | T06 package/platform | Not authorized / Not Run |
@@ -167,4 +167,4 @@ Risks: PHP8.2 parser observability and strict image structural validation; GD/ho
 
 ## 11. Definition of done and next action
 
-All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** explicitly approve tasks.md, then separately authorize preliminary T01–T04 isolated probes. Resolve material feasibility evidence and any required plan/spec decision before implementation. Docs merge, implementation, dependencies and protected operations remain separate gates.
+All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** separately authorize preliminary T01–T04 isolated probes. Task-list approval is recorded; no execution authorized. Resolve material feasibility evidence and any required plan/spec decision before implementation. Docs merge, implementation, dependencies and protected operations remain separate gates.
