@@ -175,7 +175,7 @@ Reception does **not** automatically get refunds, sensitive pricing/financial co
 
 **Multiple Managers are permitted.** Do not enforce a one-Manager-only constraint.
 
-Every committed User/Role/permission update or deletion must leave **at least one active, usable User with an active role and the effective essential access-management capabilities**. Initially this is an eligible Manager under the permission set finalized in the RBAC feature spec. Protect the last viable path even if User ID 1 remains physically present: a present but unauthorized or otherwise unusable founding account is **not** proof of viable administration.
+Every committed User/Role/permission update or deletion must leave **at least one active, usable User with exactly one active Role and all six effective essential access-management capabilities**: `identity.users.view`, `identity.users.create`, `identity.users.update`, `identity.roles.index`, `identity.roles.show` and `identity.roles.update`. **The Role name is irrelevant**: an eligible active custom-Role User counts just as an eligible `manager` User does. No additional `identity.users.delete`, `identity.roles.delete` or `identity.audit.view` permission is necessary to satisfy this viability invariant. Protect the last viable path even if User ID 1 remains physically present: a present but unauthorized or otherwise unusable founding account is **not** proof of viable administration.
 
 Apply one consistent MySQL InnoDB serialization/locking strategy across mutations affecting this invariant, re-evaluate inside the transaction, persist the change and mandatory audit atomically, and return `409 Conflict` when an authorized attempted change would strand administration. Test genuine races between managers, assignments, role status changes, grant revocations and deletions. No hidden admin bypass.
 
@@ -232,7 +232,7 @@ The feature specs and plans must concretize migrations, payloads, role/permissio
 6. Changing a User password invalidates appropriate old sessions; no hashes or secrets in Resources, audit or error logs.
 7. User and role active-state changes block the very next newly protected request; roleless/multi-role/direct-permission anomalies fail closed.
 8. User ID 1 cannot be deleted/deactivated by anybody, updated by another actor, or have their password reset by another actor; own permitted edits and old-password Profile change behave correctly.
-9. More than one active Manager is permitted; deleting/demoting/disabling the last **viable** admin path fails safely and race-free even when User ID 1 still exists.
+9. More than one Manager is permitted; an active custom-role User holding **all six essential permissions** counts as a viable admin; any change leaving zero viable paths fails safely and race-free even if User ID 1 remains.
 10. Users PUT changes role/status/password only as authorized; `identity.users.delete` stays independently permissioned.
 11. Hard delete of an unlinked non-founding User succeeds with audit history preserved; linked User fails `409` and retains records; a creation-audit event alone does not incorrectly block deletion.
 12. Seeded `manager`/`reception` cannot be deleted/deactivated; unassigned custom Role can be deleted; assigned custom Role (including inactive User assignment) cannot; deleting Role does not delete Permission definitions.
