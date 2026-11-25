@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 7/49 tasks complete (T01–T07); 19/19 acceptance scenarios Not Run. T08/T09 migration and focused tests authored, verification pending (§17). No production or feature merge.
+> **Progress:** 9/49 complete (T01–T09); 19/19 acceptance scenarios Not Run. T08/T09 verified (§18); T10 protected route inventory/transport authored, verification pending. No production or merge.
 
 ## 1. Gates and evidence rules
 
@@ -28,9 +28,9 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 ## 3. Phase B — Schema and shared HTTP boundary (T08–T13)
 
-- [ ] **T08 — Avatar reference migration.** Dependencies: T07. One forward module migration users.avatar_key VARCHAR(40) ASCII/bin nullable UNIQUE default NULL; hidden internal key, no other schema/pivot/index changes. Evidence: Reviewed migration and schema check.
+- [x] **T08 — Avatar reference migration.** Dependencies: T07. One forward module migration users.avatar_key VARCHAR(40) ASCII/bin nullable UNIQUE default NULL; hidden internal key, no other schema/pivot/index changes. Evidence: Reviewed migration and schema check.
 
-- [ ] **T09 — Migration preservation.** Dependencies: T08. Forward migrate existing synthetic founder/users/hashes/roles/sessions, verify DDL, collation, multiple NULL and duplicate key denial; destructive down only approved disposable fixture. Evidence: Actual MySQL preservation/constraints F03-19.
+- [x] **T09 — Migration preservation.** Dependencies: T08. Forward migrate existing synthetic founder/users/hashes/roles/sessions, verify DDL, collation, multiple NULL and duplicate key denial; destructive down only approved disposable fixture. Evidence: Actual MySQL preservation/constraints F03-19.
 
 - [ ] **T10 — Protected routes and CORS.** Dependencies: T07. Exact approved CRUD/avatar GET/selects GET; first-party gate users root/subpaths/selects, canonical origin, DELETE CORS, existing Sanctum/StaffSession, native CSRF/preflight and approved multipart override only; no bearer. Evidence: Route cache/inventory and real HTTP 401/403/419/preflight F03-07.
 
@@ -157,7 +157,7 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 | T01–T04 isolated feasibility authorization/evidence | Explicitly authorized; target PHP8.2.36/GD2.3.3 runs 45650686580 and 45650969241 completed. T01–T04 passed preliminary feasibility; original blockers (§13) resolved by approved contract and follow-up proof (§14). |
 | T05 documentation merge and implementation | Complete; PR #9 merged and implementation branch approved |
 | T06 package/platform | Verified approved additions, CI 45673916280 success |
-| T07–T09 guarded DB/FS/migration | T07 verified 45678335241; T08/T09 Not Run |
+| T07–T09 guarded DB/FS/migration | T07 verified 45678335241; T08/T09 verified 45678811050 |
 | T10–T37 HTTP/reads/selects/avatar/writes | Not Run |
 | T38–T46 races/faults/performance/scope | Not Run |
 | T47–T49 full tests/Pint/CI | Not Run |
@@ -278,3 +278,9 @@ User explicitly authorized `migrate:fresh` only in disposable CI MySQL `kids_are
 ## 17. T08/T09 avatar schema implementation (verification pending)
 
 Added only `2026_11_25_000007_add_avatar_key_to_users.php`: nullable ASCII/bin VARCHAR(40), UNIQUE index `users_avatar_key_unique`; `User.avatar_key` hidden and not fillable. No old migration changed. `UsersManagementSchemaTest` checks actual DDL/nullable unique ownership/hidden field and uses the approved disposable `migrate:fresh` with explicit six pre-F03 files to simulate forward upgrade with real synthetic founder/staff logins, roles and session fingerprints. Adjusted only the exact Identity schema column assertion and existing Authentication forward-upgrade test's empty disposable rollback depth (4 instead of 3, because F03 migration follows F02). No production migration/rollback. T08/T09 remain unchecked until actual test and CI evidence reviewed. No new routes, storage, or business behavior yet.
+
+## 18. T08/T09 actual evidence and T10 protected transport
+
+T08/T09 verified on exact `e16568daca348083df2d16e8f67548436a9e40a5` in [45678811050](https://github.com/m-hassan00096/kids-area-api/actions/runs/45678811050), job 139433506742: forward avatar migration succeeded; UsersManagementSchemaTest and EnvironmentTest passed; Auth 41/1456, Identity 56/820, full 105/2400, Pint 104, route cache/module/scope passed. T08/T09 complete.
+
+T10 implemented exact seven operations plus Laravel implicit HEAD; module CRUD routes and Core selects route use existing stateful Sanctum/staff middleware. FirstPartyCors scope extends users root/subpaths and selects, explicit DELETE added. Header/query/file override and unrelated body `_method` rejected; only real multipart POST with exact PUT body on positive numeric users/{user} allowed. Controllers intentionally fail closed 503 until later permission/operation tasks; no target lookup or write. Added real HTTP transport, CSRF, preflight and route inventory tests; T10 unchecked until actual CI. Full acceptance scenarios still Not Run.

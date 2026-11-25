@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: F03 active draft PR #10 on `feature/identity-users-management`; T01–T07 verified (7/49). T08/T09 avatar reference migration and tests authored; verification pending. All 19 acceptance scenarios Not Run. No production or merge.
+> Status: F03 active draft PR #10, 9/49 T01–T09 verified. Avatar reference and preservation CI 45678811050 passed. T10 routes/transport authored, verification pending; controllers fail closed until later permission and CRUD tasks. All 19 acceptance scenarios Not Run. No production or feature merge.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -205,3 +205,8 @@ User explicitly authorized `migrate:fresh` only in disposable CI MySQL `kids_are
 ### Avatar schema slice (verification pending)
 
 T08/T09 forward nullable private `avatar_key` reference and schema/preservation tests authored; no other schema changes or API implementation. Existing Authentication forward-migration regression adapted for one additional migration. Await actual CI evidence; do not mark tasks done or deploy.
+
+### T08/T09 verified and T10 transport authored
+
+T08/T09 verified on exact `e16568daca348083df2d16e8f67548436a9e40a5` in [45678811050](https://github.com/m-hassan00096/kids-area-api/actions/runs/45678811050), job 139433506742: forward avatar migration succeeded; UsersManagementSchemaTest and EnvironmentTest passed; Auth 41/1456, Identity 56/820, full 105/2400, Pint 104, route cache/module/scope passed. T08/T09 complete.
+Exact protected routes and native method override gate authored with focused HTTP tests. T10 remains unchecked until CI. No actual business CRUD/select/avatar delivery until subsequent tasks.

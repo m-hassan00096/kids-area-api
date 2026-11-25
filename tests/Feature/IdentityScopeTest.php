@@ -29,23 +29,30 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
         $this->assertFalse(Schema::hasColumn('users', 'role_id'));
         $this->assertFileDoesNotExist(app_path('Models/User.php'));
 
-        $approvedAuthRoutes = [
+        $approvedRoutes = [
             'sanctum/csrf-cookie' => ['GET', 'HEAD'],
             'api/v1/auth/login' => ['POST'],
             'api/v1/auth/logout' => ['POST'],
             'api/v1/auth/me' => ['GET', 'HEAD'],
             'api/v1/profile/password' => ['PUT'],
+            'api/v1/users' => ['GET', 'HEAD', 'POST'],
+            'api/v1/users/{user}' => ['GET', 'HEAD', 'PUT', 'DELETE'],
+            'api/v1/users/{user}/avatar' => ['GET', 'HEAD'],
+            'api/v1/selects' => ['GET', 'HEAD'],
         ];
         foreach (Route::getRoutes() as $route) {
-            if (isset($approvedAuthRoutes[$route->uri()])) {
-                $this->assertSame($approvedAuthRoutes[$route->uri()], $route->methods());
-                unset($approvedAuthRoutes[$route->uri()]);
+            if (isset($approvedRoutes[$route->uri()])) {
+                $this->assertSame([], array_diff($route->methods(), $approvedRoutes[$route->uri()]));
+                $approvedRoutes[$route->uri()] = array_values(array_diff($approvedRoutes[$route->uri()], $route->methods()));
+                if ($approvedRoutes[$route->uri()] === []) {
+                    unset($approvedRoutes[$route->uri()]);
+                }
 
                 continue;
             }
             $this->assertDoesNotMatchRegularExpression('#^(?:api/v1/)?(?:auth|login|logout|profile|users|roles|selects|audit|sanctum)(?:/|$)#', $route->uri());
         }
-        // Route registration is completed in the Authentication implementation.
-        $this->assertSame([], $approvedAuthRoutes);
+        // Only the approved F01/F02 and F03 inventory may be registered.
+        $this->assertSame([], $approvedRoutes);
     }
 }
