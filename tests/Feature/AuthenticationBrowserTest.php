@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
@@ -79,6 +81,52 @@ class AuthenticationBrowserTest extends AuthenticationHttpTestCase
 
         $this->user('Space.Password', attributes: ['password' => Hash::make('        ')]);
         $this->assertSame(200, $browser->login('Space.Password', '        ')->status);
+    }
+
+    public function test_corrupted_multiple_roles_and_changed_role_or_direct_grants_fail_closed(): void
+    {
+        $staff = $this->user('Multi.Role');
+        $server = $this->server();
+        $browser = $this->browser($server);
+        $this->assertSame(200, $browser->login('Multi.Role')->status);
+
+        // Guarded disposable schema only; deliberately simulate a legacy anomaly.
+        Schema::table('model_has_roles', function (Blueprint $table): void {
+            $table->dropUnique('identity_single_role_unique');
+        });
+        $reception = Role::findByName('reception', 'web');
+        try {
+            DB::table('model_has_roles')->insert([
+                'model_type' => $staff->getMorphClass(),
+                'model_id' => $staff->id,
+                'role_id' => $reception->id,
+            ]);
+            $this->assertSame(403, $browser->me()->status);
+            $this->assertSame(401, $this->browser($server)->login('Multi.Role')->status);
+        } finally {
+            DB::table('model_has_roles')->where('model_id', $staff->id)
+                ->where('model_type', $staff->getMorphClass())->where('role_id', $reception->id)->delete();
+            Schema::table('model_has_roles', function (Blueprint $table): void {
+                $table->unique(['model_type', 'model_id'], 'identity_single_role_unique');
+            });
+        }
+
+        $role = Role::create(['name' => 'custom-role', 'guard_name' => 'web', 'alias_name' => 'Custom']);
+        $this->user('Custom.User', 'custom-role');
+        $roleBrowser = $this->browser($server);
+        $this->assertSame(200, $roleBrowser->login('Custom.User')->status);
+        $role->update(['is_active' => false]);
+        $this->assertSame(403, $roleBrowser->me()->status);
+        $this->assertSame(401, $roleBrowser->me()->status);
+
+        $direct = $this->user('Direct.User', 'reception');
+        $directBrowser = $this->browser($server);
+        $this->assertSame(200, $directBrowser->login('Direct.User')->status);
+        $permission = Permission::where('name', 'identity.users.view')->sole();
+        $direct->givePermissionTo($permission);
+        $this->assertSame(403, $directBrowser->me()->status);
+        $direct->revokePermissionTo($permission);
+        $this->assertSame(401, $directBrowser->me()->status);
     }
 
     public function test_actual_csrf_validation_exact_fields_origins_and_guest_conflict(): void

@@ -237,6 +237,26 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
         $this->assertFalse(DB::table('identity_login_throttles')->where('scope', 1)->where('key_digest', $throttle->digest(1, 'Staff.Admin'))->exists());
     }
 
+    public function test_overlapping_successful_activity_never_regresses_authoritative_timestamp(): void
+    {
+        $this->user('Staff.Admin');
+        $a = $this->browser($this->server());
+        $this->assertSame(200, $a->login('Staff.Admin')->status);
+        $b = clone $a;
+        $b->server = $this->server();
+        $a->timeMs += 1000;
+        $b->timeMs += 2000;
+
+        [$first, $second] = $this->race(
+            $a->prepare('GET', '/api/v1/auth/me', options: $this->raceOptions('hold-late-insert', 'first')),
+            $b->prepare('GET', '/api/v1/auth/me', options: $this->raceOptions('observe', 'second')),
+            null,
+        );
+        $this->assertSame(200, $first->status);
+        $this->assertSame(200, $second->status);
+        $this->assertSame(intdiv($b->timeMs, 1000), (int) $this->binding($b)->auth_last_activity);
+    }
+
     private function raceOptions(string $mode, string $barrier, ?string $ip = null): array
     {
         $headers = ['X-Identity-Test-Mode' => $mode, 'X-Identity-Test-Barrier' => $barrier];
@@ -303,11 +323,15 @@ class AuthenticationConcurrencyTest extends AuthenticationHttpTestCase
                 }, 'Second MySQL connection was not observed on the contested query.', 4);
                 $this->assertArrayNotHasKey(spl_object_id($b->handle), $done);
             } else {
-                $this->await($multi, $done, function () use (&$done, $b): bool { return isset($done[spl_object_id($b->handle)]); }, 'Second request did not commit while first was held.');
+                $this->await($multi, $done, function () use (&$done, $b): bool {
+                    return isset($done[spl_object_id($b->handle)]);
+                }, 'Second request did not commit while first was held.');
             }
             $this->assertArrayNotHasKey(spl_object_id($a->handle), $done);
             file_put_contents($prefix.'first.release', 'release');
-            $this->await($multi, $done, function () use (&$done, $a, $b): bool { return isset($done[spl_object_id($a->handle)], $done[spl_object_id($b->handle)]); }, 'Requests did not finish after release.');
+            $this->await($multi, $done, function () use (&$done, $a, $b): bool {
+                return isset($done[spl_object_id($a->handle)], $done[spl_object_id($b->handle)]);
+            }, 'Requests did not finish after release.');
             $this->assertSame(CURLE_OK, $done[spl_object_id($a->handle)]);
             $this->assertSame(CURLE_OK, $done[spl_object_id($b->handle)]);
 
