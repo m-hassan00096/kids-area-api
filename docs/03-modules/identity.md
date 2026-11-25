@@ -1,6 +1,6 @@
 # Identity Module — Module Reference
 
-> **Status:** Approved V1 functional decisions, documented for review; individual feature specs, plans and tasks are not yet authored.
+> **Status:** Approved V1 functional decisions. Feature 01 specification, plan, tasks and implementation merged; Feature 02 approved authentication decisions recorded, with its detailed specification draft for review (2026-11-25).
 > **Path:** `docs/03-modules/identity.md`
 > **Scope:** One Kids Area location; Laravel 12 API-first modular monolith, MySQL 8 / InnoDB.
 > **Owning module:** `Modules/Identity`.
@@ -40,12 +40,12 @@ An effective technical permission authorizes an attempted action. Required recor
 - **Profile:** every authenticated User may change their **own** password by entering `currentPassword`, `password` and `passwordConfirmation`. The current password is never revealed.
 - **Users editing:** `PUT /api/v1/users/{user}` may include a new password and confirmation for **another** User under `identity.users.update`; the target's current password is not required. Missing or empty password means **do not change** it.
 - A User cannot bypass the current-password check for their **own** password through the Users update route; the self-service flow is the Profile endpoint. This also applies to User ID 1.
-- Successful password changes invalidate prior authenticated sessions of the affected User. Exact treatment of the initiating current session and browser reauthentication is specified and tested in the Authentication feature plan.
+- **Approved 2026-11-25:** Successful password changes invalidate **all** authenticated sessions of the affected User, including the initiating current session for a self-service Profile password change. The User must log in again with the new password. Future administrative reset in Users Management applies the same all-session invalidation to the target User, without logging out an unaffected actor. The Auth plan must define race-safe invalidation.
 - Passwords, password hashes, session cookies, credentials and raw password-bearing request bodies are excluded from responses, audit and application logs.
 
 ### 3.2 Login protection and account states
 
-- Five failed login attempts within one minute trigger a **one-minute temporary throttle** (`429`); no permanent account lockout solely from failed attempts. Apply controls to the login identifier and request origin to reduce brute force without exposing account existence.
+- **Approved 2026-11-25:** Five failed login attempts for the same exact case-sensitive username within one minute trigger a one-minute temporary throttle (`429`). Additionally, thirty failed login attempts from the same client IP within one minute across usernames trigger a one-minute temporary IP throttle (`429`). Both limits apply; no permanent account lockout solely from failed attempts. Do not expose account existence. The Authentication spec/plan define counting boundaries, trusted client IP resolution and concurrency-safe enforcement.
 - Use the same safe Arabic error for unknown username and incorrect password; no account enumeration.
 - Disabled Users, Users without exactly one role, and Users whose assigned role is disabled cannot log in.
 - Every **protected subsequent request** rechecks fresh User and role activation and effective authorization; disabling a User or role takes effect on newly authorized requests after commit.
@@ -59,10 +59,11 @@ An effective technical permission authorizes an attempted action. Required recor
 - Frontend obtains CSRF protection via Laravel/Sanctum's `GET /sanctum/csrf-cookie` as part of the login flow; write requests use appropriate CSRF and credentialed browser requests.
 - Login regenerates the session identifier; Logout invalidates the **current** session and its CSRF state.
 - Session expiry is **12 hours (720 minutes) of inactivity**. An authenticated server-observed request refreshes activity; an idle open browser tab does not itself keep a session valid.
-- Password changes invalidate earlier sessions for the affected User; any current-session exception must use a secure and testable reauthentication policy, not silently retain stale access.
-- Use a session backend viable on cPanel with no Redis or workers; database-backed sessions are preferred but exact configuration and cross-session revocation procedure belong to the Auth plan.
+- Password changes invalidate all authenticated sessions of the affected User, including the current session. No retained-current-session exception; require a new login. Prevent stale sessions from being resurrected by overlapping requests.
+- **Approved 2026-11-25:** Use database-backed sessions on MySQL 8, viable on cPanel, without Redis, queues, workers or cron. Exact session table, indexes, cleanup and cross-session revocation mechanism belong to the Auth plan.
 - Enforce HTTPS, secure cookie flags, correct SameSite/domain scope, explicitly allowed stateful frontend origins, credentials-aware CORS, CSRF failure mapping (including `419` where applicable), and no HTML redirect for Laravel-handled API errors.
 - **Domain names and exact Cookie/CORS settings remain deployment-specific**, to be configured when the frontend origin is known. They do not reopen the approved Cookie/Session transport decision.
+- **Approved 2026-11-25:** The authenticated `me` Resource omits the top-level User `id`. This is a public payload choice only, not a schema change. Keep the canonical internal User ID and founding ID-1 protection unchanged. The draft Authentication spec defines the remaining Resource fields for review.
 
 ### 3.4 Initial Manager bootstrap and loss of access
 
@@ -267,6 +268,6 @@ Feature ordering is based on dependencies; each substantial feature gets separat
 
 ## 12. Open technical details (not new business decisions)
 
-The subsequent feature specs/plans must verify the installed Laravel 12, Sanctum and Spatie package versions and define the exact table/index shape, unique username implementation, session-store strategy, all-session invalidation, CSRF `419` JSON mapping, Role technical-name validation, complete initial role-to-permission mapping, last-viable-essential permission set/lock strategy, and exact request/Resource/filter contracts. **The shared Audit table, writer, historical actor/target preservation model and its tests belong to the deferred Audit feature**, while future per-module protected deletion dependencies still need explicit planning.
+The subsequent feature specs/plans must verify the installed Laravel 12, Sanctum and Spatie package versions and define the exact table/index shape, unique username implementation, database-session schema/configuration, race-safe all-session invalidation mechanism, CSRF `419` JSON mapping, Role technical-name validation, complete initial role-to-permission mapping, last-viable-essential permission set/lock strategy, and exact request/Resource/filter contracts. **The shared Audit table, writer, historical actor/target preservation model and its tests belong to the deferred Audit feature**, while future per-module protected deletion dependencies still need explicit planning.
 
 These implementation details must respect the approved rules above. If an actual conflict with a previously approved standard emerges, update the owning source explicitly through the documented review process; do not silently loosen invariants.
