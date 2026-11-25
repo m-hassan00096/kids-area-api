@@ -87,7 +87,7 @@ The shared serialization record is the permanent manager role (name=manager, gua
 - A candidate is an active User, exactly one membership of canonical staff model_type, active role under web, no direct grants and all six actual role-granted keys: identity.users.view/create/update and identity.roles.index/show/update. Reject malformed state (including roleless, wrong guard, multiple roles, direct grants) as unusable. Role names irrelevant; founder existence alone does not count. Query actual grant/pivot set, not can() cached output or aliases. Return 409 via approved future business exception and rollback if zero qualify. Keep ordinary protected reads lightweight and fresh; do not take the global mutex on each normal protected API read. Feature 01 tests the reusable boundary using controlled test-only changes; production CRUD APIs remain future features.
 - No unsafe partial retry on lock timeout/deadlock; abort entire transaction. Later ordinary reversible mutation retry may be bounded only when whole operation is safe to replay, rechecking authorization/state after reacquiring lock. Cache reset after commit; prove rollback does not leave effective permissions inconsistent. No generic distributed lock engine.
 
-## 7. Tests and CI (all planned, not executed)
+## 7. Tests and CI (approved verification requirements)
 
 Use PHPUnit real MySQL 8 for constraints and concurrency; add module-focused tests and explicitly register them in phpunit.xml or root tests/Feature according to the existing suite so CI discovers them. Fixtures synthetic. Isolated database kids_area_test only; no production data. Use migrations/fresh setup in test DB only; tests that span processes must not use a parent uncommitted RefreshDatabase wrapper; fixtures committed, independent connections or PHP processes, deterministic synchronization barriers, bounded timeouts, collect both exit codes/results, confirm final DB state independently. Ensure cleanup/reset of isolated database between scenarios, including AUTO_INCREMENT tests; no destructive ops outside verified test DB. No PHPUnit success claims until execution.
 
@@ -118,7 +118,7 @@ Existing .github/workflows/ci.yml uses mysql:8.0, PHP 8.2, Composer lock validat
 - If existing/dirty schema, collation compatibility, unavailable metadata privilege, module autoload, or concurrency harness cannot be verified, stop affected work and record blocker in tasks.md. Production backups/restore and live provisioning separately authorized.
 - Founder protection rules remain approved; full HTTP enforcement belongs to Features 02–04. No Sanctum install/login/session/CSRF/profile, Users/Roles CRUD, selects, Audit storage/writer/API, other module keys or operational features. Audit absence remains known production control gap; review before live privileged admin rollout.
 - No production operations, no destructive migration or SQL, no Redis/queues/cron/WebSockets, no sentinel table, no automatic sequence reset.
-- Next: execute reviewed tasks on the dedicated branch; all three feature documents approved and documentation PR merged. Verify runtime and package compatibility first. Then execute and verify reviewed tasks on the dedicated implementation branch. No tasks checked and no tests run here.
+- Next: review implementation PR #6. Verified evidence and task completion status are in tasks.md; no merge or production operations authorized.
 
 ### Technical references
 
@@ -126,3 +126,21 @@ Existing .github/workflows/ci.yml uses mysql:8.0, PHP 8.2, Composer lock validat
 - [MySQL 8 InnoDB AUTO_INCREMENT handling](https://dev.mysql.com/doc/refman/8.0/en/innodb-auto-increment-handling.html)
 - [MySQL 8 metadata freshness](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_information_schema_stats_expiry)
 - [MySQL 8 character sets/collations](https://dev.mysql.com/doc/refman/8.0/en/charset-mysql.html)
+
+## 9. Implementation decisions and operational handoff
+
+- Composer resolved Spatie Permission 6.25.0 with Laravel 12.73.0 and nwidart 12.0.6 in isolated GitHub Actions. Verified code commit 4f786d65 and [passing run 45618239178](https://github.com/m-hassan00096/kids-area-api/actions/runs/45618239178). See tasks.md for all verification evidence. Direct GitHub CI checkout was used in place of workstation-local testing; no live environment was contacted.
+- Laravel's built-in Argon2id driver is used for staff password hashing, prepared before the transaction. Hosting must support Argon2id; confirm before deployment. Bootstrap temporarily suppresses DB query events/logging while writing the prepared hash and restores them afterwards. Unexpected CLI errors report only safe operational context and exception class.
+- Sensitive access mutations use the permanent manager mutex, then ordered role/user and pivot current reads, conservatively locking the small staff catalogue (including inactive mutation targets); ordinary reads do not lock the mutex. Future HTTP features must use the fresh IdentityAccess and IdentityAccessMutation boundary, not rely on stale Spatie cache or client-supplied actor IDs. Founder HTTP policy and global HTTP exception mapping remain later feature work.
+- Actual MySQL concurrency tested with independent synthetic worker processes, observed contested queries and deterministic barriers. No Redis, queue or new lock table. No real TTY or shared-host environment verified; CLI test adapter exercises the command and hidden-fallback behavior with synthetic credentials, while production requires an interactive terminal.
+
+### Operator instructions (future approved installation only; not executed)
+
+Before separately authorized installation, verify correct database/environment, hosting backup and recovery path, MySQL 8/InnoDB, PHP/Argon2id and metadata access. Run only reviewed migrations; then run the approved additive Identity seeder separately. On a new installation with empty users and next ID 1, use the interactive command:
+
+```sh
+php artisan db:seed
+php artisan identity:bootstrap-manager
+````
+
+Never pass a password as an argument or store it in source. Do not rerun after successful provisioning. If prerequisites or metadata are unavailable, correct only via a reviewed process; the bootstrap does not repair grants. If an insertion consumed ID 1 and rolled back, inspect the failure and seek separately authorized recovery (e.g. verified clean pre-bootstrap restore). Do not reset or explicitly reuse IDs, delete users, run migrate:fresh on a live database, or provision production based solely on this PR.
