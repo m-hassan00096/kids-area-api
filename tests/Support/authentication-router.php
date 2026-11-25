@@ -20,9 +20,12 @@ if (PHP_SAPI !== 'cli-server' || getenv('APP_ENV') !== 'testing'
     exit;
 }
 
+$request = Request::capture();
 $app = require __DIR__.'/../../bootstrap/app.php';
+$app->instance('request', $request);
 $kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
+config()->set('identity-browser.throttle_cleanup_lottery', [0, 100]);
 $connection = DB::connection();
 if (! $app->environment('testing') || $connection->getDatabaseName() !== 'kids_area_test'
     || $connection->getDriverName() !== 'mysql' || $connection->getConfig('username') !== 'kids_area_ci'
@@ -36,7 +39,6 @@ if ($server->db !== 'kids_area_test' || ! str_starts_with($server->version, '8.'
     exit;
 }
 
-$request = Request::capture();
 $time = $request->headers->get('X-Identity-Test-Time');
 if (is_string($time) && ctype_digit($time)) {
     Carbon::setTestNow(Carbon::createFromTimestampMs((int) $time, 'UTC'));
@@ -73,6 +75,12 @@ $pause = static function () use ($prefix): void {
     throw new RuntimeException('Synthetic barrier timed out.');
 };
 
+$diagnostic = null;
+Log::listen(static function (MessageLogged $event) use (&$diagnostic): void {
+    if (is_string($event->context['exception_class'] ?? null)) {
+        $diagnostic = $event->context['exception_class'];
+    }
+});
 $inspect = $request->headers->get('X-Identity-Test-Inspect') === '1';
 $logs = [];
 $queries = [];
@@ -163,6 +171,9 @@ if ($mode === 'cleanup') {
 
 $response = $kernel->handle($request);
 $response->headers->set('X-Test-Query-Count', (string) $count);
+if ($diagnostic !== null) {
+    $response->headers->set('X-Test-Exception-Class', $diagnostic);
+}
 $response->headers->set('X-Test-Credential-Reads', (string) $credentialReads);
 if ($inspect) {
     $restored = $connection->logging() && $connection->getEventDispatcher() !== null;

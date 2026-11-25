@@ -90,6 +90,16 @@ final class AuthenticationHttpServer
         throw new RuntimeException('Isolated authentication HTTP server did not start.');
     }
 
+    public function diagnostic(): string
+    {
+        // Test server has synthetic data only. Emit only a safe error category,
+        // method/class identifiers and source location, not raw exception text.
+        $output = $this->process->getErrorOutput();
+        preg_match_all('/(?:Uncaught\s+[A-Za-z0-9_\\\\]+|Call to undefined method [A-Za-z0-9_\\\\:]+|Target class \[[A-Za-z0-9_\\\\.-]+\] does not exist|Class "[A-Za-z0-9_\\\\]+" not found|Cannot redeclare [A-Za-z0-9_\\\\:]+|[A-Za-z0-9_.-]+\.php(?::| on line )\d+)/', $output, $matches);
+
+        return implode('; ', array_slice(array_unique($matches[0]), -12));
+    }
+
     public function stop(): void
     {
         if ($this->process->isRunning()) {

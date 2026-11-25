@@ -50,7 +50,7 @@ abstract class AuthenticationHttpTestCase extends IdentityDatabaseTestCase
         $browser = new AuthenticationBrowser($server);
         if ($handshake) {
             $response = $browser->handshake();
-            $this->assertSame(204, $response->status);
+            $this->assertSame(204, $response->status, 'Handshake: '.($response->header('X-Test-Exception-Class') ?? 'no application exception class').'; '.$server->diagnostic());
             $this->assertSame('', $response->body);
             $this->assertNotNull($response->header('X-Request-ID'));
         }

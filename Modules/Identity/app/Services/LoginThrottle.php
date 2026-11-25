@@ -71,7 +71,8 @@ final class LoginThrottle
         try {
             $originalWait = (int) $connection->selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS value', [], false)->value;
             $connection->statement('SET SESSION innodb_lock_wait_timeout = 5');
-            if (random_int(1, 100) <= 2) {
+            $lottery = config('identity-browser.throttle_cleanup_lottery', [2, 100]);
+            if ($lottery[0] > 0 && random_int(1, $lottery[1]) <= $lottery[0]) {
                 $this->cleanup();
             }
 
