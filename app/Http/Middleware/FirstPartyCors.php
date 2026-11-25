@@ -24,7 +24,12 @@ final class FirstPartyCors extends HandleCors
         $origins = array_map(fn (string $origin) => $this->origin($origin, true), $allowed);
 
         abort_if($api === null || in_array(null, $origins, true) || $request->getSchemeAndHttpHost() !== $api, 403);
-        abort_if(! $request->isSecure() && ! app()->environment('local', 'testing'), 403);
+        if (! app()->environment('local', 'testing')) {
+            abort_unless($request->isSecure() && config('session.secure') === true, 403);
+            foreach ($origins as $configuredOrigin) {
+                abort_unless(str_starts_with($configuredOrigin, 'https://'), 403);
+            }
+        }
         abort_if($request->headers->has('Authorization'), 403);
 
         $origin = $request->headers->get('Origin');

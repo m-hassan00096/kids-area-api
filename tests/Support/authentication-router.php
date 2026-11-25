@@ -7,6 +7,7 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Modules\Identity\Services\LoginThrottle;
 
 require __DIR__.'/../../vendor/autoload.php';
 
@@ -105,14 +106,18 @@ if ($inspect) {
 }
 
 $count = 0;
+$credentialReads = 0;
 $armed = true;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$secrets): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$secrets): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
+    $credentialRead = str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'username');
+    if ($credentialRead) {
+        $credentialReads++;
+    }
     if (! $armed) {
         return;
     }
-    $credentialRead = str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'username');
     $managerLock = str_contains($sql, 'from roles') && str_contains($sql, 'for update');
     $marker = str_starts_with($sql, 'update sessions set auth_user_id');
     $passwordWrite = str_starts_with($sql, 'update users set') && str_contains($sql, 'password');
@@ -146,8 +151,19 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     $pause();
 });
 
+if ($mode === 'cleanup') {
+    $originalWait = (int) $connection->selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS value')->value;
+    $connection->statement('SET SESSION innodb_lock_wait_timeout = 5');
+    try {
+        app(LoginThrottle::class)->cleanup();
+    } finally {
+        $connection->statement('SET SESSION innodb_lock_wait_timeout = '.$originalWait);
+    }
+}
+
 $response = $kernel->handle($request);
 $response->headers->set('X-Test-Query-Count', (string) $count);
+$response->headers->set('X-Test-Credential-Reads', (string) $credentialReads);
 if ($inspect) {
     $restored = $connection->logging() && $connection->getEventDispatcher() !== null;
     $queryLog = $connection->getQueryLog();
