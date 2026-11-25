@@ -141,7 +141,7 @@ Use Spatie's native tables, pivot relationships and permission-check semantics. 
 
 ### 5.1 Database-level single-role invariant
 
-**Approved:** enforce the single-role rule at both application and database layers.
+**Approved and explicitly reconfirmed (2026-11-25):** enforce Single Role **in three layers**: a MySQL unique constraint on the installed Spatie assignment pivot, `syncRoles([$role])` under an authorized transaction with User-row serialization, and an active-User/active-Role/one-assignment check on every protected request. Do not substitute a UI-only or pre-insert check for the actual database invariant.
 
 Spatie normally supports multiple role records per model. On the **actual installed schema**, with **Teams disabled** and only the approved staff User role assignment, verify an additional unique index equivalent to:
 
@@ -155,7 +155,7 @@ UNIQUE (model_type, model_id)
 - Audit and clean existing multi-role anomalies **safely before adding** the unique index; do not pick an arbitrary surviving role.
 - Spatie Teams must remain off for V1; enabling Teams later requires a separate schema/invariant redesign.
 - The index enforces **at most one**, **not exactly one**. Authentication middleware rejects a protected request if the User has **zero** roles. Administrative Actions must maintain valid assignments under their approved rules.
-- All User-role changes use a transaction with a row lock/consistent serialization for that User, plus `syncRoles([$role])`, to avoid conflicting concurrent replacements. Do not manually write pivot rows or rely on a check-then-insert pattern alone.
+- All User-role changes use an authorized transaction with a row lock/consistent serialization for that User, plus `syncRoles([$role])`, to avoid conflicting concurrent replacements. Do not manually write pivot rows or rely on a check-then-insert pattern alone. **Test truly overlapping reassignments with distinct MySQL 8 connections**, verifying the final persisted User has no more than one Role; if the target is part of the last viable administrator path, the shared admin guard/invariant applies additionally.
 - If an unexpected multi-role/direct-grant legacy state is detected, **fail closed and remediate**. Do not choose whichever role looks most powerful.
 - Do not use this design to disable unrelated Spatie relationships without an explicit future review.
 
