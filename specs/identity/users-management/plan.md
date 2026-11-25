@@ -1,9 +1,9 @@
 # Feature 03 — Users Management: Technical Plan
 
-> **Status:** DRAFT — technical review requested (2026-11-25).
+> **Status:** APPROVED — accepted 2026-11-25 (user reply “تمام” to technical review). Material feasibility gates remain open; not Ready to Implement.
 > **Approved contract:** [spec.md](spec.md), user explicitly approved the entire spec, Avatar/search/API defaults and 19 acceptance scenarios on 2026-11-25.
 > **Baseline:** verified develop `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merged), docs PR #9 `docs/feature03-users-management-spec` from that commit. Latest actual pre-merge F02 CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files. Historical evidence only; Feature 03 runtime and all new checks Not Run.
-> **Delivery gate:** prepare this plan only. No task list, Composer install, migration, runtime code/test execution, merge or deployment. Technical choices below are proposed for review; do not treat spec approval as technical implementation approval.
+> **Delivery gate:** [tasks.md](tasks.md) drafted for separate review. Technical choices accepted; no feasibility probe, Composer install, migration, runtime code/test execution, merge or deployment authorized.
 
 ## 1. Current source and compatibility verification
 
@@ -153,7 +153,7 @@ Proposed CI updates after authorization: explicitly gd/fileinfo and codec availa
 
 ## 9. Execution order and gates
 
-1. Approve technical plan and resolve explicit material choices/prerequisites in §10; then draft detailed tasks.md with dependencies, acceptance traceability and evidence, separately approve it.
+1. Technical plan approved; review tasks.md. Separately authorize preliminary isolated feasibility probes and resolve §10 material readiness gates before implementation; any required change to plan/spec requires explicit review.
 2. Explicit docs PR #9 merge authorization and actual latest CI; verify merged develop before creating dedicated implementation branch. No code on docs branch. Obtain explicit implementation and package/platform change authorization, inspect actual dependency solver/lock before install.
 3. Foundation integration: dependency, guarded fixtures, forward avatar migration, HTTP/permissions/query normalization/errors and protected session boundary.
 4. Users reads + resources/filter/pagination, Select registry (shared core plus exactly two providers).
@@ -162,7 +162,7 @@ Proposed CI updates after authorization: explicitly gd/fileinfo and codec availa
 
 No implementation step begun. No tasks.md authored by this plan. Re-evaluate live TLS/cookies/proxy, PHP8.2 Argon2id/GD and file upload limits, shared hosting process/memory/disk capacity, backup/restore of DB+files, external logs and Audit control gap before production. No real data, production secret or server changes.
 
-## 10. Technical decisions requested for review / open risks
+## 10. Approved technical choices / open verification risks
 
 | Decision | Recommendation / remaining evidence |
 |---|---|
@@ -176,4 +176,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** review this plan and its proposals/open gates. User approval of spec recorded; do not prepare tasks or implement until explicit plan decision. All 19 acceptance scenarios and new runtime checks remain Not Run.
+**Next:** review tasks.md and separately authorize preliminary feasibility probes. Spec/plan approved; material readiness gates remain open. All 19 acceptance scenarios and new runtime checks remain Not Run.
