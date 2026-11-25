@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\Sanctum;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Support\IdentityPermissions;
@@ -15,7 +16,7 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
         app(SeedIdentityCatalogueAction::class)->execute();
 
         $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), Permission::pluck('name')->all());
-        $this->assertFalse(class_exists(\Laravel\Sanctum\Sanctum::class));
+        $this->assertFalse(class_exists(Sanctum::class));
         $this->assertFalse(Schema::hasTable('audit_logs'));
         $this->assertFalse(Schema::hasTable('identity_access_guard'));
         $this->assertFalse(Schema::hasTable('sessions'));

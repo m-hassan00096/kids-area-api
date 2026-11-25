@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Exceptions\BusinessException;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Modules\Identity\Actions\BootstrapManagerAction;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
@@ -156,7 +158,7 @@ class IdentityBootstrapTest extends IdentityDatabaseTestCase
             });
         } else {
             DB::connection()->beforeExecuting(function (string $query) use (&$armed): void {
-                if ($armed && str_contains(strtolower($query), 'insert into ' . chr(96) . 'model_has_roles' . chr(96))) {
+                if ($armed && str_contains(strtolower($query), 'insert into '.chr(96).'model_has_roles'.chr(96))) {
                     $armed = false;
                     throw new RuntimeException('Synthetic pivot failure');
                 }
@@ -179,6 +181,58 @@ class IdentityBootstrapTest extends IdentityDatabaseTestCase
     public static function failurePoints(): array
     {
         return [['after-user'], ['during-pivot']];
+    }
+
+    public function test_unexpected_command_failure_never_logs_credentials_or_raw_exception(): void
+    {
+        app(SeedIdentityCatalogueAction::class)->execute();
+        $password = 'synthetic-log-redaction-password';
+        $capturedHash = null;
+        $messages = [];
+
+        Log::listen(function (MessageLogged $event) use (&$messages): void {
+            $messages[] = [$event->message, $event->context];
+        });
+
+        User::created(function (User $user) use ($password, &$capturedHash): void {
+            $capturedHash = $user->password;
+            throw new RuntimeException('Synthetic exception containing '.$password.' '.$capturedHash);
+        });
+
+        $tester = new CommandTester($this->prompts($password));
+        $this->assertSame(1, $tester->execute([], ['interactive' => true]));
+        $this->assertStringContainsString(__('identity.bootstrap_failed'), $tester->getDisplay());
+        $this->assertNotNull($capturedHash);
+        $this->assertNotEmpty($messages);
+        $this->assertStringNotContainsString($password, $tester->getDisplay());
+        $this->assertStringNotContainsString($capturedHash, $tester->getDisplay());
+        $log = json_encode($messages, JSON_THROW_ON_ERROR);
+        $this->assertStringContainsString('Identity founder provisioning failed.', $log);
+        $this->assertStringNotContainsString($password, $log);
+        $this->assertStringNotContainsString($capturedHash, $log);
+        $this->assertStringNotContainsString('Synthetic exception containing', $log);
+        $this->assertSame(0, User::count());
+        $this->assertSame(0, DB::table('model_has_roles')->count());
+    }
+
+    public function test_unavailable_sequence_metadata_refuses_before_insert_and_restores_setting(): void
+    {
+        app(SeedIdentityCatalogueAction::class)->execute();
+        $before = $this->state();
+        $expiry = DB::selectOne('SELECT @@SESSION.information_schema_stats_expiry AS value')->value;
+        $armed = true;
+
+        DB::connection()->beforeExecuting(function (string $query) use (&$armed): void {
+            if ($armed && str_contains(strtolower($query), 'from information_schema.tables')) {
+                $armed = false;
+                throw new RuntimeException('Synthetic inaccessible sequence metadata');
+            }
+        });
+
+        $this->assertRefusal('IDENTITY_FOUNDER_ID_UNAVAILABLE');
+        $this->assertSame($before, $this->state());
+        $this->assertSame(1, $this->nextId());
+        $this->assertSame($expiry, DB::selectOne('SELECT @@SESSION.information_schema_stats_expiry AS value')->value);
     }
 
     private function prompts(string $password): IdentityPrompts
