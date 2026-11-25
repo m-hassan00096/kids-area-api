@@ -3,7 +3,7 @@
 > **Status:** APPROVED — accepted 2026-11-25 (user reply “تمام” to technical review). Material feasibility gates remain open; not Ready to Implement.
 > **Approved contract:** [spec.md](spec.md), user explicitly approved the entire spec, Avatar/search/API defaults and 19 acceptance scenarios on 2026-11-25.
 > **Baseline:** verified develop `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merged), docs PR #9 `docs/feature03-users-management-spec` from that commit. Latest actual pre-merge F02 CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files. Historical evidence only; Feature 03 runtime and all new checks Not Run.
-> **Delivery gate:** [tasks.md](tasks.md) explicitly approved on 2026-11-25. Technical choices and task list accepted; authorized temporary isolated target PHP8.2/GD probes recorded in tasks.md §§12–13. T01/T02 complete; T03/T04 follow-up decisions approved, preliminary verification pending. No project dependency installation, migration, feature implementation/acceptance-test execution, merge or deployment authorized.
+> **Delivery gate:** [tasks.md](tasks.md) explicitly approved on 2026-11-25. Technical choices and task list accepted; authorized temporary isolated target PHP8.2/GD probes recorded in tasks.md §§12–13. T01–T04 preliminary feasibility complete (tasks.md §14, run 45652182251); T05 separate approval gate. No project dependency installation, migration, feature implementation/acceptance-test execution, merge or deployment authorized.
 
 ## 1. Current source and compatibility verification
 
@@ -178,4 +178,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** verify approved T03/T04 decisions with isolated follow-up evidence. T05 remains a separate approval gate. All 19 acceptance scenarios Not Run; no feature code.
+**Next:** approved T03/T04 decisions verified in isolated follow-up (tasks.md §14); T05 awaits separate approvals. All 19 acceptance scenarios Not Run; no feature code.
