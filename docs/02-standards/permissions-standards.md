@@ -264,7 +264,7 @@ A **viable administrative User** must meet **all** of the following:
 
 1. All mutations that can change viability use one consistent InnoDB transaction/locking strategy. A mere `COUNT(*)` or `exists()` before editing is **not race-safe**.
 2. Acquire a **shared serialization point for administrative-access mutations**, e.g., a stable designated Identity guard row, and lock any affected User/Role/assignment rows in a consistent order. Choose the concrete mechanism during implementation and validate on MySQL 8.
-3. **Recompute viability inside the lock**, using effective current permissions and active states, then perform the requested mutation and its audit write atomically.
+3. **Recompute viability inside the lock**, using effective current permissions and active states, then perform the requested mutation atomically; **include mandatory audit writes in that transaction once the deferred Audit feature exists**.
 4. Reject the command when it would remove the last viable administrator. Use an expected **`409 Conflict`** and safe Arabic business message for an authorized request conflicting with this state invariant.
 5. Any deadlock retry must restart the **entire rollback-safe Action/transaction**, never continue after partial effects, and must follow Database/Error Handling Standards.
 6. Recheck the invariant when the final operation actually executes; do not rely only on Form Request validation or a prior UI confirmation.
@@ -408,11 +408,13 @@ This shows a **single definition**, not an approved automatic assignment to `man
 - Keep `role.name` technical/stable and `alias_name` editable under authorization. Spatie pivots describe **current** role/permission state, not historical grants; the append-only audit retains before/after evidence.
 - A future privacy purge/anonymization procedure is separate from V1 CRUD and cannot silently erase protected records.
 
-## 13. Complete RBAC Audit and Security Logging
+## 13. Complete RBAC Audit and Security Logging — deferred implementation
 
-**Approved: Complete RBAC Change Audit + Restricted Read Access.**
+**Scheduling exception approved 2026-11-25:** **Audit Logs implementation is postponed beyond Feature 01**. Identity Core & RBAC Foundation will **not** create a shared audit table, audit writer, audit-read API or Audit persistence tests. The future target design is **one shared append-only audit log**, with module-scoped read access; it requires a later approved feature/spec. `identity.audit.view` can exist as a seeded technical permission while it has **no live endpoint**.
 
-**Audit every actual successful change** affecting:
+**Full RBAC Change Audit + Restricted Read Access remains the future policy**, not evidence of present enforcement. **Until the deferred Audit is built, successful sensitive mutations (including founding-user bootstrap) are not covered by a durable central change-audit trail**, cannot be completely reconstructed retroactively, and must **not** be reported as audited. Revisit this release risk before allowing real-world admin workflows. Permission checks, founder safeguards, transaction locks, rate limits and other security constraints are **not** deferred.
+
+**Once the separate Audit feature is implemented, audit every actual successful change** affecting:
 
 - Creation of roles, role display-alias edit, activation/deactivation.
 - Addition/removal/replacement of a role's permission assignments.
@@ -435,7 +437,7 @@ This shows a **single definition**, not an approved automatic assignment to `man
 
 **Rules**
 
-1. Role/permission/user access changes and their required critical audit evidence complete **atomically in one MySQL transaction**. A failed mandatory audit write rolls back the change.
+1. **After Audit delivery**, role/permission/user access changes and required critical audit evidence must complete **atomically in one MySQL transaction**; a failed mandatory audit write rolls back the change. **Before delivery**, the business mutation itself must still be transaction-safe and preserve the last viable administrator invariant, but no central audit evidence is created.
 2. Do not log the entire User model or raw request: exclude passwords, tokens, session/CSRF headers, financial payloads, children's details, guardian contacts and unrelated payroll data.
 3. Preserve the **technical identifiers** in history even if display aliases are later edited.
 4. RBAC audit records are **append-only** in normal app flows; authorized users may read them with a dedicated capability, illustrative `identity.audit.view`, but do not edit/delete the records through the dashboard.
@@ -443,7 +445,7 @@ This shows a **single definition**, not an approved automatic assignment to `man
 6. Ordinary GET, `can()`, successful routine Login and Logout are **not administrative change-audit events**. Suspicious or denied access-management/authentication attempts may create **selective security logs** under Error Handling Standards, but must **not** appear as successful change audits.
 7. Do not use the audit log instead of Spatie's current role pivots, and do not use error logs as change history.
 8. Cache refreshes/logging of permission-cache diagnostics do not represent successful role/permission changes.
-9. Test rollback of a sensitive mutation when mandatory audit persistence fails, plus successful before/after history for each RBAC mutation category.
+9. **In the later Audit feature**, test rollback of a sensitive mutation when mandatory audit persistence fails, plus successful before/after history for each RBAC mutation category; **not a Feature 01 acceptance test**.
 
 **Illustrative mutation transaction outline**
 
@@ -454,7 +456,7 @@ Authorize actor + target + requested capability changes
   -> lock affected account/role rows in consistent order
   -> re-check current authorization and Last Manager invariant
   -> update using approved Spatie role/permission APIs
-  -> persist required RBAC audit event
+  -> once deferred Audit feature is implemented, persist required RBAC audit event
   -> commit
   -> ensure coherent post-commit Spatie cache handling
 ```
@@ -532,9 +534,9 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Seeder re-run | Repeated runs yield no duplicates; existing aliases, role grants and active state unchanged |
 | New deployment permission | Added to catalog but not implicitly granted to current roles |
 | Alias display | `name` remains technical; `alias_name` returned unchanged as `aliasName` and Select label |
-| Audit write | Actual RBAC change logs actor, target and minimal before/after |
-| Audit atomicity | Failed mandatory audit write rolls back the sensitive change |
-| Audit read | Separate permission required; ordinary reads do not generate audit changes |
+| Audit write (deferred feature) | After Audit is implemented, RBAC changes log actor, target and minimal before/after; **not built in Feature 01** |
+| Audit atomicity (deferred feature) | After Audit is implemented, failed mandatory audit write rolls back the sensitive change |
+| Audit read (deferred feature) | Separate permission required when endpoint is implemented; seeded `identity.audit.view` does not expose an endpoint in Feature 01 |
 | Conditional deletion | Seeded roles cannot be deleted/deactivated; only unused custom roles and historically unlinked non-founding Users may be hard-deleted, preserving audit and protected history |
 | API shape | Safe Arabic failures, `camelCase`, status/codes, empty messages where required |
 
@@ -570,8 +572,8 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 - [ ] Permissions and aliases never replace technical names in authorization.
 - [ ] Register and test Spatie middleware guards/aliases for actual installed Laravel version.
 - [ ] Use native Spatie mutation methods, fresh roles and safe post-commit cache coherence.
-- [ ] Audit every actual RBAC change; audit is atomic when required and append-only.
-- [ ] Protect audit viewing with a distinct permission and Resource scope.
+- [ ] **Deferred separate Audit feature:** implement append-only RBAC change evidence, atomic audit writes and tests; **not part of Feature 01**.
+- [ ] **Deferred separate Audit feature:** expose scoped audit reads under `identity.audit.view`; **not part of Feature 01**.
 - [ ] Protect records, reports, exports and strict Select Registry providers.
 - [ ] Preserve Arabic/error/`camelCase` API contract and stored aliases.
 - [ ] Cover all approved security matrix cases and actual MySQL 8 concurrency in PHPUnit.
