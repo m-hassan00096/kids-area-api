@@ -3,11 +3,12 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Modules\Identity\Database\Seeders\IdentitySeeder;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Identity and business seeders will be approved in their owning features.
+        $this->call(IdentitySeeder::class);
     }
 }

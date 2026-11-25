@@ -1,6 +1,6 @@
 # Feature 01 — Identity Core & RBAC Foundation — Technical Plan
 
-> **Status:** APPROVED — user explicitly approved this technical plan on 2026-11-25. Functional [spec.md](spec.md) also approved; [tasks.md](tasks.md) explicitly approved by the user on 2026-11-25. The user expressly requested documentation only: no implementation, dependency installation, migrations, tests or merge.
+> **Status:** APPROVED — user explicitly approved this technical plan on 2026-11-25. Functional [spec.md](spec.md) also approved; [tasks.md](tasks.md) explicitly approved by the user on 2026-11-25. Documentation PR #5 merged; user subsequently authorized scoped Feature 01 implementation and Spatie ^6 installation in isolated development/CI. No implementation merge or production operations authorized.
 > **Owner:** Modules/Identity; Laravel 12, PHP >=8.2, MySQL 8/InnoDB, nwidart ^12; single location, shared hosting.
 > **Sources:** [Identity reference](../../../docs/03-modules/identity.md), [workflow](../../../docs/02-standards/ai-workflow-rules.md), [database](../../../docs/02-standards/database-standards.md), [permissions](../../../docs/02-standards/permissions-standards.md), [code](../../../docs/02-standards/code-standards.md), [localization](../../../docs/02-standards/localization-standards.md). Project-specific Kids Area documents take precedence over reference projects.
 
@@ -8,7 +8,7 @@
 
 Inspected PR #5 on docs/feature01-seeding-handoff, targeting develop (base 48211e74058c9effe496068f9ab2f33c8e3174d0). The repository contains a Laravel foundation, Modules/.gitkeep only, no root database/migrations directory, empty root DatabaseSeeder, and an auth provider referencing missing App\\Models\\User. composer.json requires PHP ^8.2, Laravel ^12.0 and nwidart ^12.0; no Spatie Permission or Sanctum dependency. phpunit.xml and CI already target PHP 8.2 / MySQL 8; CI checks no business modules and must be deliberately updated. No runtime/vendor or actual live database inspected.
 
-- Approved dependency choice (installation separately authorized): spatie/laravel-permission ^6.0, compatible with Laravel 12/PHP 8.2; confirm exact resolved version, security/platform constraints and its migration/config/trait APIs against the installed release before writing dependent code. Include composer.json and composer.lock only after explicit package-install authorization. Do not install Sanctum until Feature 02; no other runtime or development packages.
+- Approved dependency choice (installation separately authorized): spatie/laravel-permission ^6.0, compatible with Laravel 12/PHP 8.2; confirm exact resolved version, security/platform constraints and its migration/config/trait APIs against the installed release before writing dependent code. Package installation authorized for the approved dependency only; commit genuine Composer-resolved composer.json and composer.lock after verification. Do not install Sanctum until Feature 02; no other runtime or development packages.
 - Use the installed module generator/PSR-4 conventions and check composer autoload discovery; verify generated paths and module enabled state. Remove only unused newly generated scaffolding; never create an App\\Models\\User fallback. If module discovery/autoload requires an unapproved extra dependency, report it before installing.
 - Manual feature documents (no Spec Kit CLI or .specify requirement). The plan and task list are approved; all execution tasks remain unchecked. After required approvals/merge of the docs, branch from actual develop for implementation and PR back to develop. Never merge or deploy implicitly.
 
@@ -87,7 +87,7 @@ The shared serialization record is the permanent manager role (name=manager, gua
 - A candidate is an active User, exactly one membership of canonical staff model_type, active role under web, no direct grants and all six actual role-granted keys: identity.users.view/create/update and identity.roles.index/show/update. Reject malformed state (including roleless, wrong guard, multiple roles, direct grants) as unusable. Role names irrelevant; founder existence alone does not count. Query actual grant/pivot set, not can() cached output or aliases. Return 409 via approved future business exception and rollback if zero qualify. Keep ordinary protected reads lightweight and fresh; do not take the global mutex on each normal protected API read. Feature 01 tests the reusable boundary using controlled test-only changes; production CRUD APIs remain future features.
 - No unsafe partial retry on lock timeout/deadlock; abort entire transaction. Later ordinary reversible mutation retry may be bounded only when whole operation is safe to replay, rechecking authorization/state after reacquiring lock. Cache reset after commit; prove rollback does not leave effective permissions inconsistent. No generic distributed lock engine.
 
-## 7. Tests and CI (all planned, not executed)
+## 7. Tests and CI (approved verification requirements)
 
 Use PHPUnit real MySQL 8 for constraints and concurrency; add module-focused tests and explicitly register them in phpunit.xml or root tests/Feature according to the existing suite so CI discovers them. Fixtures synthetic. Isolated database kids_area_test only; no production data. Use migrations/fresh setup in test DB only; tests that span processes must not use a parent uncommitted RefreshDatabase wrapper; fixtures committed, independent connections or PHP processes, deterministic synchronization barriers, bounded timeouts, collect both exit codes/results, confirm final DB state independently. Ensure cleanup/reset of isolated database between scenarios, including AUTO_INCREMENT tests; no destructive ops outside verified test DB. No PHPUnit success claims until execution.
 
@@ -114,11 +114,11 @@ Existing .github/workflows/ci.yml uses mysql:8.0, PHP 8.2, Composer lock validat
 
 ## 8. Gates, risks and explicit non-goals
 
-- Plan choices approved: Spatie ^6 with exact lock resolved at implementation, schema types/collations and lengths, alias labels, NULL normalization, manager-row lock, no automatic bootstrap retry/reset and command interaction, minimal class naming and CI adjustments. Verify compatibility before implementation; report any conflict rather than silently changing decisions. No package install authorized solely by this plan; explicit dependency approval required.
+- Plan choices approved: Spatie ^6 with exact lock resolved at implementation, schema types/collations and lengths, alias labels, NULL normalization, manager-row lock, no automatic bootstrap retry/reset and command interaction, minimal class naming and CI adjustments. Verify compatibility before implementation; report any conflict rather than silently changing decisions. Separate scoped Spatie ^6 installation authorization now recorded; no other dependency change without approval.
 - If existing/dirty schema, collation compatibility, unavailable metadata privilege, module autoload, or concurrency harness cannot be verified, stop affected work and record blocker in tasks.md. Production backups/restore and live provisioning separately authorized.
 - Founder protection rules remain approved; full HTTP enforcement belongs to Features 02–04. No Sanctum install/login/session/CSRF/profile, Users/Roles CRUD, selects, Audit storage/writer/API, other module keys or operational features. Audit absence remains known production control gap; review before live privileged admin rollout.
 - No production operations, no destructive migration or SQL, no Redis/queues/cron/WebSockets, no sentinel table, no automatic sequence reset.
-- Next: obtain separate dependency/implementation and documentation merge authorization before any code; all three feature documents are approved. Then execute and verify reviewed tasks on the dedicated implementation branch. No tasks checked and no tests run here.
+- Next: review implementation PR #6. Verified evidence and task completion status are in tasks.md; no merge or production operations authorized.
 
 ### Technical references
 
@@ -126,3 +126,21 @@ Existing .github/workflows/ci.yml uses mysql:8.0, PHP 8.2, Composer lock validat
 - [MySQL 8 InnoDB AUTO_INCREMENT handling](https://dev.mysql.com/doc/refman/8.0/en/innodb-auto-increment-handling.html)
 - [MySQL 8 metadata freshness](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_information_schema_stats_expiry)
 - [MySQL 8 character sets/collations](https://dev.mysql.com/doc/refman/8.0/en/charset-mysql.html)
+
+## 9. Implementation decisions and operational handoff
+
+- Composer resolved Spatie Permission 6.25.0 with Laravel 12.73.0 and nwidart 12.0.6 in isolated GitHub Actions. Verified code commit 4f786d65 and [passing run 45618239178](https://github.com/m-hassan00096/kids-area-api/actions/runs/45618239178). See tasks.md for all verification evidence. Direct GitHub CI checkout was used in place of workstation-local testing; no live environment was contacted.
+- Laravel's built-in Argon2id driver is used for staff password hashing, prepared before the transaction. Hosting must support Argon2id; confirm before deployment. Bootstrap temporarily suppresses DB query events/logging while writing the prepared hash and restores them afterwards. Unexpected CLI errors report only safe operational context and exception class.
+- Sensitive access mutations use the permanent manager mutex, then ordered role/user and pivot current reads, conservatively locking the small staff catalogue (including inactive mutation targets); ordinary reads do not lock the mutex. Future HTTP features must use the fresh IdentityAccess and IdentityAccessMutation boundary, not rely on stale Spatie cache or client-supplied actor IDs. Founder HTTP policy and global HTTP exception mapping remain later feature work.
+- Actual MySQL concurrency tested with independent synthetic worker processes, observed contested queries and deterministic barriers. No Redis, queue or new lock table. No real TTY or shared-host environment verified; CLI test adapter exercises the command and hidden-fallback behavior with synthetic credentials, while production requires an interactive terminal.
+
+### Operator instructions (future approved installation only; not executed)
+
+Before separately authorized installation, verify correct database/environment, hosting backup and recovery path, MySQL 8/InnoDB, PHP/Argon2id and metadata access. Run only reviewed migrations; then run the approved additive Identity seeder separately. On a new installation with empty users and next ID 1, use the interactive command:
+
+```sh
+php artisan db:seed
+php artisan identity:bootstrap-manager
+````
+
+Never pass a password as an argument or store it in source. Do not rerun after successful provisioning. If prerequisites or metadata are unavailable, correct only via a reviewed process; the bootstrap does not repair grants. If an insertion consumed ID 1 and rolled back, inspect the failure and seek separately authorized recovery (e.g. verified clean pre-bootstrap restore). Do not reset or explicitly reuse IDs, delete users, run migrate:fresh on a live database, or provision production based solely on this PR.

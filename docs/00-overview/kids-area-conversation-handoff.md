@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01 Identity Core & RBAC Foundation **spec.md, plan.md and tasks.md APPROVED by user on 2026-11-25**. Documentation approvals complete; 32 execution tasks / 0 complete, all 14 acceptance scenarios mapped. Separate documentation merge, implementation and package-install authorization pending. Prior approved decisions unchanged. No implementation branch, packages, code, executed Feature 01 tests or deployment. PR #5 remains open and unmerged.
+> Status: Feature 01 approved docs merged in PR #5; implementation in PR #6 (feat/identity-core-rbac-foundation -> develop) completed and verified: 32/32 tasks and 14/14 acceptance scenarios, code commit 4f786d65, CI run 45618239178 Passed (56 focused, 61 full tests, Pint). No implementation merge, production operations or deployment authorized. Check current PR head/CI before merge.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -15,7 +15,7 @@
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
-- **Current documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (docs/feature01-seeding-handoff -> develop); approved spec.md (14 acceptance scenarios), approved plan.md and approved tasks.md (32 ordered tasks, all unchecked). Implementation, package installation and merge still require separate explicit approval. No code.
+- **Documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 merged into develop at b6031c88a0c30560f11803a1c4dba8e0138a7185. Approved spec/plan/tasks preserved.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -77,7 +77,7 @@
 - `Modules/` currently contains only `.gitkeep`; there is no Identity Module code.
 - `app/Models/User.php` was not found, while `config/auth.php` still imports `App\Models\User`; Feature 01 must create/configure canonical `Modules/Identity/app/Models/User.php` and update Laravel auth provider.
 - `bootstrap/app.php` sets API prefix `api/v1` and basic middleware/exception scaffolding.
-- Feature 01 spec.md, plan.md and tasks.md approved. 0/32 execution tasks complete. No implementation branch/code. PR #5 remains open/unmerged. Existing MySQL 8/PHP 8.2 CI is configured, but its foundation-only module assertions must be updated to allow Identity; Feature 01 checks have not run.
+- Feature 01 approved documentation merged; implementation branch feat/identity-core-rbac-foundation from b6031c88. Code and tests in open [PR #6](https://github.com/m-hassan00096/kids-area-api/pull/6), not yet merged. Spatie 6.25.0 resolved; verified code 4f786d65 / passing CI run 45618239178. 32/32 execution tasks verified; 14/14 acceptance scenarios passed. Existing Foundation checks preserved and CI adjusted to allow only Identity.
 
 ## 5. Current topic - Feature 01: Identity Core & RBAC Foundation
 
@@ -99,7 +99,7 @@
 
 **User expressly approved option A on 2026-11-25:** A viable administrative path means at least one **usable active User with exactly one active Role** that effectively grants **all six**: `identity.users.view`, `identity.users.create`, `identity.users.update`, `identity.roles.index`, `identity.roles.show`, `identity.roles.update`. **The Role name is irrelevant**: a custom role qualifies equally to `manager`; not all six => not viable. Neither `identity.users.delete`, `identity.roles.delete` nor `identity.audit.view` is needed for viability. Any relevant committed change must preserve one path, with a consistent MySQL/InnoDB transaction/serialization guard, race checks and a `409` on an otherwise authorized state conflict. User ID 1 remains separately protected even when it does **not** qualify as viable.
 
-The approved policy is now reflected in `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` on the open documentation branch/PR; not yet merged into `develop`.
+The approved policy is now reflected in `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` in documentation PR #5, merged into develop at b6031c88.
 
 ### Approved decision: postpone Audit implementation (option A retained for later)
 
@@ -115,7 +115,7 @@ This approved rule is documented in both `docs/03-modules/identity.md` and `docs
 
 **User expressly approved A on 2026-11-25:** `identity:bootstrap-manager` must validate existing RBAC prerequisites first: active seeded `manager` and `reception` Roles, all ten approved Identity technical permission definitions under `web`, and the complete initial explicit `manager` grant set. If any are absent or inconsistent, **fail with no DB mutations** and tell the operator to execute the approved additive seeders beforehand or follow the separately reviewed repair process for existing customized grants. **Never run a seeder inside bootstrap**; no silent creation, repair, reassignment or permission grant. Bootstrap is one-time and requires all `users` rows absent and creation of actual ID 1.
 
-The decision is documented in `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` on **open, unmerged PR #5**.
+The decision is documented in `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` in PR #5, merged into develop at b6031c88.
 
 ### Approved decision: three-layer Spatie Single Role enforcement
 
@@ -127,18 +127,24 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 
 ### New milestone — all Feature 01 documents approved
 
-**2026-11-25:** User approved [spec.md](../../specs/identity/identity-core-rbac-foundation/spec.md) and [plan.md](../../specs/identity/identity-core-rbac-foundation/plan.md), then explicitly requested drafting/uploading [tasks.md](../../specs/identity/identity-core-rbac-foundation/tasks.md) on the same docs branch without code or PR merge. The user subsequently explicitly approved the task list on 2026-11-25. All three documents are now approved. Task list contains 32 unchecked execution tasks in six phases, dependencies, acceptance/verification evidence and traceability for all 14 scenarios. 0/32 complete; implementation checks Not Run. No new business requirements or permission to implement/install/merge.
+**2026-11-25:** User approved [spec.md](../../specs/identity/identity-core-rbac-foundation/spec.md) and [plan.md](../../specs/identity/identity-core-rbac-foundation/plan.md), then explicitly requested drafting/uploading [tasks.md](../../specs/identity/identity-core-rbac-foundation/tasks.md) on the same docs branch without code or PR merge. The user subsequently explicitly approved the task list on 2026-11-25. All three documents are now approved. The approved task list contains 32 execution tasks in six phases with traceability to all 14 scenarios. User later authorized scoped implementation and Spatie installation, and documentation PR #5 was merged. No new business requirements or implementation-merge authorization.
 
-### Approved technical design; implementation verification still pending
+### Approved technical design and implementation verification
 
 - Spatie ^6 for PHP 8.2/Laravel 12 (exact installed version/schema and module autoload must be verified after separate package authorization); module-owned schema, approved username/email/phone collations and indexes, secure interactive bootstrap, manager-row lock and current reads, additive seeding, last-admin protection, real MySQL concurrency tests and CI adjustments.
 - MySQL may consume ID 1 on failed insertion despite rollback; subsequent bootstrap must fail safely without resetting it. The initial-ID, missing-prerequisite, no-auto-seeder and simultaneous-bootstrap rules remain unchanged.
 - No dedicated guard table; Audit schema/writer/read API and related audit-write tests remain a separate later feature. Known production control gap until Audit is delivered.
-- Existing CI requires empty Modules; adjust during implementation to allow Identity only without weakening Foundation checks. Actual runtime, MySQL metadata/collations, package compatibility and independent-process test harness remain unverified.
+- CI now allows Identity only while preserving Foundation checks. Actual PHP 8.2/MySQL 8 compatibility, metadata/collations and deterministic independent-process race tests verified in CI; no workstation or hosting/live environment tested.
+
+### New milestone — Feature 01 implementation verified, PR #6 open
+
+- Code and automated tests: [PR #6](https://github.com/m-hassan00096/kids-area-api/pull/6), branch feat/identity-core-rbac-foundation, base develop b6031c88. Verified code commit [4f786d65](https://github.com/m-hassan00096/kids-area-api/commit/4f786d65fc8cb9b8e07d2aa1c0396991230e3807).
+- [GitHub Actions run 45618239178](https://github.com/m-hassan00096/kids-area-api/actions/runs/45618239178) passed on PHP 8.2/MySQL 8: focused Identity 56 tests (812 assertions); full PHPUnit 61 tests (830 assertions); Pint 54 files; Composer/platform checks, migrations, module/route and scope checks. All 32 tasks/14 acceptance scenarios verified; see tasks.md. User preferred direct GitHub; verification performed in disposable CI, not workstation.
+- Actual implementation: canonical staff model, native Spatie pivots with single-role unique index, additive initial permissions, transaction-safe existing manager mutex, fresh eligibility/last admin, secure interactive first-manager command and strict generated ID 1, Argon2id, rollback and real independent-process concurrency tests. No Sanctum, HTTP auth/users/roles/selects CRUD, Audit schema or lock table.
+- Limitations: hosting PHP Argon2id/secure terminal/MySQL metadata and backups not verified; consumed ID caveat; Audit control gap. Sensitive mutations conservatively lock small staff catalogue; ordinary reads do not. No production work; no branch-protection changes.
 
 ## 6. Next action and restrictions
 
-1. All three Feature 01 documents are approved; do not reopen settled decisions. No task has been executed.
-2. Next: obtain explicit approval to merge documentation PR #5; separately obtain implementation and Spatie ^6 package-install authorization before execution.
-3. After approved documentation merge, create a dedicated implementation branch from actual develop, execute tasks in dependency order and verify with real MySQL 8/PHPUnit and Pint. All tasks currently unchecked, checks Not Run.
-4. Do not deploy or mutate real data; Audit remains a separately approved later feature and an acknowledged live rollout gap.
+1. Feature 01 implementation complete on PR #6; user review and separate explicit merge authorization required. Verify current PR status, diff and latest CI before merge. No implicit merge or deployment.
+2. Once user separately approves and GitHub confirms PR #6 merged, update milestone and proceed to Feature 02 Authentication only after its own spec/plan/tasks approvals.
+3. No live founder provisioning, real data, production migrations or deployment without separate approval. Audit remains deferred and a live-rollout control gap.
