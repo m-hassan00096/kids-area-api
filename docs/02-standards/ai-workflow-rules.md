@@ -2,7 +2,7 @@
 
 > **Canonical path:** `docs/02-standards/ai-workflow-rules.md`  
 > **Status:** Approved governance; documentation only, not evidence of implemented code, tests or CI.  
-> **Current mode:** Direct GitHub editing (GitHub-first). Codex, Laravel Boost and `AGENTS.md` are optional and deferred.  
+> **Current mode:** Direct GitHub editing (GitHub-first). Codex and Laravel Boost remain inactive. Root `AGENTS.md` is now an approved **read-first guidance file only**, not a tool integration.  
 > **Scope:** All Kids Area backend modules and approved feature changes.
 
 ## 1. Purpose and project context
@@ -18,12 +18,14 @@ This file governs **how development work is planned, changed, verified and revie
 - Discuss and approve module and feature documents before creating or revising their content **directly on GitHub**.
 - Implement each substantive approved feature on its own branch from `develop`. Open a PR targeting `develop` and **do not merge without the user's explicit approval**.
 - Author feature files manually. **Do not require Spec Kit CLI, `.specify/`, a separate project constitution or generated Spec Kit artifacts.**
-- Do not install Codex, Laravel Boost or add `AGENTS.md` as a prerequisite. Their future use is addressed in section 14.
+- Do not install Codex or Laravel Boost as a prerequisite. The explicitly requested root `AGENTS.md` is a short **reading guide for any new assistant**, not a requirement to enable those tools. Their future use is addressed in section 14.
 - **Committing code to GitHub does not execute it.** A written migration, test or workflow definition is not proof that it ran successfully.
 
 ## 3. Sources of truth, reading order and conflict handling
 
-Read sources **relevant to the task**, rather than reloading all project documentation on every edit.
+**Mandatory new-chat / resume entrypoint:** Read the latest [Kids Area Conversation Handoff](../00-overview/kids-area-conversation-handoff.md) from the current GitHub branch (use `develop` after merge), then check the actual branch/PR/commit status. Read task-relevant canonical sources below; the handoff is a progress/navigation summary **only**, not a higher-priority requirements authority. If no GitHub access exists, ask for the link/file/text rather than pretending it was loaded.
+
+For ongoing focused edits, read sources **relevant to the task**, rather than reloading every project document on every edit.
 
 | Source | Responsible for |
 |---|---|
@@ -124,9 +126,11 @@ When a blocking business decision, migration risk, environment restriction or sc
 
 ## 11. Context and documentation lifecycle
 
-The persistent source of progress is **module reference + approved feature `spec.md`/`plan.md`/`tasks.md` + actual Git history and source code**. Do not create redundant `context.md` or `ai-memory.md` for each feature.
+The persistent **authoritative** evidence is **module reference + approved feature `spec.md`/`plan.md`/`tasks.md` + actual Git history and source code**. There is also **one explicitly requested living project-wide handoff** at [`docs/00-overview/kids-area-conversation-handoff.md`](../00-overview/kids-area-conversation-handoff.md) to carry a concise conversation-resume snapshot. Do **not** create redundant `context.md`, `ai-memory.md`, or separate handoff files per feature.
 
-When resuming work, inspect branch status, relevant commits and code, feature documents, needed standards and actual test evidence. Verify checked tasks against implementation; a checkbox alone is not proof.
+At the start of a new chat/session, **read the living handoff first**, then inspect the actual current branch/PRs, relevant commits and code, feature documents, needed standards and test evidence. Verify checked tasks against implementation; a handoff statement or checkbox alone is not proof.
+
+At major approved decisions, feature milestone completions or meaningful blockers, update **that same handoff** with a timestamp, verified Git ref/PR, approved versus proposed decisions, current work/test status, unresolved question and the next action. Follow the normal branch/PR review flow; do not merge handoff edits without explicit authorization. Keep personal/secret material out of Git. The handoff never silently changes canonical requirements.
 
 Update only the document that owns changed information: `tasks.md` for verified progress/blockers; `plan.md` for approved meaningful technical design changes; `spec.md` for approved feature behavior; module references for module-wide rules; overview/architecture/standards for their approved domain decisions. An optional **single** project tracker may summarize major milestones, not duplicate tasks; do not create one by default.
 
@@ -154,8 +158,8 @@ Never invent test counts, successful migrations, CI results, deployments or merg
 
 ## 14. Optional future Codex and Laravel Boost integration
 
-**Inactive for the current GitHub-first development mode.** Do not install Boost, configure Codex or create `AGENTS.md` until the user explicitly decides to enable them.
+**Codex and Laravel Boost remain inactive for the current GitHub-first development mode.** Do not install or configure either until separately requested. The user **has explicitly approved a root `AGENTS.md` solely as a read-first, link-based handoff guide for future AI conversations**; its presence does not enable Codex, Boost or any automatic background work.
 
-If enabled later, the same sources, approval gates, branch/PR rules, task and verification standards, privacy boundaries and protected-operation approvals apply. Laravel Boost may help inspect actual installed versions, routes, schema, logs and official package documentation; it is **not a business-rule authority** or a substitute for test execution. Treat Boost queries/Tinker as live operations subject to environment and sensitive-data restrictions. Review any generated configuration. Keep future `AGENTS.md` short, link-based and nonduplicative.
+If Codex or Boost is separately enabled later, the same sources, approval gates, branch/PR rules, task and verification standards, privacy boundaries and protected-operation approvals apply. Laravel Boost may help inspect actual installed versions, routes, schema, logs and official package documentation; it is **not a business-rule authority** or a substitute for test execution. Treat Boost queries/Tinker as live operations subject to environment and sensitive-data restrictions. Review any generated configuration. Keep `AGENTS.md` short, link-based and nonduplicative.
 
 **Change control:** Amend this workflow and other canonical documents only after the underlying decision is approved; never silently change business rules to make existing code or tools easier to use.
