@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01 approved docs merged in PR #5; implementation in PR #6 (feat/identity-core-rbac-foundation -> develop) completed and verified: 32/32 tasks and 14/14 acceptance scenarios, code commit 4f786d65, CI run 45618239178 Passed (56 focused, 61 full tests, Pint). No implementation merge, production operations or deployment authorized. Check current PR head/CI before merge.
+> Status: Feature 01 implemented, verified and merged in PR #6 into develop at f5d740b6 (2026-11-25); latest pre-merge CI 45618607042 passed. Feature 02 Authentication **spec.md, plan.md and tasks.md APPROVED by user on 2026-11-25**; 42 execution tasks in eight phases, 0 complete, all 18 acceptance scenarios Not Run. PR #7 docs/feature02-authentication-spec remains open/unmerged. No Feature 02 code, dependencies, migrations or tests.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -11,11 +11,13 @@
 
 - Repository: https://github.com/m-hassan00096/kids-area-api
 - Working development branch: `develop`
-- Verified `develop` HEAD: `48211e74058c9effe496068f9ab2f33c8e3174d0` (2026-11-25 verification).
+- Verified `develop` HEAD: `f5d740b6ace3e10ec63a5a69844856b3d241ecd0` (2026-11-25; PR #6 merge).
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
 - **Documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 merged into develop at b6031c88a0c30560f11803a1c4dba8e0138a7185. Approved spec/plan/tasks preserved.
+- **Implementation PR #6:** https://github.com/m-hassan00096/kids-area-api/pull/6 merged into develop at f5d740b6ace3e10ec63a5a69844856b3d241ecd0. Latest pre-merge CI https://github.com/m-hassan00096/kids-area-api/actions/runs/45618607042 passed.
+- **Feature 02 documentation PR #7:** https://github.com/m-hassan00096/kids-area-api/pull/7 (docs/feature02-authentication-spec -> develop); approved spec.md, plan.md and tasks.md (42 unchecked tasks, 18 acceptance scenarios) in specs/identity/authentication; open/unmerged.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -44,8 +46,8 @@
 - **Email and Phone:** both `NULLABLE` and independently **UNIQUE when non-NULL**, including inactive Users; multiple NULLs allowed, neither is a Login identifier. **Email** uniqueness is case-insensitive with entered casing preserved: `Ahmed@Gmail.com` conflicts with `ahmed@gmail.com`. Username remains case-sensitive for Login/uniqueness.
 - **Phone validation APPROVED (2026-11-25):** Optional and **exactly 11 ASCII digits (`0`-`9`) if provided**. **Only** require digit characters and 11-digit length; do **not** require starting `01`, validate network/operator, normalize to `+20`/E.164, or accept international/spaces/hyphens in V1. Store as a string retaining leading zeros. Unique exact non-NULL 11-digit numbers across all retained Users. Empty optional input handling can be specified as null in the upcoming feature spec without a new normalization concept.
 - Password >=8 characters; no required uppercase/symbol complexity.
-- Five failed login attempts in one minute leads to one-minute temporary throttle, safe non-enumerating Arabic error.
-- Sanctum **stateful browser Cookie/Session** authentication and Spatie `web` guard; CSRF; 12-hour inactivity expiry; logout current session only; password change invalidates previous affected sessions.
+- **Approved 2026-11-25:** Five failed Login attempts per exact case-sensitive username within one minute trigger a one-minute temporary throttle. Additional thirty failed attempts per trusted client IP within one minute across identifiers trigger a one-minute temporary IP throttle. Safe non-enumerating Arabic error; exact counting details in draft spec/plan.
+- Sanctum **stateful browser Cookie/Session** authentication and Spatie `web` guard; CSRF; approved MySQL database sessions; 12-hour inactivity expiry; Logout current session only. **Successful password change invalidates all affected User sessions including the initiating current session; re-login required**. No Redis/cron. Me must omit the top-level User id (user correction 2026-11-25); internal users.id and founder protections unchanged.
 - Self password change from Profile requires current password. Another user's password may be reset within the single `PUT /api/v1/users/{user}` under `identity.users.update`, without old password; missing/empty password preserves it. No self-reset bypass through Users PUT.
 - No public Forgot Password or email/SMS reset. Initial founder Manager created via separate secure one-time Artisan command. No extra automated emergency recovery command; owner handles exceptional loss of access manually.
 
@@ -72,14 +74,11 @@
 
 ## 4. Implementation status actually verified on `develop`
 
-- `composer.json` requires Laravel `^12.0`, PHP `^8.2`, `nwidart/laravel-modules` `^12.0`.
-- **Sanctum and Spatie Permission are not yet listed in `composer.json`**. Installing/configuring Spatie is part of Feature 01; Sanctum browser login is part of Feature 02 (the exact install/dependency staging can be reviewed in the plan).
-- `Modules/` currently contains only `.gitkeep`; there is no Identity Module code.
-- `app/Models/User.php` was not found, while `config/auth.php` still imports `App\Models\User`; Feature 01 must create/configure canonical `Modules/Identity/app/Models/User.php` and update Laravel auth provider.
-- `bootstrap/app.php` sets API prefix `api/v1` and basic middleware/exception scaffolding.
-- Feature 01 approved documentation merged; implementation branch feat/identity-core-rbac-foundation from b6031c88. Code and tests in open [PR #6](https://github.com/m-hassan00096/kids-area-api/pull/6), not yet merged. Spatie 6.25.0 resolved; verified code 4f786d65 / passing CI run 45618239178. 32/32 execution tasks verified; 14/14 acceptance scenarios passed. Existing Foundation checks preserved and CI adjusted to allow only Identity.
+- Merged Feature 01 via PR #6 at f5d740b6. Laravel 12.73.0, PHP 8.2, nwidart 12.0.6, Spatie Permission 6.25.0; canonical Identity User/provider, module-owned migrations, native RBAC, ten permissions/additive seeders, secure Argon2id founder bootstrap, single-role constraint and fresh access/last-admin protection are present.
+- Latest pre-merge CI run 45618607042 passed: 56 focused tests / 812 assertions, full 61 tests / 830 assertions, Pint 54 files, MySQL 8 and genuine concurrency, Composer/platform, migrations, module/route/scope checks. All 32 Feature 01 tasks and 14 acceptance cases verified. No live data or deployment.
+- Sanctum, session storage/Auth routes, Users/Roles/Selects CRUD and Audit remain absent. Feature 02 is specification only. Existing Feature 01 absence tests must be deliberately updated for the approved Authentication scope during implementation, not weakened indiscriminately.
 
-## 5. Current topic - Feature 01: Identity Core & RBAC Foundation
+## 5. Completed Feature 01 decisions and verification history
 
 ### Approved Feature 01 scope
 - Generate canonical Identity Module and User model, configure Laravel authentication User provider.
@@ -109,7 +108,7 @@ The approved policy is now reflected in `docs/03-modules/identity.md` and `docs/
 
 **User expressly approved (2026-11-25):** The one-time `identity:bootstrap-manager` Artisan command may create the first active Manager only when **zero rows exist in `users`**. If **any User** already exists (regardless of ID, activation, or Role), it **must abort without writing any User or changing an existing account**. The new founder must be **ID = 1**. If an empty table has a non-1 auto-increment next value, or another bootstrap run races to provision the first row, the command must fail safely without silently resetting IDs or generating another founder. Role/permission seeders remain additive and repeatable; bootstrap **is not** a repeatable account-creation operation. No credentials hard-coded in source. Exact transaction/lock handling and controlled credential input remain Feature 01 plan details.
 
-This approved rule is documented in both `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` on the open documentation PR.
+This approved rule is documented in both `docs/03-modules/identity.md` and `docs/02-standards/permissions-standards.md` in documentation PR #5, merged at b6031c88.
 
 ### Approved decision: bootstrap does not run seeders (option A)
 
@@ -136,15 +135,23 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 - No dedicated guard table; Audit schema/writer/read API and related audit-write tests remain a separate later feature. Known production control gap until Audit is delivered.
 - CI now allows Identity only while preserving Foundation checks. Actual PHP 8.2/MySQL 8 compatibility, metadata/collations and deterministic independent-process race tests verified in CI; no workstation or hosting/live environment tested.
 
-### New milestone — Feature 01 implementation verified, PR #6 open
+### New milestone — Feature 01 implementation verified and merged
 
-- Code and automated tests: [PR #6](https://github.com/m-hassan00096/kids-area-api/pull/6), branch feat/identity-core-rbac-foundation, base develop b6031c88. Verified code commit [4f786d65](https://github.com/m-hassan00096/kids-area-api/commit/4f786d65fc8cb9b8e07d2aa1c0396991230e3807).
+- Merged code and automated tests: [PR #6](https://github.com/m-hassan00096/kids-area-api/pull/6), branch feat/identity-core-rbac-foundation, base develop b6031c88. Verified code commit [4f786d65](https://github.com/m-hassan00096/kids-area-api/commit/4f786d65fc8cb9b8e07d2aa1c0396991230e3807).
 - [GitHub Actions run 45618239178](https://github.com/m-hassan00096/kids-area-api/actions/runs/45618239178) passed on PHP 8.2/MySQL 8: focused Identity 56 tests (812 assertions); full PHPUnit 61 tests (830 assertions); Pint 54 files; Composer/platform checks, migrations, module/route and scope checks. All 32 tasks/14 acceptance scenarios verified; see tasks.md. User preferred direct GitHub; verification performed in disposable CI, not workstation.
 - Actual implementation: canonical staff model, native Spatie pivots with single-role unique index, additive initial permissions, transaction-safe existing manager mutex, fresh eligibility/last admin, secure interactive first-manager command and strict generated ID 1, Argon2id, rollback and real independent-process concurrency tests. No Sanctum, HTTP auth/users/roles/selects CRUD, Audit schema or lock table.
 - Limitations: hosting PHP Argon2id/secure terminal/MySQL metadata and backups not verified; consumed ID caveat; Audit control gap. Sensitive mutations conservatively lock small staff catalogue; ordinary reads do not. No production work; no branch-protection changes.
 
-## 6. Next action and restrictions
+## 6. Current topic — Feature 02 Authentication
 
-1. Feature 01 implementation complete on PR #6; user review and separate explicit merge authorization required. Verify current PR status, diff and latest CI before merge. No implicit merge or deployment.
-2. Once user separately approves and GitHub confirms PR #6 merged, update milestone and proceed to Feature 02 Authentication only after its own spec/plan/tasks approvals.
-3. No live founder provisioning, real data, production migrations or deployment without separate approval. Audit remains deferred and a live-rollout control gap.
+User expressly approved [spec.md](../../specs/identity/authentication/spec.md) and [plan.md](../../specs/identity/authentication/plan.md) on 2026-11-25, then requested [tasks.md](../../specs/identity/authentication/tasks.md) on the same docs branch without code or PR merge. The exact four API routes + native CSRF handshake, minimal Me payload (no top-level User ID, nested Role ID), Login data [], authenticated re-login 409, wrong current password 422, threshold failure 401 then 429, all-session logout after password change and all 18 acceptance cases remain approved.
+
+Approved technical design: Sanctum ^4.5 candidate 4.5.0 (declared compatibility; actual Composer install separately authorized), native encrypted database session handler, users.auth_version and three explicit authoritative session fields; one transient identity_login_throttles table with rolling windows, IP then username locks, bounded cleanup and 5s wait/503 policy. Reuse existing manager mutex for final successful Login and credential mutations only; ordinary reads do not acquire it. Fresh access, successful 2xx idle activity, cookie-only origin/CSRF, central Arabic envelope/request ID/sensitive log redaction. No new business rules.
+
+The user explicitly approved tasks.md on 2026-11-25 without authorizing implementation or PR #7 merge. The approved task list contains 42 ordered unchecked execution tasks in eight phases, dependencies, evidence and full traceability F02-01–F02-18. 0/42 complete; all checks Not Run. Actual resolved dependency/native save semantics, real HTTP CSRF, independent MySQL races, lock contention/performance and hosting compatibility still need verification. No code, migrations, dependencies, tests or merge; no production authorization.
+
+## 7. Next action and restrictions
+
+1. Spec, plan and tasks.md are approved on PR #7. Obtain separate documentation merge authorization; do not reopen settled decisions.
+2. Obtain separate documentation merge, implementation and Sanctum ^4.5 installation authorization. Only after approved docs merge branch from actual develop for implementation; execute tasks in dependency order and record actual evidence. No merge or code yet.
+3. No live founder provisioning, real data, production migrations/deployment. Audit remains deferred and a live-rollout control gap. Verify actual hosting/TLS/Argon2id/MySQL configuration separately.
