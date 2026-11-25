@@ -248,4 +248,50 @@ class AuthenticationBrowserTest extends AuthenticationHttpTestCase
         $digest = app(LoginThrottle::class)->digest(2, '127.0.0.1');
         $this->assertTrue(DB::table('identity_login_throttles')->where('scope', 2)->where('key_digest', $digest)->exists());
     }
+
+    public function test_native_payload_cannot_authorize_missing_wrong_owner_or_stale_generation_marker(): void
+    {
+        $staff = $this->user('Staff.Admin');
+        $other = $this->user('Other.Staff', 'reception');
+        $server = $this->server();
+        $unaffected = $this->browser($server);
+        $this->assertSame(200, $unaffected->login('Other.Staff')->status);
+
+        foreach ([
+            ['auth_user_id' => null, 'auth_version' => null, 'auth_last_activity' => null],
+            ['auth_user_id' => $other->id],
+            ['auth_version' => 2],
+        ] as $marker) {
+            $browser = $this->browser($server);
+            $this->assertSame(200, $browser->login('Staff.Admin')->status);
+            $oldId = $browser->sessionId();
+            DB::table('sessions')->where('id', $oldId)->update($marker);
+            $this->assertSame(401, $browser->me()->status);
+            $this->assertFalse(DB::table('sessions')->where('id', $oldId)->whereNotNull('auth_user_id')->exists());
+            $this->assertSame(0, DB::table('sessions')->where('auth_user_id', $staff->id)->count());
+            $this->assertSame(200, $unaffected->me()->status);
+        }
+    }
+
+    public function test_logout_delete_failure_is_not_reported_as_success(): void
+    {
+        $user = $this->user('Staff.Admin');
+        $server = $this->server();
+        $one = $this->browser($server);
+        $two = $this->browser($server);
+        $this->assertSame(200, $one->login('Staff.Admin')->status);
+        $this->assertSame(200, $two->login('Staff.Admin')->status);
+        $response = $one->request('POST', '/api/v1/auth/logout', options: ['headers' => [
+            'X-Identity-Test-Mode' => 'fault-logout',
+            'X-Identity-Test-Inspect' => '1',
+        ]]);
+        $this->assertSame(500, $response->status);
+        $this->assertSame('1', $response->header('X-Test-Redacted'));
+        $this->assertSame(2, DB::table('sessions')->where('auth_user_id', $user->id)->count());
+        $this->assertSame(200, $one->me()->status);
+        $this->assertSame(200, $two->me()->status);
+        $this->assertSame(200, $one->request('POST', '/api/v1/auth/logout')->status);
+        $this->assertSame(401, $one->me()->status);
+        $this->assertSame(200, $two->me()->status);
+    }
 }

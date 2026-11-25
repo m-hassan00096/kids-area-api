@@ -86,4 +86,55 @@ class AuthenticationThrottleTest extends AuthenticationHttpTestCase
             Carbon::setTestNow();
         }
     }
+
+    public function test_both_blocks_choose_longest_retry_and_never_extend(): void
+    {
+        $throttle = app(LoginThrottle::class);
+        $start = now()->getTimestampMs();
+        $ip = '203.0.113.10';
+        try {
+            Carbon::setTestNow(Carbon::createFromTimestampMs($start, 'UTC'));
+            for ($i = 1; $i <= 5; $i++) {
+                $this->assertSame(401, $throttle->attempt('Exact.Admin', '198.51.100.'.$i, fn () => false)->status);
+            }
+            Carbon::setTestNow(Carbon::createFromTimestampMs($start + 10000, 'UTC'));
+            for ($i = 1; $i <= 30; $i++) {
+                $this->assertSame(401, $throttle->attempt('Unknown.'.$i, $ip, fn () => false)->status);
+            }
+
+            $before = DB::table('identity_login_throttles')->orderBy('scope')->orderBy('key_digest')->get()->toJson();
+            $blocked = $throttle->attempt('Exact.Admin', $ip, fn () => $this->fail('Blocked credentials must not be checked.'));
+            $this->assertSame(429, $blocked->status);
+            $this->assertSame(60, $blocked->retryAfter);
+            $this->assertSame($before, DB::table('identity_login_throttles')->orderBy('scope')->orderBy('key_digest')->get()->toJson());
+
+            Carbon::setTestNow(Carbon::createFromTimestampMs($start + 60000, 'UTC'));
+            $this->assertSame(10, $throttle->attempt('Exact.Admin', $ip, fn () => $this->fail('IP block still applies.'))->retryAfter);
+            Carbon::setTestNow(Carbon::createFromTimestampMs($start + 70000, 'UTC'));
+            $this->assertSame(200, $throttle->attempt('Exact.Admin', $ip, fn () => true)->status);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_malformed_limiter_state_fails_closed_before_credential_lookup(): void
+    {
+        $this->user('Exact.Admin');
+        $server = $this->server();
+        $browser = $this->browser($server);
+        $throttle = app(LoginThrottle::class);
+        DB::table('identity_login_throttles')->insert([
+            'scope' => 1,
+            'key_digest' => $throttle->digest(1, 'Exact.Admin'),
+            'failure_times' => json_encode(['not-a-timestamp']),
+            'blocked_until_ms' => null,
+            'expires_at_ms' => $browser->timeMs + 60000,
+        ]);
+        $response = $browser->login('Exact.Admin', options: ['headers' => ['X-Identity-Test-Inspect' => '1']]);
+        $this->assertSame(500, $response->status);
+        $this->assertSame('0', $response->header('X-Test-Credential-Reads'));
+        $this->assertSame('1', $response->header('X-Test-Redacted'));
+        $this->assertSame(0, DB::table('sessions')->whereNotNull('auth_user_id')->count());
+        $this->assertSame(1, DB::table('identity_login_throttles')->count());
+    }
 }

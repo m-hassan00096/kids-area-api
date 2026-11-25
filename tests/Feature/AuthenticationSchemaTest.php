@@ -64,4 +64,39 @@ class AuthenticationSchemaTest extends IdentityDatabaseTestCase
         $expiryPlan = DB::select('EXPLAIN SELECT scope, key_digest FROM identity_login_throttles WHERE expires_at_ms <= 1 ORDER BY expires_at_ms LIMIT 100');
         $this->assertStringContainsString('identity_login_throttles_expires_at_ms_index', (string) $expiryPlan[0]->possible_keys);
     }
+
+    public function test_mysql_ddl_matches_reviewed_authentication_schema(): void
+    {
+        foreach (['sessions', 'identity_login_throttles'] as $table) {
+            $ddl = (array) DB::selectOne('SHOW CREATE TABLE '.$table);
+            $create = strtolower($ddl['Create Table']);
+            $this->assertStringContainsString('engine=innodb', $create);
+            $this->assertStringNotContainsString('foreign key', $create);
+        }
+
+        $columns = DB::table('information_schema.COLUMNS')->where('TABLE_SCHEMA', DB::getDatabaseName())
+            ->whereIn('TABLE_NAME', ['users', 'sessions', 'identity_login_throttles'])
+            ->get(['TABLE_NAME as table_name', 'COLUMN_NAME as column_name', 'COLUMN_TYPE as column_type', 'COLLATION_NAME as collation_name', 'IS_NULLABLE as is_nullable'])
+            ->keyBy(fn ($column) => $column->table_name.'.'.$column->column_name);
+        $this->assertSame('bigint unsigned', $columns['users.auth_version']->column_type);
+        $this->assertSame('NO', $columns['users.auth_version']->is_nullable);
+        $this->assertSame('varchar(40)', $columns['sessions.id']->column_type);
+        $this->assertSame('ascii_bin', $columns['sessions.id']->collation_name);
+        $this->assertSame('longtext', $columns['sessions.payload']->column_type);
+        $this->assertSame('int unsigned', $columns['sessions.last_activity']->column_type);
+        foreach (['user_id', 'auth_user_id', 'auth_version', 'auth_last_activity'] as $column) {
+            $this->assertSame('bigint unsigned', $columns['sessions.'.$column]->column_type);
+            $this->assertSame('YES', $columns['sessions.'.$column]->is_nullable);
+        }
+        $this->assertSame('tinyint unsigned', $columns['identity_login_throttles.scope']->column_type);
+        $this->assertSame('char(64)', $columns['identity_login_throttles.key_digest']->column_type);
+        $this->assertSame('ascii_bin', $columns['identity_login_throttles.key_digest']->collation_name);
+        $this->assertSame('json', $columns['identity_login_throttles.failure_times']->column_type);
+        $this->assertSame('bigint unsigned', $columns['identity_login_throttles.blocked_until_ms']->column_type);
+        $this->assertSame('bigint unsigned', $columns['identity_login_throttles.expires_at_ms']->column_type);
+
+        $primary = collect(DB::select('SHOW INDEX FROM identity_login_throttles'))->map(fn ($index) => array_change_key_case((array) $index))
+            ->where('key_name', 'PRIMARY')->sortBy('seq_in_index')->pluck('column_name')->values()->all();
+        $this->assertSame(['scope', 'key_digest'], $primary);
+    }
 }
