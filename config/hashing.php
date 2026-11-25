@@ -64,6 +64,6 @@ return [
     |
     */
 
-    'rehash_on_login' => true,
+    'rehash_on_login' => false,
 
 ];

@@ -29,6 +29,32 @@ final class IdentityAccess
             ->exists();
     }
 
+    public function context(int $userId): ?array
+    {
+        $rows = $this->eligibleUsers()->where('u.id', $userId)
+            ->leftJoin('role_has_permissions as rp', 'rp.role_id', '=', 'r.id')
+            ->leftJoin('permissions as p', function ($join): void {
+                $join->on('p.id', '=', 'rp.permission_id')
+                    ->whereRaw('BINARY p.guard_name = ?', ['web']);
+            })
+            ->get(['u.name', 'u.username', 'r.id as role_id', 'r.name as role_name', 'r.alias_name', 'p.name as permission_name']);
+
+        $first = $rows->first();
+        if ($first === null) {
+            return null;
+        }
+
+        $permissions = $rows->pluck('permission_name')->filter(fn ($name) => is_string($name))
+            ->uniqueStrict()->sort(SORT_STRING)->values()->all();
+
+        return [
+            'name' => $first->name,
+            'username' => $first->username,
+            'role' => ['id' => (int) $first->role_id, 'name' => $first->role_name, 'aliasName' => $first->alias_name],
+            'permissions' => $permissions,
+        ];
+    }
+
     private function eligibleUsers(): Builder
     {
         $modelType = (new User)->getMorphClass();
