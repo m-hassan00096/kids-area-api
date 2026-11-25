@@ -1,6 +1,6 @@
 # Feature 01 — Identity Core & RBAC Foundation — Technical Plan
 
-> **Status:** APPROVED — user explicitly approved this technical plan on 2026-11-25. Functional [spec.md](spec.md) also approved; [tasks.md](tasks.md) explicitly approved by the user on 2026-11-25. The user expressly requested documentation only: no implementation, dependency installation, migrations, tests or merge.
+> **Status:** APPROVED — user explicitly approved this technical plan on 2026-11-25. Functional [spec.md](spec.md) also approved; [tasks.md](tasks.md) explicitly approved by the user on 2026-11-25. Documentation PR #5 merged; user subsequently authorized scoped Feature 01 implementation and Spatie ^6 installation in isolated development/CI. No implementation merge or production operations authorized.
 > **Owner:** Modules/Identity; Laravel 12, PHP >=8.2, MySQL 8/InnoDB, nwidart ^12; single location, shared hosting.
 > **Sources:** [Identity reference](../../../docs/03-modules/identity.md), [workflow](../../../docs/02-standards/ai-workflow-rules.md), [database](../../../docs/02-standards/database-standards.md), [permissions](../../../docs/02-standards/permissions-standards.md), [code](../../../docs/02-standards/code-standards.md), [localization](../../../docs/02-standards/localization-standards.md). Project-specific Kids Area documents take precedence over reference projects.
 
@@ -8,7 +8,7 @@
 
 Inspected PR #5 on docs/feature01-seeding-handoff, targeting develop (base 48211e74058c9effe496068f9ab2f33c8e3174d0). The repository contains a Laravel foundation, Modules/.gitkeep only, no root database/migrations directory, empty root DatabaseSeeder, and an auth provider referencing missing App\\Models\\User. composer.json requires PHP ^8.2, Laravel ^12.0 and nwidart ^12.0; no Spatie Permission or Sanctum dependency. phpunit.xml and CI already target PHP 8.2 / MySQL 8; CI checks no business modules and must be deliberately updated. No runtime/vendor or actual live database inspected.
 
-- Approved dependency choice (installation separately authorized): spatie/laravel-permission ^6.0, compatible with Laravel 12/PHP 8.2; confirm exact resolved version, security/platform constraints and its migration/config/trait APIs against the installed release before writing dependent code. Include composer.json and composer.lock only after explicit package-install authorization. Do not install Sanctum until Feature 02; no other runtime or development packages.
+- Approved dependency choice (installation separately authorized): spatie/laravel-permission ^6.0, compatible with Laravel 12/PHP 8.2; confirm exact resolved version, security/platform constraints and its migration/config/trait APIs against the installed release before writing dependent code. Package installation authorized for the approved dependency only; commit genuine Composer-resolved composer.json and composer.lock after verification. Do not install Sanctum until Feature 02; no other runtime or development packages.
 - Use the installed module generator/PSR-4 conventions and check composer autoload discovery; verify generated paths and module enabled state. Remove only unused newly generated scaffolding; never create an App\\Models\\User fallback. If module discovery/autoload requires an unapproved extra dependency, report it before installing.
 - Manual feature documents (no Spec Kit CLI or .specify requirement). The plan and task list are approved; all execution tasks remain unchecked. After required approvals/merge of the docs, branch from actual develop for implementation and PR back to develop. Never merge or deploy implicitly.
 
@@ -114,11 +114,11 @@ Existing .github/workflows/ci.yml uses mysql:8.0, PHP 8.2, Composer lock validat
 
 ## 8. Gates, risks and explicit non-goals
 
-- Plan choices approved: Spatie ^6 with exact lock resolved at implementation, schema types/collations and lengths, alias labels, NULL normalization, manager-row lock, no automatic bootstrap retry/reset and command interaction, minimal class naming and CI adjustments. Verify compatibility before implementation; report any conflict rather than silently changing decisions. No package install authorized solely by this plan; explicit dependency approval required.
+- Plan choices approved: Spatie ^6 with exact lock resolved at implementation, schema types/collations and lengths, alias labels, NULL normalization, manager-row lock, no automatic bootstrap retry/reset and command interaction, minimal class naming and CI adjustments. Verify compatibility before implementation; report any conflict rather than silently changing decisions. Separate scoped Spatie ^6 installation authorization now recorded; no other dependency change without approval.
 - If existing/dirty schema, collation compatibility, unavailable metadata privilege, module autoload, or concurrency harness cannot be verified, stop affected work and record blocker in tasks.md. Production backups/restore and live provisioning separately authorized.
 - Founder protection rules remain approved; full HTTP enforcement belongs to Features 02–04. No Sanctum install/login/session/CSRF/profile, Users/Roles CRUD, selects, Audit storage/writer/API, other module keys or operational features. Audit absence remains known production control gap; review before live privileged admin rollout.
 - No production operations, no destructive migration or SQL, no Redis/queues/cron/WebSockets, no sentinel table, no automatic sequence reset.
-- Next: obtain separate dependency/implementation and documentation merge authorization before any code; all three feature documents are approved. Then execute and verify reviewed tasks on the dedicated implementation branch. No tasks checked and no tests run here.
+- Next: execute reviewed tasks on the dedicated branch; all three feature documents approved and documentation PR merged. Verify runtime and package compatibility first. Then execute and verify reviewed tasks on the dedicated implementation branch. No tasks checked and no tests run here.
 
 ### Technical references
 

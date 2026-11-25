@@ -1,10 +1,10 @@
 # Feature 01 — Identity Core & RBAC Foundation
 
-> **Status:** APPROVED — user approved the functional specification on 2026-11-25; **implementation is not yet authorized**.
+> **Status:** APPROVED — user approved the functional specification on 2026-11-25; **scoped implementation subsequently authorized on 2026-11-25**.
 > **Owner:** `Modules/Identity`
 > **Target stack:** Laravel 12, MySQL 8/InnoDB, `nwidart/laravel-modules` ^12, Spatie Laravel Permission (`web` guard, Teams disabled).
 > **Sources:** `docs/03-modules/identity.md`, `docs/02-standards/permissions-standards.md`, `docs/02-standards/database-standards.md`, `docs/02-standards/api-standards.md`, `docs/02-standards/ai-workflow-rules.md`.
-> **Delivery gate:** `spec.md`, `plan.md` and `tasks.md` approved on 2026-11-25. Separate documentation merge, implementation and dependency-install authorization remain pending. No merge, package installation, implementation or deployment is authorized by these document approvals.
+> **Delivery gate:** `spec.md`, `plan.md` and `tasks.md` approved on 2026-11-25. Documentation PR #5 merged; user subsequently authorized scoped implementation and approved dependency installation. No implementation merge or production deployment authorized.
 
 ## 1. Goal
 
