@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01 merged; Feature 02 docs merged via PR #7 at develop 4f9c4505. PR #8 feat/identity-authentication: R01–R08 verified at 3c06a957, successful CI 45637508996, 102 full tests / 2295 assertions, Pint 101; 42 tasks / 18 scenarios reconciled. Await explicit merge approval; no deployment.
+> Status: Feature 01/02 merged; develop 8174097e (PR #8), F02 CI 45638942711 passed. Feature 03 spec/plan/tasks approved; PR #9 open. T03/T04 preliminary feasibility passed on PHP8.2.36/GD2.3.3, isolated [run 45652182251](https://github.com/m-hassan00096/kids-area-api/actions/runs/45652182251), actual logs reviewed. 4/49 tasks complete; all 19 acceptance scenarios Not Run. T05 awaits separate docs merge and implementation approvals. No feature code, Composer, DB, migration, hosting or merge.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -11,13 +11,13 @@
 
 - Repository: https://github.com/m-hassan00096/kids-area-api
 - Working development branch: `develop`
-- Verified `develop` HEAD: `4f9c45050add3b4083e9eb41325b5320cf7d4c26` (PR #7 merge).
+- Verified `develop` HEAD: `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merge).
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
 - **Documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 merged into develop at b6031c88a0c30560f11803a1c4dba8e0138a7185. Approved spec/plan/tasks preserved.
 - **Implementation PR #6:** https://github.com/m-hassan00096/kids-area-api/pull/6 merged into develop at f5d740b6ace3e10ec63a5a69844856b3d241ecd0. Latest pre-merge CI https://github.com/m-hassan00096/kids-area-api/actions/runs/45618607042 passed.
-- **Feature 02 documentation PR #7:** merged at 4f9c4505; approved spec/plan/tasks. **Implementation PR #8:** https://github.com/m-hassan00096/kids-area-api/pull/8; branch `feat/identity-authentication`; verified code `20f4edec6706b670fdba036c34ca03bea9404cfb`; passing code CI https://github.com/m-hassan00096/kids-area-api/actions/runs/45633137808. Not merged.
+- **Feature 02 documentation PR #7:** merged at 4f9c4505. **Implementation PR #8:** https://github.com/m-hassan00096/kids-area-api/pull/8 merged at 8174097e93069cc20ae258ba236cf7acd8d37fb3; final pre-merge CI https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711 passed (102 full tests / 2289 assertions, 101 Pint files); merged tree verified against reviewed head ee115492. No deployment.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -76,7 +76,7 @@
 
 - Merged Feature 01 via PR #6 at f5d740b6. Laravel 12.73.0, PHP 8.2, nwidart 12.0.6, Spatie Permission 6.25.0; canonical Identity User/provider, module-owned migrations, native RBAC, ten permissions/additive seeders, secure Argon2id founder bootstrap, single-role constraint and fresh access/last-admin protection are present.
 - Latest pre-merge CI run 45618607042 passed: 56 focused tests / 812 assertions, full 61 tests / 830 assertions, Pint 54 files, MySQL 8 and genuine concurrency, Composer/platform, migrations, module/route/scope checks. All 32 Feature 01 tasks and 14 acceptance cases verified. No live data or deployment.
-- On develop (still 4f9c4505), only Feature 02 documentation is merged; Auth code, Sanctum and new session/throttle schema are on PR #8 only. Users/Roles/Selects CRUD and Audit remain absent. Feature 01 absence assertions were deliberately superseded only for approved F02 changes on the implementation branch.
+- Feature 02 implemented and merged via PR #8: native Sanctum 4.5.0 stateful sessions, CSRF, exact Login, Logout, Me, self password change, auth_version, session and throttle tables, shared HTTP/error/request ID infrastructure, R01–R08 verification. Users CRUD, role CRUD, Select Registry and Audit remain absent. No production verification.
 
 ## 5. Completed Feature 01 decisions and verification history
 
@@ -142,7 +142,7 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 - Actual implementation: canonical staff model, native Spatie pivots with single-role unique index, additive initial permissions, transaction-safe existing manager mutex, fresh eligibility/last admin, secure interactive first-manager command and strict generated ID 1, Argon2id, rollback and real independent-process concurrency tests. No Sanctum, HTTP auth/users/roles/selects CRUD, Audit schema or lock table.
 - Limitations: hosting PHP Argon2id/secure terminal/MySQL metadata and backups not verified; consumed ID caveat; Audit control gap. Sensitive mutations conservatively lock small staff catalogue; ordinary reads do not. No production work; no branch-protection changes.
 
-## 6. Current topic — Feature 02 Authentication
+## 6. Completed Feature 02 Authentication — historical verification
 
 User expressly approved [spec.md](../../specs/identity/authentication/spec.md) and [plan.md](../../specs/identity/authentication/plan.md) on 2026-11-25, then requested [tasks.md](../../specs/identity/authentication/tasks.md) on the same docs branch without code or PR merge. The exact four API routes + native CSRF handshake, minimal Me payload (no top-level User ID, nested Role ID), Login data [], authenticated re-login 409, wrong current password 422, threshold failure 401 then 429, all-session logout after password change and all 18 acceptance cases remain approved.
 
@@ -170,7 +170,18 @@ Final reviewed code [`3c06a957`](https://github.com/m-hassan00096/kids-area-api/
 - Latest full-suite sample (Argon2id 64 MiB, time 4, one thread): three same-IP successful Logins 571.18 ms total (~5.25/s), individual 220.62–570.93 ms; first throttle SQL including wait 0.75–339.39 ms; manager lock-to-response upper bound 17.52–18.22 ms, not exact hold time. Two three-failure waves 430.01/431.62 ms. Me 7, successful Login 28, failed Login 13 SQL statements. Isolated sample only, not production capacity or SLA.
 - Canonical tasks/acceptance ledger reconciled: 42/42 and 18/18. R09 monitoring only. This evidence update is documentation-only; verify its actual latest PR CI and unchanged code diff before any separately authorized merge. Keep the PR unmerged; do not deploy or start Feature 03.
 
-## 7. Next action and restrictions
+## 7. Current topic — Feature 03 Users Management
 
-1. PR #8 remains open/unmerged. Final code review and CI passed at 3c06a957. Verify actual latest documentation-only CI and unchanged code, then merge to develop ONLY if separately explicitly authorized. No deployment.
-2. Do not begin Feature 03 implementation or production work; Audit remains deferred.
+- User explicitly approved all six discussion decisions: disable revokes all sessions; re-enable never restores; eligible active role change keeps sessions with fresh permissions next request; all self-deletes forbidden; unchanged inactive role retained on ordinary edits but no new assignment/activation; minimal central selects roles/userFilterRoles; previous API contracts with latest corrections.
+- Latest correction: staff table avatar PNG/JPG/WebP max 2 MB; avatar/name/username/phone/account state/role; search name/username/phone; filter role/state with approved Spatie Laravel Query Builder; return userId; no createdAt. Staff login accounts remain distinct from Employees/HR.
+- [Feature 03 spec](../../specs/identity/users-management/spec.md) APPROVED by user on 2026-11-25 including optional Avatar/private avatarUrl/removeAvatar/2 MiB, search/default sort, detail email, multipart override and all API contracts. [Technical plan](../../specs/identity/users-management/plan.md) APPROVED, same PR #9. Verified actual baseline Laravel 12.73.0/PHP8.2/Sanctum 4.5.0/Spatie Permission 6.25.0; Query Builder 6.4.4 upstream requires PHP ^8.2/Illuminate12 and package-tools ^1.11; v7.3.9 requires ^8.4. Actual Composer resolution/install not run. Proposed one nullable unique avatar_key, private local disk/native GD static canonical 512px encoding with 2048px decode bounds, scoped HTTP/session/manager transaction, literal filters, 200 options/provider overflow409. User approved native parsed single-file boundary and stronger format-aware validation; target-runtime feasibility passed, full Laravel and host checks remain.
+- [tasks.md](../../specs/identity/users-management/tasks.md) APPROVED, 49 tasks/19 acceptance scenarios. User explicitly authorized temporary isolated target PHP8.2/GD/fileinfo probe; actual runs 45650686580 and 45650969241 success, PHP8.2.36/GD2.3.3/Fileinfo/Argon2id/2M/4M/128M verified, 2/49 T01/T02 complete; T03/T04 executed but blocked. Native raw duplicate scalar and mixed parts collapse, prior oversized file error can be masked, php://input empty; JPEG+PNG+second EOI passes limited native/terminal check. Selected positive image cases and exact 2MiB verified, no production validation. See tasks.md §13 full evidence and proposed parsed-file vs strict-wire contract decision, stronger format-aware JPEG proof. Temporary branch probe/identity-avatar-php82 retired at 393c2c0c with baseline tree restored; no probe code in PR #9/develop. All 19 acceptance scenarios Not Run; no project dependencies, feature code, DB, migration, merge or deployment.
+
+## 8. Next action and restrictions
+
+1. Feature 03 approved; T01–T04 preliminary feasibility complete (tasks.md §14). T05 awaits separate docs merge and implementation approvals; no feature code.
+2. After material feasibility resolution, obtain explicit docs merge, implementation, dependency/platform and protected-operation authorizations. No code before gates; no deployment.
+
+### Follow-up decisions and evidence (2026-11-25)
+
+Earlier §13 blockers are historical: user approved one effective native parsed scalar avatar, visible arrays/extra fields and invalid retained files rejected; raw collapsed duplicates outside guarantee. Strong JPEG segment/scan actual EOI and PNG/WebP structure before GD decode. Prior JPEG+PNG+second EOI rejected before decode; baseline/progressive JPEG and valid PNG/WebP accepted. T03/T04 preliminary feasibility passed on PHP8.2.36/GD2.3.3, isolated [run 45652182251](https://github.com/m-hassan00096/kids-area-api/actions/runs/45652182251), actual logs reviewed. 4/49 tasks complete; all 19 acceptance scenarios Not Run. T05 awaits separate docs merge and implementation approvals. No feature code, Composer, DB, migration, hosting or merge. Probe branch `probe/identity-avatar-followup` retired at `00189a5c81194764269dd78fc03baf661ac5bd9e`, zero file diff vs develop. PHP peak 10489856 bytes, RSS 129872 KiB, Argon2id hash+verify 166.75ms; full app T45 and actual Laravel override/CSRF tests still due. No production validator or universal polyglot claim.
