@@ -44,6 +44,8 @@ override=send("multipart_override",[("_method",None,b"PUT"),a])
 at=send("multipart_exact_2MiB",[f("avatar","exact.png",exact)])
 plus=send("multipart_2MiB_plus_one",[f("avatar","over.png",over)])
 empty=send("multipart_empty",[f("avatar","empty.png",b"")])
+masked=send("multipart_overlimit_then_valid_same_name",[f("avatar","over.png",over),b])
+print("PROBE "+json.dumps({"case":"native_observability","duplicate_raw_input_bytes":dup["raw_input_bytes"],"oversize_then_valid_visible":masked["files"].get("avatar"),"note":"native parser default settings; no Laravel boot"}),flush=True)
 big=send("multipart_post_over_4MiB",[f("avatar","exact.png",exact),f("other","exact.png",exact)])
 print("PROBE "+json.dumps({"case":"multipart_summary","duplicate_observable":isinstance(dup["files"].get("avatar",{}).get("name"),list),"strict_duplicate_rejection_proven":False,"exact_error":at["files"]["avatar"]["error"],"over_error":plus["files"]["avatar"]["error"],"post_over_empty":not big["files"] and not big["post_keys"],"laravel_override_tested":False}),flush=True)
 assert at["files"]["avatar"]["error"]==0 and at["files"]["avatar"]["size"]==2097152

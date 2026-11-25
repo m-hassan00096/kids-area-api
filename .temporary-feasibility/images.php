@@ -107,6 +107,7 @@ $cases=[
  'empty'=>['','png'],'spoof_jpeg_as_png'=>[$jpeg,'png'],'truncated_png'=>[substr($png,0,-8),'png'],
  'corrupt_png_crc'=>[substr($png,0,29)."\x00".substr($png,30),'png'],
  'png_plus_jpeg'=>[$png.$jpeg,'png'],'jpeg_plus_png'=>[$jpeg.$png,'jpg'],
+ 'jpeg_plus_png_and_second_eoi'=>[$jpeg.$png."\xff\xd9",'jpg'],
  'webp_plus_png'=>[$webp.$png,'webp'],'truncated_webp'=>[substr($webp,0,-5),'webp'],
  'truncated_jpeg'=>[substr($jpeg,0,-2),'jpg'],
  'svg'=>['<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>','png'],
@@ -123,7 +124,21 @@ $vp8x="VP8X".pack('V',10)."\x02\x00\x00\x00\x07\x00\x00\x07\x00\x00";
 $anim="ANIM".pack('V',6).str_repeat("\x00",6);
 $riff='WEBP'.$vp8x.$anim.substr($webp,12);$animated='RIFF'.pack('V',strlen($riff)).$riff;
 inspect('webp_animation_marker',$animated,'webp');
-unset($cases,$wideBytes,$maxBytes,$overBytes,$png,$jpeg,$webp,$animated,$riff);
+// Construct two-frame animation container fixtures from native encoded image data.
+$chunks=[];$p=8;while($p+12<=strlen($png)){$len=unpack('N',substr($png,$p,4))[1];$tag=substr($png,$p+4,4);$chunks[]=[$tag,substr($png,$p+8,$len)];$p+=12+$len;}
+$frameData='';$headPng=substr($png,0,8);
+foreach($chunks as [$tag,$data]){if($tag==='IDAT')$frameData.=$data;elseif($tag!=='IEND')$headPng.=pngchunk($tag,$data);}
+$frameControl=static fn(int $seq):string=>pack('NNNNNnnCC',$seq,8,8,0,0,1,10,0,0);
+$apng=$headPng.pngchunk('acTL',pack('NN',2,0)).pngchunk('fcTL',$frameControl(0)).pngchunk('IDAT',$frameData).pngchunk('fcTL',$frameControl(1)).pngchunk('fdAT',pack('N',2).$frameData).pngchunk('IEND','');
+inspect('apng_two_frames',$apng,'png');
+$frameChunks='';$p=12;while($p+8<=strlen($webp)){$tag=substr($webp,$p,4);$len=unpack('V',substr($webp,$p+4,4))[1];$take=8+$len+($len%2);if(in_array($tag,['ALPH','VP8 ','VP8L'],true))$frameChunks.=substr($webp,$p,$take);$p+=$take;}
+$riffChunk=static fn(string $tag,string $payload):string=>$tag.pack('V',strlen($payload)).$payload.(strlen($payload)%2?"\x00":'');
+$vp8x=$riffChunk('VP8X',"\x12\x00\x00\x00\x07\x00\x00\x07\x00\x00");
+$frameHeader="\x00\x00\x00\x00\x00\x00\x07\x00\x00\x07\x00\x00\x64\x00\x00\x02";
+$frame=$riffChunk('ANMF',$frameHeader.$frameChunks);
+$riff='WEBP'.$vp8x.$riffChunk('ANIM',str_repeat("\x00",6)).$frame.$frame;
+inspect('webp_two_frames','RIFF'.pack('V',strlen($riff)).$riff,'webp');
+unset($cases,$wideBytes,$maxBytes,$overBytes,$png,$jpeg,$webp,$animated,$riff,$apng,$chunks,$frameData,$frameChunks,$frame);
 $start=hrtime(true);$hash=password_hash('synthetic-only-probe',PASSWORD_ARGON2ID,['memory_cost'=>65536,'time_cost'=>4,'threads'=>1]);need(is_string($hash)&&password_verify('synthetic-only-probe',$hash),'argon verify');
 $usage=getrusage();out('memory_and_hash',['hash_verify'=>true,'argon_memory_kib'=>65536,'argon_time_cost'=>4,'threads'=>1,'hash_plus_verify_ms'=>round((hrtime(true)-$start)/1e6,2),'php_peak_bytes'=>memory_get_peak_usage(true),'max_rss_kib_linux'=>$usage['ru_maxrss']??null,'note'=>'sequential image then Argon2id; process peak RSS includes native allocations; not host capacity']);
 out('images_end',['status'=>'observations_complete','not_production_validator'=>true]);
