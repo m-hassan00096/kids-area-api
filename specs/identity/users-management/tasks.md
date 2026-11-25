@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 10/49 complete (T01–T10); T11–T13 implementation in progress; 19/19 acceptance scenarios Not Run. No production or merge.
+> **Progress:** 13/49 complete (T01–T13); T11–T13 verified (§19.1). T14–T20 implementation and verification in progress; 19/19 full acceptance scenarios Not Run. No production or merge.
 
 ## 1. Gates and evidence rules
 
@@ -34,11 +34,11 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 - [x] **T10 — Protected routes and CORS.** Dependencies: T07. Exact approved CRUD/avatar GET/selects GET; first-party gate users root/subpaths/selects, canonical origin, DELETE CORS, existing Sanctum/StaffSession, native CSRF/preflight and approved multipart override only; no bearer. Evidence: Route cache/inventory and real HTTP 401/403/419/preflight F03-07.
 
-- [ ] **T11 — Capability before target lookup.** Dependencies: T10. Fresh staff context, independent view/create/update/delete, numeric target explicitly resolved after permission, no Manager bypass or implicit binding enumeration, original Request attributes. Evidence: Permission-before-query and missing target tests F03-07/08.
+- [x] **T11 — Capability before target lookup.** Dependencies: T10. Fresh staff context, independent view/create/update/delete, numeric target explicitly resolved after permission, no Manager bypass or implicit binding enumeration, original Request attributes. Evidence: Permission-before-query and missing target tests F03-07/08.
 
-- [ ] **T12 — Scoped normalization and API errors.** Dependencies: T10,T11. Preserve exact username/email/phone/password/confirmation; trim name/search only, strict types and multipart normalization, approved empty/null semantics, safe 413/422/409/503 and known package errors, Arabic Request ID; F02 behavior unchanged. Evidence: Real type/whitespace/query/error tests F03-05/06/07/18.
+- [x] **T12 — Scoped normalization and API errors.** Dependencies: T10,T11. Preserve exact username/email/phone/password/confirmation; trim name/search only, strict types and multipart normalization, approved empty/null semantics, safe 413/422/409/503 and known package errors, Arabic Request ID; F02 behavior unchanged. Evidence: Real type/whitespace/query/error tests F03-05/06/07/18.
 
-- [ ] **T13 — Sensitive diagnostics.** Dependencies: T10,T12. Scope suppression to Users writes and PII/key/session queries, preserve native private handler and unrelated DB events; no raw password/SQL bindings/multipart/path/secret logging. Evidence: Sentinel/log/event restoration evidence F03-18.
+- [x] **T13 — Sensitive diagnostics.** Dependencies: T10,T12. Scope suppression to Users writes and PII/key/session queries, preserve native private handler and unrelated DB events; no raw password/SQL bindings/multipart/path/secret logging. Evidence: Sentinel/log/event restoration evidence F03-18.
 
 ## 4. Phase C — Users reads and Select Registry (T14–T20)
 
@@ -292,3 +292,11 @@ T10 protected transport verified on exact source commit `ba0021cc80651de95dec137
 ## 19. T11–T13 implementation slice (verification pending)
 
 User authorized only T11–T13 before T14. Exact per-route capability on fresh staff_context, explicit bounded primary target projection on original request after permission (no implicit binding or name bypass). Users/Selects skip generic trim/null middleware; Users boundary normalizes present fields and approved multipart coercions, preserving credentials and contact exactness, omitted keys and typed false; required-field/uniqueness/role/state/image validation belongs to T14/T22/T26 and later Actions. Known pinned Spatie invalid filter/sort/include/fields map safe 422; unknown package errors safe 500. Query/event suppression limited to dedicated Users PII/credential/key routes and existing Auth/Profile; native session handling unchanged. Tasks remain unchecked until actual tests, Pint and CI; no business CRUD, no T14, no production or merge.
+
+### 19.1 T11–T13 actual verification
+
+T11–T13 verified at `b7dc09cd953530c82ea84403ba8b0fb46013039e`, [CI 45706014872 attempt 2](https://github.com/m-hassan00096/kids-area-api/actions/runs/45706014872/attempts/2), job 139535687860, actual logs reviewed. All seven boundary tests passed: independent capability and target lookup counts, exact JSON and multipart normalization/fingerprints, invalid types and safe package exceptions/413, sensitive bindings/fault redaction and scope restoration. Auth 41/1449, Identity 56/827, full 116/2898, Pint 112 files, route cache/module/scope all passed. Attempt 1 (job 139528058619) passed the seven new tests but failed the existing competing-password-changes concurrency test: second MySQL connection not observed on the contested query (115 pass/1 fail). Exact same commit rerun passed all; intermittent observation failure cause not established, retain evidence and watch recurrence; no test weakened or Auth code changed to mask it. T11–T13 complete; no full feature acceptance scenario run.
+
+## 20. T14–T20 read and Select Registry slice (verification pending)
+
+Approved scope: query-only index FormRequest, typed allowlist and overflow-safe pagination; pinned Query Builder callbacks with literal escaped grouped LIKE and exact role/status predicates; one primary read-only REPEATABLE READ transaction for count/page/role projection (one-shot setting, no global/session isolation change); skip out-of-range pages before OFFSET. Explicit list/detail Resource, email only detail, no per-row role or file read. Core registry with Identity-registered `roles` and `userFilterRoles`; authorize all before provider SQL; cap200/probe201, overflow409 SELECT_OPTIONS_LIMIT. All other operations remain fail closed; T21+ deferred. T14–T20 unchecked until actual CI evidence; full scale EXPLAIN/performance T45.

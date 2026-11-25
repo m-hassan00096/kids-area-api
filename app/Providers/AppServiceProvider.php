@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Select\SelectRegistry;
 use App\Session\PrivateDatabaseSessionHandler;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
@@ -13,7 +14,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(SelectRegistry::class);
     }
 
     /**

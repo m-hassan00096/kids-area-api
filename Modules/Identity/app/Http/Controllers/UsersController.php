@@ -2,19 +2,33 @@
 
 namespace Modules\Identity\Http\Controllers;
 
+use App\Support\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Modules\Identity\Http\Requests\UsersIndexRequest;
+use Modules\Identity\Models\User;
+use Modules\Identity\Queries\UsersQuery;
+
 final class UsersController
 {
-    // T10 establishes the protected transport; later tasks implement the
-    // authorized operations. Until then, every operation fails closed.
-    public function index(): never
+    public function index(UsersIndexRequest $request, UsersQuery $query): JsonResponse
     {
-        abort(503);
+        return ApiResponse::success($query->index($request->criteria(), request()));
     }
 
-    public function show(): never
+    public function show(Request $request, UsersQuery $query): JsonResponse
     {
-        abort(503);
+        $target = $request->attributes->get('users_target');
+        abort_unless($target instanceof User, 404);
+        if ($request->query->count() !== 0 || $request->getContent() !== '' || $request->files->count() !== 0) {
+            abort(422);
+        }
+
+        return ApiResponse::success($query->detail($target, $request));
     }
+
+    // Mutations and binary avatar delivery remain fail closed until their
+    // respective reviewed implementation tasks.
 
     public function store(): never
     {
