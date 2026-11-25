@@ -208,7 +208,7 @@ Example 429:
 
 Examples define safe wording; use localization keys, not hardcoded duplicated messages. Failure has no data field; success has exactly one data field and no errors. No top-level code. Any stable business code, if needed, remains inside errors.code per existing standard.
 
-## 7. Approved acceptance scenarios (verified in isolated CI; see tasks.md)
+## 7. Approved acceptance scenarios (requirements unchanged; review verification in tasks.md)
 
 | ID | Scenario / required observable result |
 |---|---|
@@ -241,6 +241,6 @@ The plan must map every acceptance scenario to executable test cases, including 
 - Define safe API error mapping, X-Request-ID generation and sanitization; reuse existing localization and BusinessException. Review any conflict with canonical standards instead of silently changing them.
 - Define precise implementation files, migrations, dependency order, test harness and CI verification in plan.md/tasks.md. No live environment/real staff data or deployment configuration; actual hosting domains, proxy/TLS, Argon2id and database compatibility still need verification separately.
 
-**Implementation verification:** PR #8, code commit `20f4edec6706b670fdba036c34ca03bea9404cfb`, [passing CI](https://github.com/m-hassan00096/kids-area-api/actions/runs/45633137808). See [tasks.md](tasks.md) for scenario evidence and operational limitations. Implementation remains unmerged; production not authorized.
+**Implementation verification:** PR #8, review remediation implemented; final full verification pending. [review code `aeb08d80`](https://github.com/m-hassan00096/kids-area-api/commit/aeb08d800e24664c651d9c7968784f0d13f7bc90) — [CI 45636784138](https://github.com/m-hassan00096/kids-area-api/actions/runs/45636784138). Run 45636784138 in_progress at time of documentation update. Do not mark this code revision's full suite or Pint as passed until the completed actual logs are checked. See [tasks.md](tasks.md) for R01–R08 review coverage and operational limitations. No business contract changes.
 
-**Next:** review PR #8 and its latest CI before requesting separate explicit merge authorization.
+**Next:** confirm successful latest code and documentation CI and review PR #8 before separate explicit merge authorization. No deployment.
