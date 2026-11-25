@@ -300,3 +300,7 @@ T11–T13 verified at `b7dc09cd953530c82ea84403ba8b0fb46013039e`, [CI 4570601487
 ## 20. T14–T20 read and Select Registry slice (verification pending)
 
 Approved scope: query-only index FormRequest, typed allowlist and overflow-safe pagination; pinned Query Builder callbacks with literal escaped grouped LIKE and exact role/status predicates; one primary read-only REPEATABLE READ transaction for count/page/role projection (one-shot setting, no global/session isolation change); skip out-of-range pages before OFFSET. Explicit list/detail Resource, email only detail, no per-row role or file read. Core registry with Identity-registered `roles` and `userFilterRoles`; authorize all before provider SQL; cap200/probe201, overflow409 SELECT_OPTIONS_LIMIT. All other operations remain fail closed; T21+ deferred. T14–T20 unchecked until actual CI evidence; full scale EXPLAIN/performance T45.
+
+### Phase C first regression attempt
+
+CI 45713619929 failed 1 of 124 tests; literal search returned HTTP 500, remaining 123 passed. Candidate correction: skip impossible ASCII username/phone matches for non-ASCII search literals, retaining name search and original literal semantics. Add synthetic search case and exception-class context to assertion. Root cause not confirmed until fresh CI; T14–T20 remain unchecked.

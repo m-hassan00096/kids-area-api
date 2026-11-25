@@ -72,10 +72,14 @@ final class UsersQuery
                     return;
                 }
                 $pattern = '%'.strtr($search, ['!' => '!!', '%' => '!%', '_' => '!_']).'%';
-                $query->where(static function (Builder $group) use ($pattern): void {
-                    $group->whereRaw("users.name LIKE ? ESCAPE '!'", [$pattern])
-                        ->orWhereRaw("users.username LIKE ? ESCAPE '!'", [$pattern])
-                        ->orWhereRaw("users.phone LIKE ? ESCAPE '!'", [$pattern]);
+                $query->where(static function (Builder $group) use ($pattern, $search): void {
+                    $group->whereRaw("users.name LIKE ? ESCAPE '!'", [$pattern]);
+                    // Username and phone are ASCII-only columns. A non-ASCII
+                    // literal cannot match either; avoid incompatible coercion.
+                    if (preg_match('/\A[\x00-\x7F]*\z/', $search) === 1) {
+                        $group->orWhereRaw("users.username LIKE ? ESCAPE '!'", [$pattern])
+                            ->orWhereRaw("users.phone LIKE ? ESCAPE '!'", [$pattern]);
+                    }
                 });
             }),
             AllowedFilter::callback('roleId', static function (Builder $query) use ($criteria): void {

@@ -72,7 +72,9 @@ class UsersManagementReadTest extends AuthenticationHttpTestCase
             ['0', [$e->id, $d->id, $c->id, $b->id, $a->id]], ['أحمد', [$c->id, $b->id, $a->id]],
             ['hiddenneedle', []], ['  Case.User  ', [$a->id]], ["%' OR 1=1 --", []],
         ] as [$search, $ids]) {
-            $this->assertSame($ids, $this->ids($this->index($browser, ['filter' => ['search' => $search]])), $search);
+            $response = $this->index($browser, ['filter' => ['search' => $search]]);
+            $this->assertSame(200, $response->status, $search.'; '.($response->header('X-Test-Exception-Class') ?? 'no exception class'));
+            $this->assertSame($ids, $this->ids($response), $search);
         }
         foreach (['0', 'false'] as $state) {
             $response = $this->index($browser, ['filter' => ['search' => 'أحمد', 'roleId' => $role->id, 'isActive' => $state]]);
