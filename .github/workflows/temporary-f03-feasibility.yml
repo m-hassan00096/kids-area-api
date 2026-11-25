@@ -1,0 +1,39 @@
+name: Temporary F03 PHP82 avatar feasibility (never merge)
+on:
+  push:
+    branches:
+      - probe/identity-avatar-php82
+  pull_request:
+    branches:
+      - probe/identity-avatar-base
+permissions:
+  contents: read
+jobs:
+  feasibility:
+    name: Isolated PHP 8.2 GD and native multipart
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: gd, fileinfo
+          coverage: none
+      - name: Verify platform and synthetic image feasibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          php -d memory_limit=128M -d upload_max_filesize=2M -d post_max_size=4M .temporary-feasibility/images.php "$tmp"
+          mkdir "$tmp/http"
+          cp .temporary-feasibility/receiver.php "$tmp/http/index.php"
+          php -d memory_limit=128M -d upload_max_filesize=2M -d post_max_size=4M -d display_errors=0 -d log_errors=1 -S 127.0.0.1:18742 -t "$tmp/http" >"$tmp/http.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; rm -rf "$tmp"' EXIT
+          python3 .temporary-feasibility/multipart.py "$tmp"
+          echo 'PROBE_END temporary synthetic files and server cleaned by EXIT trap; no application boot, Composer, DB or deployment'
