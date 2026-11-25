@@ -35,7 +35,7 @@ final class UsersIndexRequest extends FormRequest
                 $invalid('request');
             }
 
-            $filter = $data['filter'] ?? [];
+            $filter = array_key_exists('filter', $data) ? $data['filter'] : [];
             if (! is_array($filter) || array_diff(array_keys($filter), ['search', 'roleId', 'isActive']) !== []) {
                 $invalid('filter');
 

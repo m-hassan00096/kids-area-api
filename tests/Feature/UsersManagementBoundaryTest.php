@@ -35,7 +35,8 @@ class UsersManagementBoundaryTest extends AuthenticationHttpTestCase
                 $options = in_array($method, ['GET', 'HEAD'], true) ? [] : ['raw' => '{}'];
                 $response = $browser->request($method, $uri, options: $options);
                 $allowed = $capability === $required;
-                $this->assertSame($allowed ? 503 : 403, $response->status, $capability.' '.$method.' '.$uri);
+                $status = ! $allowed ? 403 : ($method === 'GET' && ! str_ends_with($uri, '/avatar') ? 200 : 503);
+                $this->assertSame($status, $response->status, $capability.' '.$method.' '.$uri);
                 $this->assertSame($allowed && $lookup ? '1' : '0', $response->header('X-Test-Users-Target-Reads'));
             }
             $missing = $browser->request('GET', '/api/v1/users/99999');
@@ -49,7 +50,7 @@ class UsersManagementBoundaryTest extends AuthenticationHttpTestCase
 
         $manager = $this->browser($server);
         $this->assertSame(200, $manager->login($target->username)->status);
-        $this->assertSame(503, $manager->request('GET', $path)->status);
+        $this->assertSame(200, $manager->request('GET', $path)->status);
         Role::findByName('manager', 'web')->revokePermissionTo('identity.users.view');
         $denied = $manager->request('GET', $path);
         $this->assertSame(403, $denied->status);

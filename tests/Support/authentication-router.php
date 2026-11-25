@@ -156,17 +156,44 @@ $count = 0;
 $credentialReads = 0;
 $usersTargetReads = 0;
 $usersSensitiveReads = 0;
+$usersCountReads = 0;
+$usersPageReads = 0;
+$usersRoleReads = 0;
+$usersPageLimit = '';
+$usersSnapshot = 0;
+$selectReads = 0;
+$selectLimit = '';
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$secrets, &$timing, &$restoreStatements, $request): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, $request): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
-    if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key')) {
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
         $usersTargetReads++;
     }
     if (str_contains($sql, 'synthetic_users_sensitive_probe')) {
         $usersSensitiveReads++;
+    }
+    if (str_starts_with($sql, 'select count(*) as aggregate from users')) {
+        $usersCountReads++;
+    }
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'order by users.id desc')) {
+        $usersPageReads++;
+        if (preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+            $usersPageLimit = $match[1];
+        }
+    }
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from model_has_roles as mr') && str_contains($sql, 'mr.model_id in')) {
+        $usersRoleReads++;
+    }
+    if ($sql === 'set transaction isolation level repeatable read, read only') {
+        $usersSnapshot++;
+    }
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from roles') && str_contains($sql, 'alias_name')
+        && str_contains($sql, 'order by id asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+        $selectReads++;
+        $selectLimit = $match[1];
     }
     $ns = hrtime(true);
     if (str_starts_with($sql, 'set session innodb_lock_wait_timeout =')) {
@@ -255,6 +282,13 @@ if ($diagnostic !== null) {
 $response->headers->set('X-Test-Credential-Reads', (string) $credentialReads);
 $response->headers->set('X-Test-Users-Target-Reads', (string) $usersTargetReads);
 $response->headers->set('X-Test-Users-Sensitive-Reads', (string) $usersSensitiveReads);
+$response->headers->set('X-Test-Users-Count-Reads', (string) $usersCountReads);
+$response->headers->set('X-Test-Users-Page-Reads', (string) $usersPageReads);
+$response->headers->set('X-Test-Users-Role-Reads', (string) $usersRoleReads);
+$response->headers->set('X-Test-Users-Page-Limit', $usersPageLimit);
+$response->headers->set('X-Test-Users-Snapshot', (string) $usersSnapshot);
+$response->headers->set('X-Test-Select-Reads', (string) $selectReads);
+$response->headers->set('X-Test-Select-Limit', $selectLimit);
 if ($request->attributes->has('_test_users_fingerprint')) {
     $response->headers->set('X-Test-Users-Fingerprint', $request->attributes->get('_test_users_fingerprint'));
 }
