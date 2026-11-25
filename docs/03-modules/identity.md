@@ -146,7 +146,7 @@ Role technical `name` and `guard_name` are stable after creation; `alias_name` i
 
 The `PUT` edits the permitted display data, activation for custom roles, and the role's selected Permission identifiers. All five role operations are **independently permissioned**. `identity.roles.update` allows the actor to grant/revoke **any predefined catalogue Permission** to a Role, **even when the actor does not personally hold that permission**, subject to the protected baseline roles and last viable administrator rule. There is no separate `identity.roles.manage` shortcut and no unrestricted Manager bypass.
 
-These are intentionally powerful administrative permissions. Grant them explicitly and audit mutations; no synthetic authority is derived just from the role's name.
+These are intentionally powerful administrative permissions. Grant them explicitly, apply all security invariants, and record the required audit **after the deferred Audit feature is implemented**; no synthetic authority is derived just from the role's name. Before then, sensitive changes lack the central audit trail and must not be described as fully audited.
 
 ### 5.3 Permission definition, ownership and seeding
 
@@ -177,17 +177,21 @@ Reception does **not** automatically get refunds, sensitive pricing/financial co
 
 Every committed User/Role/permission update or deletion must leave **at least one active, usable User with exactly one active Role and all six effective essential access-management capabilities**: `identity.users.view`, `identity.users.create`, `identity.users.update`, `identity.roles.index`, `identity.roles.show` and `identity.roles.update`. **The Role name is irrelevant**: an eligible active custom-Role User counts just as an eligible `manager` User does. No additional `identity.users.delete`, `identity.roles.delete` or `identity.audit.view` permission is necessary to satisfy this viability invariant. Protect the last viable path even if User ID 1 remains physically present: a present but unauthorized or otherwise unusable founding account is **not** proof of viable administration.
 
-Apply one consistent MySQL InnoDB serialization/locking strategy across mutations affecting this invariant, re-evaluate inside the transaction, persist the change and mandatory audit atomically, and return `409 Conflict` when an authorized attempted change would strand administration. Test genuine races between managers, assignments, role status changes, grant revocations and deletions. No hidden admin bypass.
+Apply one consistent MySQL InnoDB serialization/locking strategy across mutations affecting this invariant, re-evaluate inside the transaction and persist the authorized change atomically. **After the deferred Audit feature is implemented**, its mandatory change event must be written within that transaction. Return `409 Conflict` when an authorized attempted change would strand administration. Test genuine races between managers, assignments, role status changes, grant revocations and deletions. No hidden admin bypass.
 
-## 7. Identity Audit and security logging
+## 7. Identity Audit and security logging — deferred implementation
 
-Identity must synchronously record **actual successful sensitive changes** with actor/system identity, target identity, action type, UTC instant, request ID when available, and minimal safe before/after fields:
+**Scope scheduling decision (2026-11-25):** The user explicitly **postponed Audit Logs out of Feature 01**. No `audit_logs` table, Audit writer, actor/target snapshot history schema, audit API, or Audit persistence/failure tests are part of Identity Core & RBAC Foundation. **Option A — one shared, append-only audit log for the entire system — remains the preferred approved future design direction**, with module-scoped read permissions. The exact later implementation and release timing must be reviewed before exposing sensitive management changes in a real environment.
+
+**Security limitation until Audit is implemented:** User/Role/permission/bootstrap mutations performed before the Audit capability exists **will not have a reliable central change-audit trail**, and later installation cannot reconstruct their exact historical before/after evidence. Do not claim they were audited or silently reconstruct events. Current authentication checks, account protections, transaction/locking invariants and normal application/error security controls remain mandatory. Reassess this known gap before production administration is enabled.
+
+When the separate Audit feature is implemented, Identity must synchronously record **actual successful sensitive changes** with actor/system identity, target identity, action type, UTC instant, request ID when available, and minimal safe before/after fields:
 
 - User creation, meaningful metadata edits, password changed (event only; **never the password/hash**), role assignment, activation/deactivation and permitted hard deletion.
 - Role creation, alias/activation changes, permission grants/revocations and deletion.
 - First Manager bootstrap and approved privileged setup/grant changes.
 
-Required audit writes are **atomic** with their sensitive Identity mutation; failure of the audit write rolls the mutation back. Audit records are append-only to ordinary application roles and remain interpretable after a permitted User/Role deletion. Access to audit listing/details requires `identity.audit.view`. There are no interactive audit create/edit/delete APIs.
+**Once implemented**, required audit writes are **atomic** with their sensitive Identity mutation; failure of the audit write rolls the mutation back. Audit records are append-only to ordinary application roles and remain interpretable after a permitted User/Role deletion. Access to audit listing/details requires `identity.audit.view`. Until then, this capability is a reserved technical permission with **no active Audit read API**. There are no interactive audit create/edit/delete APIs.
 
 Successful routine Login and Logout events **do not populate the administrative change audit**. Select suspicious authentication attempts and throttling patterns for privacy-safe **Security Logs** under Error Handling Standards, rather than creating fake access-change audit records.
 
@@ -238,7 +242,7 @@ The feature specs and plans must concretize migrations, payloads, role/permissio
 12. Seeded `manager`/`reception` cannot be deleted/deactivated; unassigned custom Role can be deleted; assigned custom Role (including inactive User assignment) cannot; deleting Role does not delete Permission definitions.
 13. Role `index/store/show/update/delete` permissions work independently; `identity.roles.update` may grant predefined permissions not held by the actor, but cannot remove last viable management.
 14. Concurrent grant revocation, role assignment/deletion, activation changes and the Spatie permission cache do not leave a committed forbidden grant usable in a subsequent request.
-15. Any required Identity audit failure rolls back the protected mutation; deleted actors/targets retain interpretable history.
+15. **When the deferred Audit feature is delivered**, mandatory audit-write failures roll back protected mutations and deleted actors/targets retain interpretable history; these tests are **out of scope for Feature 01**.
 16. Select Registry request with unknown key returns `422`, forbidden key returns all-or-nothing `403`, and legitimate role/permission options use stored aliases.
 17. API envelopes, Arabic safe errors, `camelCase` serialization, target authorization and DB foreign-key restrictions are consistent with shared standards.
 
@@ -248,16 +252,16 @@ The feature specs and plans must concretize migrations, payloads, role/permissio
 
 Feature ordering is based on dependencies; each substantial feature gets separately approved `spec.md`, `plan.md` and `tasks.md` before code, in its own later branch/PR to `develop`:
 
-1. **Identity Core & RBAC Foundation:** canonical User model, Spatie migrations and constraints, active role/account foundation, approved permission catalogue and seeders, first-manager bootstrap, foundational audit-write capability and last-admin guard.
+1. **Identity Core & RBAC Foundation:** canonical User model, Spatie migrations and constraints, active role/account foundation, approved permission catalogue and seeders, secure first-manager bootstrap, and last-admin guard. **No Audit table, writer or read API in this feature.**
 2. **Authentication:** Sanctum Cookie/CSRF, login, logout, me, Profile password, throttling, idle/session invalidation and tests.
-3. **Users Management:** list/show/create/PUT/delete, special ID-1 protection, conditional deletion, status/role changes, audit and deletion dependencies.
+3. **Users Management:** list/show/create/PUT/delete, special ID-1 protection, conditional deletion and status/role changes. Its dependency rules must remain safe even while the Audit feature is deferred; any later audit integration is separately planned.
 4. **Roles & Permissions Management:** five independent Role capabilities, role CRUD, assignments, fixed catalogue editing, active flags, cache and last-admin race safety.
-5. **Identity Audit Reading:** permission-scoped audit list/detail, filtering, historical display and API tests. Audit **writing** must exist from the first sensitive mutation, not wait for this read feature.
+5. **Shared Audit Logs (deferred; separate approval):** shared append-only Audit storage and writer for authorized modules, Identity-scoped audit read API, filtering, historical display, atomicity and API/DB tests. **Not a prerequisite for drafting Feature 01**, but an explicitly acknowledged production-control gap until implemented; its exact implementation order before live administration must be revisited.
 
 **Do not implement speculative employee, child, payment or attendance permissions within Identity.** Their owning specs approve exact technical names and initial Reception mappings. A later frontend implementation must finalize actual deployment origins/cookie settings without changing the approved Sanctum Cookie approach.
 
 ## 12. Open technical details (not new business decisions)
 
-The subsequent feature specs/plans must verify the installed Laravel 12, Sanctum and Spatie package versions and define the exact table/index shape, unique username implementation, session-store strategy, all-session invalidation, CSRF `419` JSON mapping, Role technical-name validation, complete initial role-to-permission mapping, last-viable-essential permission set/lock strategy, direct-FK and historical audit preservation approach, per-module protected deletion dependencies, and exact request/Resource/filter contracts.
+The subsequent feature specs/plans must verify the installed Laravel 12, Sanctum and Spatie package versions and define the exact table/index shape, unique username implementation, session-store strategy, all-session invalidation, CSRF `419` JSON mapping, Role technical-name validation, complete initial role-to-permission mapping, last-viable-essential permission set/lock strategy, and exact request/Resource/filter contracts. **The shared Audit table, writer, historical actor/target preservation model and its tests belong to the deferred Audit feature**, while future per-module protected deletion dependencies still need explicit planning.
 
 These implementation details must respect the approved rules above. If an actual conflict with a previously approved standard emerges, update the owning source explicitly through the documented review process; do not silently loosen invariants.
