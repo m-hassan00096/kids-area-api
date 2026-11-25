@@ -22,7 +22,7 @@ class IdentitySchemaTest extends IdentityDatabaseTestCase
         $this->assertSame(Permission::class, config('permission.models.permission'));
         $this->assertFalse(config('permission.teams'));
         $this->assertSame('web', config('auth.defaults.guard'));
-        $this->assertSame(['id', 'name', 'username', 'email', 'phone', 'password', 'is_active', 'created_at', 'updated_at'], Schema::getColumnListing('users'));
+        $this->assertSame(['id', 'name', 'username', 'email', 'phone', 'password', 'is_active', 'created_at', 'updated_at', 'auth_version'], Schema::getColumnListing('users'));
 
         $columns = DB::table('information_schema.columns')
             ->whereRaw('table_schema = DATABASE()')

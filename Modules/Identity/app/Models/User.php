@@ -22,11 +22,11 @@ class User extends Authenticatable
         'is_active',
     ];
 
-    protected $hidden = ['password'];
+    protected $hidden = ['password', 'auth_version'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return ['is_active' => 'boolean', 'auth_version' => 'integer'];
     }
 
     protected static function newFactory(): UserFactory

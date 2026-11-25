@@ -4,7 +4,7 @@
 > **Owner:** Modules/Identity.
 > **Baseline:** Feature 01 implementation merged via PR #6 into develop at `f5d740b6ace3e10ec63a5a69844856b3d241ecd0`. The latest verified pre-merge CI (45618607042) passed 61 tests / 830 assertions and Pint. These results are Feature 01/Foundation evidence, not Authentication implementation evidence.
 > **Sources:** [Identity Module Reference](../../../docs/03-modules/identity.md), [API Standards](../../../docs/02-standards/api-standards.md), [Error Handling Standards](../../../docs/02-standards/error-handling-standards.md), [Permissions Standards](../../../docs/02-standards/permissions-standards.md), [Localization Standards](../../../docs/02-standards/localization-standards.md), [Backend Architecture](../../../docs/01-architecture/backend-architecture.md), [AI Workflow Rules](../../../docs/02-standards/ai-workflow-rules.md), [Feature 01](../identity-core-rbac-foundation/spec.md).
-> **Delivery gate:** The complete spec, including its endpoint/payload contracts, error/threshold boundary choices and 18 acceptance scenarios, is approved. [plan.md](plan.md) was explicitly approved by the user on 2026-11-25; [tasks.md](tasks.md) was explicitly approved by the user on 2026-11-25. All three Feature 02 documents are approved. No Sanctum installation, code, migration, executed Authentication tests, PR merge or production operation is authorized.
+> **Delivery gate:** The complete spec, including its endpoint/payload contracts, error/threshold boundary choices and 18 acceptance scenarios, is approved. [plan.md](plan.md) was explicitly approved by the user on 2026-11-25; [tasks.md](tasks.md) was explicitly approved by the user on 2026-11-25. All three Feature 02 documents are approved. The user subsequently authorized scoped implementation, approved Sanctum dependency and isolated tests. Documentation PR #7 merged at 4f9c4505; no implementation merge or production operation authorized.
 
 ## 1. Purpose and scope
 
@@ -208,7 +208,7 @@ Example 429:
 
 Examples define safe wording; use localization keys, not hardcoded duplicated messages. Failure has no data field; success has exactly one data field and no errors. No top-level code. Any stable business code, if needed, remains inside errors.code per existing standard.
 
-## 7. Approved acceptance scenarios (all Not Run)
+## 7. Approved acceptance scenarios (requirements unchanged; review verification in tasks.md)
 
 | ID | Scenario / required observable result |
 |---|---|
@@ -241,4 +241,6 @@ The plan must map every acceptance scenario to executable test cases, including 
 - Define safe API error mapping, X-Request-ID generation and sanitization; reuse existing localization and BusinessException. Review any conflict with canonical standards instead of silently changing them.
 - Define precise implementation files, migrations, dependency order, test harness and CI verification in plan.md/tasks.md. No live environment/real staff data or deployment configuration; actual hosting domains, proxy/TLS, Argon2id and database compatibility still need verification separately.
 
-**Next:** obtain separate documentation merge, dependency-install and implementation approvals; [tasks.md](tasks.md) is approved. Authentication code has not started.
+**Implementation verification:** PR #8. Final reviewed code [`3c06a957`](https://github.com/m-hassan00096/kids-area-api/commit/3c06a957af4badb4a64b0f97f167694c42a5a582) — [CI 45637508996](https://github.com/m-hassan00096/kids-area-api/actions/runs/45637508996) completed successfully (job 139286833198): Authentication 41 tests / 1455 assertions; Identity 56 / 820; full PHPUnit 102 / 2295; Pint 101 files; Composer validate/locked install/platform/security audit (no advisories), MySQL 8 migrations, module/route/cache and out-of-scope checks all passed. All nine review regression tests passed in both focused and full runs. Code and corresponding assertions were re-reviewed; no new merge-blocking defect was identified within R01–R08. No production verification or merge authorization. See [tasks.md](tasks.md) §13 for R01–R08 evidence and limitations; requirements and approved acceptance scenarios unchanged.
+
+**Next:** This evidence update is documentation-only; verify its actual latest PR CI and unchanged code diff before any separately authorized merge. Keep the PR unmerged; do not deploy or start Feature 03.

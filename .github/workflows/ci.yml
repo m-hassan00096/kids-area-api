@@ -57,12 +57,15 @@ jobs:
         run: |
           composer install --no-interaction --prefer-dist --no-progress
           composer check-platform-reqs
+          composer audit --locked
       - name: Set up isolated application key
         run: |
           cp .env.example .env
           php artisan key:generate --force
       - name: Run reviewed migrations in disposable test database
         run: php artisan migrate --force
+      - name: Run focused Authentication tests
+        run: php artisan test --filter=Authentication
       - name: Run focused Identity tests
         run: php artisan test --filter=Identity
       - name: Run PHPUnit
@@ -73,6 +76,9 @@ jobs:
         run: |
           php artisan module:list --no-ansi
           php artisan route:list --no-ansi
+          php artisan route:cache
+          php artisan route:list --no-ansi
+          php artisan route:clear
           test -d Modules
           test -d Modules/Identity
           test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' -print -quit)"
