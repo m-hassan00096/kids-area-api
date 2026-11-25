@@ -46,7 +46,7 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
         $missing->delete();
         $user = User::factory()->create(['is_active' => false]);
         $user->syncRoles([$manager]);
-        $beforeUser = $user->getRawOriginal();
+        $beforeUser = hash('sha256', json_encode($user->fresh()->getRawOriginal(), JSON_THROW_ON_ERROR));
         $beforeGrants = $manager->permissions()->orderBy('permissions.id')->pluck('permissions.id')->all();
 
         app(PermissionRegistrar::class)->getPermissions();
@@ -58,7 +58,7 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
         $this->assertSame('Custom alias', $manager->fresh()->alias_name);
         $this->assertSame('Custom permission', $permission->fresh()->alias_name);
         $this->assertSame($beforeGrants, $manager->permissions()->orderBy('permissions.id')->pluck('permissions.id')->all());
-        $this->assertSame($beforeUser, $user->fresh()->getRawOriginal());
+        $this->assertSame($beforeUser, hash('sha256', json_encode($user->fresh()->getRawOriginal(), JSON_THROW_ON_ERROR)));
         $this->assertFalse($user->fresh()->hasPermissionTo('identity.users.view'));
         $this->assertFalse($user->fresh()->hasPermissionTo('identity.audit.view'));
     }
