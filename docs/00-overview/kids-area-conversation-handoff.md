@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) remains DISCUSSION. Phased permissions, role-agnostic six-permission last viable admin, deferred Audit, strict Bootstrap, case-sensitive case-preserved Username, nullable unique Email/Phone, case-insensitive Email uniqueness, and **phone check of exactly 11 local digits only (no +20 normalization)** are APPROVED. No Feature 01 spec/plan/tasks, implementation branch, code, or tests have been created.
+> Status: Identity Module Reference approved and merged; Feature 01 (Identity Core & RBAC Foundation) remains DISCUSSION. Phased permissions, role-agnostic six-permission last viable admin, deferred Audit, strict Bootstrap, Username/Email/Phone validation and **three-layer Single Role protection (database UNIQUE, transactionally locked syncRoles, runtime active-role check)** are APPROVED. No Feature 01 spec/plan/tasks, implementation branch, code, or tests have been created.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -15,7 +15,7 @@
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
-- **Current docs PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (`docs/feature01-seeding-handoff` -> `develop`); captures phased permissions, role-agnostic last admin, deferred Audit, Bootstrap checks, case-sensitive Username Login, case-insensitive Email uniqueness and **optional exactly-11-digit Phone**. It remains **open and not merged**, pending explicit user permission.
+- **Current docs PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (`docs/feature01-seeding-handoff` -> `develop`); captures approved Identity foundational decisions, including exact Username/Email/Phone policies and MySQL/Spatie Single Role protection. It remains **open and not merged**, pending explicit user permission.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -119,7 +119,13 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 
 ### Next design topic (PROPOSED; not approved)
 
-Review **Feature 01 foundational database schema and constraints**: `users` (case-sensitive Username/Login uniqueness, case-insensitive Email UNIQUE while preserving its casing, nullable independent Phone UNIQUE with precisely 11 digits only), native Spatie Roles/Permissions/pivots, DB-level single-role invariant, shared InnoDB access-guard lock row, and Bootstrap concurrency/ID=1 guarantees. Phone format is **resolved**: no +20, international notation, prefix check or E.164 conversion in V1. No Audit schema in Feature 01.
+### Approved decision: three-layer Spatie Single Role enforcement
+
+**User expressly approved (2026-11-25):** In installed Spatie `model_has_roles` (Teams disabled), enforce **at most one** persisted Role assignment with a compatible DB unique index equivalent to `UNIQUE (model_type, model_id)`, **after verifying the exact vendor schema, indexes and morph type**. All role changes go through `syncRoles([$role])` inside an authorized MySQL/InnoDB transaction, serializing on the affected User row and additionally using the shared admin-viability lock when relevant. Every protected request validates an active User with **exactly one active Role** and current effective authorization; fail closed on zero/multiple/disabled-role/direct-permission anomalies. The DB unique index itself only guarantees at most one. Test concurrent reassignment on **real MySQL 8**, no SQLite-based race claim. Do not enable Spatie Teams or silently change other morph models.
+
+### Next design topic (PROPOSED; not approved)
+
+Review **one shared InnoDB `identity_access_guard` lock row** to serialize every change capable of reducing administrative viability (User active flag/Role, custom Role activation, grants/deletions). Within that transaction, lock the shared row before affected Users/Roles consistently, apply authorized mutation, recheck that some active User has all six essential role permissions, then commit or roll back with `409`. This is the recommended mechanism; the exact table/row and locking order still need technical approval in the Feature 01 plan. Then review Bootstrap ID=1 concurrency and finish acceptance scenarios. No Audit schema in Feature 01.
 
 ### Further details for Feature 01 plan (not silently decided)
 - Identity's 10 initial permissions and the exact **six-permission role-agnostic viability rule** are approved. The concrete implementation strategy, table names, lock-row schema and MySQL tests remain technical plan work.
@@ -131,7 +137,7 @@ Review **Feature 01 foundational database schema and constraints**: `users` (cas
 ## 6. Next action and restrictions
 
 1. Continue **discussion only** of Feature 01 scope, permission inventory and acceptance tests.
-2. Phased seeding/grants, six-permission role-agnostic viability, deferred Audit, strict Bootstrap, case-sensitive Username, case-insensitive unique Email and **optional exactly-11-digit unique Phone (no E.164)** are APPROVED. Next discuss **Spatie single-role database constraint and its MySQL index compatibility**, shared Identity access-guard concurrency and Bootstrap tests; then approve Feature 01 acceptance scenarios. Audit remains a separate future feature.
+2. Phased seeding/grants, role-agnostic six-permission last-admin rule, deferred Audit, strict Bootstrap, Username/Email/Phone constraints and **triple-layer Single Role** are APPROVED. Next discuss **shared `identity_access_guard` InnoDB serialization**, Bootstrap concurrency/ID=1 and Feature 01 acceptance tests. Audit remains a separate future feature.
 3. Only after approval, prepare/review `specs/identity/identity-core-rbac-foundation/spec.md`, then `plan.md`, then `tasks.md`.
 4. Do not create implementation branch or write code before approved gates; do not merge any PR without explicit approval.
 5. Update **this same GitHub handoff** at every approved decision, milestone or blocker; capture a timestamp, current verified branch/commit/PR state, *approved vs proposed* decisions, work actually done/tests run, current question, and exact next step. Do not use the handoff to override canonical docs or invent completed work.
