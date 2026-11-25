@@ -80,7 +80,8 @@ An effective technical permission authorizes an attempted action. Required recor
 
 Proposed account core, subject to migration-level type/length verification: `id`, `name`, `username`, optional `email`, optional `phone`, hashed `password`, `is_active`, `created_at` and `updated_at`. Role assignment is a Spatie relation, **not `users.role_id`**. JSON uses `camelCase`; database columns use `snake_case`.
 
-- `username` is required, unique across **all retained accounts including inactive Users**, and case-insensitive after normalization; allowed characters `a-z`, `0-9`, `.`, `_` and `-`; length **3–50**.
+- `username` is required and stored **exactly as entered with respect to letter case** (e.g. `Mohamed.Admin` stays `Mohamed.Admin`, not `mohamed.admin`). Allowed characters are ASCII Latin letters **`A-Z` and `a-z`**, digits `0-9`, `.`, `_` and `-`; length **3–50**.
+- **Uniqueness and Login remain case-insensitive** across all retained accounts, including inactive Users: `Mohamed.Admin` and `mohamed.admin` must be treated as the **same** login identifier, and the latter must not be allowed as a second account. Keep the original case for display/storage; comparison/lookup may use a database collation or a separate comparison key **without rewriting `users.username`**. The Feature 01 plan must choose and test a MySQL 8 database-enforced unique constraint compatible with the chosen lookup. Do not rely on an application-only pre-insert query.
 - Authorized Users update may change a username if the unique constraint remains valid; record relevant historical change metadata.
 - All newly created staff Users are **active immediately** (and receive one active role and an initial password).
 - Email and phone are optional. Whether they are unique and their exact format constraints are feature-spec validation details, not assumptions about identity.
@@ -230,7 +231,7 @@ All module APIs use `/api/v1`, `camelCase` request/Resource fields, Arabic trans
 
 The feature specs and plans must concretize migrations, payloads, role/permission inventories and actual installed package-version behavior. At minimum, test:
 
-1. Username uniqueness/canonicalization under concurrent creation and update; inactive User remains reserved.
+1. Preserve the original letter case of the stored `username` under create/update, while case-insensitive MySQL-enforced uniqueness and Login treat e.g. `Mohamed.Admin` and `mohamed.admin` as equal; reject simultaneous case variants under concurrency and reserve names used by inactive Users.
 2. First Manager one-time bootstrap truly establishes **User ID 1**, refuses **any nonempty `users` table** (even a different/inactive ID) and refuses missing/incomplete seeded Roles/Identity permissions/initial Manager grants **without any data mutation or auto-seeding**. A second or concurrent bootstrap fails safely; an empty table with non-1 next ID fails rather than silently rewriting IDs. Routine reseeding independently preserves existing credentials, grants and aliases.
 3. Cookie/CSRF handshake, session regeneration, correct credentialed browser flow, 12-hour **idle** expiry, Logout, and invalid session handling.
 4. Wrong username/password indistinguishable in public Login error; five failed attempts/minute triggers one-minute throttle with no permanent lock.
