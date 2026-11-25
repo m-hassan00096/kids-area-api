@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 5/49 tasks complete (T01–T05); 19/19 acceptance scenarios Not Run. T01–T04 verified preliminary evidence in §§13–14. T05 complete (§15). T06 dry-run compatibility review only; no actual dependency installation, code or migration.
+> **Progress:** 5/49 tasks complete (T01–T05); 19/19 acceptance scenarios Not Run. T01–T04 verified preliminary evidence in §§13–14. T05 complete (§15). T06 dry-run passed; exact installation/platform approval pending (§15). No actual dependency installation, code or migration.
 
 ## 1. Gates and evidence rules
 
@@ -261,4 +261,8 @@ Baseline/progressive JPEG, PNG/WebP and length-delimited APP containing EOI-like
 
 PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run authorized for compatibility review only; exact installation, protected reset, future merge and deployment require separate approval. No application code changed.
 
-T06 preliminary solver probe uses isolated branch `probe/feature03-dependency-resolution`, commit `6a96dc2972055d0a7e68385ad563b3ec5a674978`, no app boot or dependency installation. Results pending review. Keep T06 unchecked until exact approved package/platform resolution and actual install, lock validation, platform/audit evidence. T07 separate protected disposable reset approval.
+T06 preliminary solver probe uses isolated branch `probe/feature03-dependency-resolution`, commit `6a96dc2972055d0a7e68385ad563b3ec5a674978`, no app boot or dependency installation. Actual logs reviewed; preliminary solver passed (see evidence below). Keep T06 unchecked until exact approved package/platform resolution and actual install, lock validation, platform/audit evidence. T07 separate protected disposable reset approval.
+
+### 15.1 T06 preliminary dependency resolution
+
+T06 preliminary solver dry-run succeeded in [45658008076](https://github.com/m-hassan00096/kids-area-api/actions/runs/45658008076), job 139359842222, PHP 8.2.36 / Composer 2.11.3. Actual lock operations: add spatie/laravel-query-builder 6.4.4 and mandatory spatie/laravel-package-tools 1.93.3, zero updates/removals. Baseline composer validate --strict and audit --locked succeeded (no known advisories for baseline). Dry-run used --no-scripts --no-plugins, no vendor before/after, composer.json/lock unchanged, no app boot/DB. Package operations printed simulated installs only. Probe retired at `c5e205f794b468f113df5f1f4e108df9fc653909`, zero changed files vs merged develop. T06 remains unchecked: obtain exact approval for two additions and explicit GD/fileinfo platform requirements/CI GD, then actual require and authentic lock, locked install, validate, platform checks, new-lock audit and regression. No host change, protected reset, feature merge or deployment authorized.

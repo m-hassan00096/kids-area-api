@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run authorized for compatibility review only; exact installation, protected reset, future merge and deployment require separate approval. No application code changed.
+> Status: PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run passed (6.4.4 / 1.93.3, zero updates/removals); exact installation, protected reset, future merge and deployment require separate approval. No application code changed.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -179,7 +179,7 @@ Final reviewed code [`3c06a957`](https://github.com/m-hassan00096/kids-area-api/
 
 ## 8. Next action and restrictions
 
-1. F03 implementation authorized; T05 complete. T06 compatibility dry-run review and separate exact installation approval, then T07 guarded test environment. No application code yet.
+1. F03 implementation authorized; T05 complete. T06 dry-run passed; next separate exact installation approval, then T07 guarded test environment. No application code yet.
 2. After material feasibility resolution, obtain explicit docs merge, implementation, dependency/platform and protected-operation authorizations. No code before gates; no deployment.
 
 ### Follow-up decisions and evidence (2026-11-25)
@@ -189,3 +189,7 @@ Earlier §13 blockers are historical: user approved one effective native parsed 
 ### Implementation gate (2026-11-25)
 
 PR #9 merged into develop at `aa931b65fb4799086151e9d32d9a7371773dadb5`; user separately approved implementation and creation of `feature/identity-users-management` on 2026-11-25. Latest pre-merge CI 45652428628 succeeded (102 tests, 2268 assertions, Pint 101 files); actual logs checked. T05 complete; 5/49 tasks complete, all 19 acceptance scenarios Not Run. T06 dependency dry-run authorized for compatibility review only; exact installation, protected reset, future merge and deployment require separate approval. No application code changed.
+
+### Dependency review (2026-11-25)
+
+T06 preliminary solver dry-run succeeded in [45658008076](https://github.com/m-hassan00096/kids-area-api/actions/runs/45658008076), job 139359842222, PHP 8.2.36 / Composer 2.11.3. Actual lock operations: add spatie/laravel-query-builder 6.4.4 and mandatory spatie/laravel-package-tools 1.93.3, zero updates/removals. Baseline composer validate --strict and audit --locked succeeded (no known advisories for baseline). Dry-run used --no-scripts --no-plugins, no vendor before/after, composer.json/lock unchanged, no app boot/DB. Package operations printed simulated installs only. Probe retired at `c5e205f794b468f113df5f1f4e108df9fc653909`, zero changed files vs merged develop. T06 remains unchecked: obtain exact approval for two additions and explicit GD/fileinfo platform requirements/CI GD, then actual require and authentic lock, locked install, validate, platform checks, new-lock audit and regression. No host change, protected reset, feature merge or deployment authorized.
