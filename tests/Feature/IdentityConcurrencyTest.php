@@ -233,7 +233,7 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
             // MySQL allows an unprivileged account to inspect its own sessions.
             foreach (DB::select('SHOW FULL PROCESSLIST') as $entry) {
                 $row = array_change_key_case((array) $entry);
-                if ((int) $row['id'] !== $connectionId || $row['command'] !== 'Query') {
+                if ((int) $row['id'] !== $connectionId || ! in_array($row['command'], ['Query', 'Execute'], true)) {
                     continue;
                 }
 

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Exceptions\BusinessException;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
@@ -134,6 +136,38 @@ class IdentityAccessTest extends IdentityDatabaseTestCase
         }
 
         $this->assertFalse($called);
+    }
+
+    public function test_legacy_multiple_role_anomaly_fails_closed(): void
+    {
+        app(SeedIdentityCatalogueAction::class)->execute();
+        $manager = Role::findByName('manager', 'web');
+        $reception = Role::findByName('reception', 'web');
+        $staff = User::factory()->create();
+        $staff->syncRoles([$manager]);
+
+        // Simulate a pre-constraint anomaly only in the verified disposable schema.
+        Schema::table('model_has_roles', function (Blueprint $table): void {
+            $table->dropUnique('identity_single_role_unique');
+        });
+
+        try {
+            DB::table('model_has_roles')->insert([
+                'model_id' => $staff->id,
+                'model_type' => $staff->getMorphClass(),
+                'role_id' => $reception->id,
+            ]);
+
+            $this->assertFalse(app(IdentityAccess::class)->isEligible($staff->id));
+            $this->assertFalse(app(IdentityAccess::class)->allows($staff->id, 'identity.users.view'));
+            $this->assertFalse($this->viable());
+        } finally {
+            DB::table('model_has_roles')->where('model_id', $staff->id)
+                ->where('model_type', $staff->getMorphClass())->where('role_id', $reception->id)->delete();
+            Schema::table('model_has_roles', function (Blueprint $table): void {
+                $table->unique(['model_type', 'model_id'], 'identity_single_role_unique');
+            });
+        }
     }
 
     private function viable(): bool
