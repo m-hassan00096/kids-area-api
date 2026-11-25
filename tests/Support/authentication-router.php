@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Modules\Identity\Http\Middleware\FinalizeLoginSession;
+use Modules\Identity\Http\Middleware\RequireStaffSession;
+use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
+use Tests\Support\AuthenticationCommitFault;
 use Modules\Identity\Services\LoginThrottle;
 
 require __DIR__.'/../../vendor/autoload.php';
@@ -63,6 +66,12 @@ Route::middleware('api')->get('/api/v1/__auth-review-probe', static function () 
 
     return response()->json(['success' => true]);
 });
+Route::middleware(['api', RequireStatefulBrowser::class, 'auth:sanctum', RequireStaffSession::class])
+    ->get('/api/v1/__auth-review-protected-probe', static function () {
+        DB::selectOne('SELECT 1 AS synthetic_probe');
+
+        return response()->json(['success' => true]);
+    });
 if ($mode === 'probe-events') {
     config()->set('session.lottery', [1, 1]);
 }
@@ -208,7 +217,18 @@ if ($mode === 'cleanup') {
     }
 }
 
+// Simulate a lost acknowledgement only after a real MySQL COMMIT, without
+// changing production code, using a guarded disposable test connection.
+$commitFault = null;
+if ($mode === 'fault-commit-ack') {
+    $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
+    $connection->setPdo($commitFault);
+}
+
 $response = $kernel->handle($request);
+if ($commitFault !== null) {
+    $response->headers->set('X-Test-Actual-Commit-Count', (string) $commitFault->commits);
+}
 $response->headers->set('X-Test-Query-Count', (string) $count);
 if ($diagnostic !== null) {
     $response->headers->set('X-Test-Exception-Class', $diagnostic);

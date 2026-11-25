@@ -133,4 +133,27 @@ class AuthenticationPasswordTest extends AuthenticationHttpTestCase
             $this->assertSame(200, $browser->request('POST', '/api/v1/auth/logout')->status);
         }
     }
+
+    public function test_committed_login_with_lost_acknowledgement_is_not_retried_or_left_authorized(): void
+    {
+        $user = $this->user('Staff.Admin');
+        $server = $this->server();
+        $existing = $this->browser($server);
+        $this->assertSame(200, $existing->login('Staff.Admin')->status);
+        $guest = $this->browser($server);
+        $response = $guest->login('Staff.Admin', options: ['headers' => [
+            'X-Identity-Test-Mode' => 'fault-commit-ack',
+            'X-Identity-Test-Inspect' => '1',
+        ]]);
+        $this->assertSame(503, $response->status);
+        $this->assertSame('1', $response->header('X-Test-Actual-Commit-Count'));
+        $this->assertSame('1', $response->header('X-Test-Redacted'));
+        $this->assertSame('1', $response->header('X-Test-Correlated-Report'));
+        $this->assertFalse(collect($response->headers['set-cookie'] ?? [])->contains(fn ($header) => str_starts_with($header, config('session.cookie').'=')));
+        $this->assertSame(1, DB::table('sessions')->where('auth_user_id', $user->id)->count());
+        $this->assertSame(200, $existing->me()->status);
+        $this->assertSame(401, $guest->me()->status);
+        $this->assertSame(204, $guest->handshake()->status);
+        $this->assertSame(200, $guest->login('Staff.Admin')->status);
+    }
 }

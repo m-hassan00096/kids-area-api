@@ -72,7 +72,7 @@ class AuthenticationApiBoundaryTest extends AuthenticationHttpTestCase
         $this->user('Staff.Admin');
         $browser = $this->browser($this->server());
         $this->assertSame(200, $browser->login('Staff.Admin')->status);
-        $response = $browser->request('GET', '/api/v1/__auth-review-probe', options: ['headers' => [
+        $response = $browser->request('GET', '/api/v1/__auth-review-protected-probe', options: ['headers' => [
             'X-Identity-Test-Mode' => 'probe-events',
             'X-Identity-Test-Inspect' => '1',
         ]]);
