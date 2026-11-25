@@ -13,11 +13,15 @@ abstract class AuthenticationHttpTestCase extends IdentityDatabaseTestCase
 {
     protected string $barrierDir;
 
+    private int $browserClockMs;
+
     private array $servers = [];
 
     protected function setUp(): void
     {
         parent::setUp();
+        // All independent clients share one test clock unless a test explicitly advances it.
+        $this->browserClockMs = time() * 1000;
         app(SeedIdentityCatalogueAction::class)->execute();
         $this->barrierDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'kids-auth-'.bin2hex(random_bytes(10));
         $this->assertTrue(mkdir($this->barrierDir, 0700));
@@ -48,6 +52,7 @@ abstract class AuthenticationHttpTestCase extends IdentityDatabaseTestCase
     protected function browser(AuthenticationHttpServer $server, bool $handshake = true): AuthenticationBrowser
     {
         $browser = new AuthenticationBrowser($server);
+        $browser->timeMs = $this->browserClockMs;
         if ($handshake) {
             $response = $browser->handshake();
             $this->assertSame(204, $response->status, 'Handshake: '.($response->header('X-Test-Exception-Class') ?? 'no application exception class').'; '.$server->diagnostic());
