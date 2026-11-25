@@ -1,0 +1,30 @@
+name: Temporary Authentication dependency resolution
+on:
+  pull_request:
+    branches: [develop]
+permissions:
+  contents: read
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, dom, simplexml, pdo_mysql, intl, bcmath, curl, zip, fileinfo
+          coverage: none
+      - name: Resolve approved Sanctum dependency
+        run: |
+          composer validate --strict
+          composer require 'laravel/sanctum:^4.5' --no-interaction --prefer-dist
+          composer validate --strict
+          composer check-platform-reqs
+          composer show laravel/sanctum
+          composer audit --locked
+      - name: Output genuine dependency changes only
+        run: |
+          git diff --no-color -- composer.json composer.lock
+          sha256sum composer.json composer.lock

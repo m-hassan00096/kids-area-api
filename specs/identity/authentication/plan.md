@@ -3,7 +3,7 @@
 > **Status:** APPROVED — user explicitly approved the technical plan on 2026-11-25, following approval of the complete [spec.md](spec.md). [tasks.md](tasks.md) was explicitly approved by the user on 2026-11-25. The technical design is approved; actual package/runtime compatibility and required tests remain unverified.
 > **Owner:** Modules/Identity; shared HTTP response/error infrastructure in application Core.
 > **Baseline:** develop f5d740b6ace3e10ec63a5a69844856b3d241ecd0 (Feature 01 PR #6 merged), docs/feature02-authentication-spec / PR #7.
-> **Gates:** No package installation, code changes, migrations, tests, merge or deployment authorized by plan approval alone. The task list is approved; obtain separate implementation/dependency and documentation-merge approvals.
+> **Gates:** No package installation, code changes, migrations, tests, merge or deployment authorized by plan approval alone. The user subsequently authorized scoped implementation and Sanctum ^4.5 installation; documentation PR #7 merged at 4f9c4505. Implementation merge/deployment not authorized.
 > **References:** [Identity](../../../docs/03-modules/identity.md), [API](../../../docs/02-standards/api-standards.md), [Database](../../../docs/02-standards/database-standards.md), [Errors](../../../docs/02-standards/error-handling-standards.md), [Permissions](../../../docs/02-standards/permissions-standards.md), [Code](../../../docs/02-standards/code-standards.md), [Localization](../../../docs/02-standards/localization-standards.md), [Workflow](../../../docs/02-standards/ai-workflow-rules.md), [Feature 01 plan](../identity-core-rbac-foundation/plan.md).
 
 ## 1. Verified baseline and dependency approach
@@ -189,7 +189,7 @@ Technical choices approved by the user on 2026-11-25 (implementation evidence st
 
 Deployment blockers remain separate: real same-site frontend origins, TLS/proxy/trusted hosts, secure cookie/domain/CORS values, actual PHP Argon2id/platform support, MySQL permissions/index/DDL/clock and capacity, backups and recovery procedure, secret handling and sanitized external logging. No live data, no production schema/commands, no real accounts or credentials, no destructive changes. Audit still deferred and a known gap before live privileged administration. No new security claims for untested browser flow; package source inspection is not execution.
 
-Next: obtain separate documentation merge, dependency-install and implementation authorization; the task list, dependencies, evidence requirements and open gates are approved. Branch implementation from actual develop only after approved documentation merge; no implicit merge/deploy.
+Next: execute the approved task list on the dedicated implementation branch, verifying each task; no merge/deployment. Branch implementation from actual develop only after approved documentation merge; no implicit merge/deploy.
 
 ### Source references inspected (not executed)
 
