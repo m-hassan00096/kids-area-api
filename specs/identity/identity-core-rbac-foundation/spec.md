@@ -1,10 +1,10 @@
 # Feature 01 — Identity Core & RBAC Foundation
 
-> **Status:** DRAFT — for user review and explicit approval; **not approved for implementation**.
+> **Status:** APPROVED — user approved the functional specification on 2026-11-25; **implementation is not yet authorized**.
 > **Owner:** `Modules/Identity`
 > **Target stack:** Laravel 12, MySQL 8/InnoDB, `nwidart/laravel-modules` ^12, Spatie Laravel Permission (`web` guard, Teams disabled).
 > **Sources:** `docs/03-modules/identity.md`, `docs/02-standards/permissions-standards.md`, `docs/02-standards/database-standards.md`, `docs/02-standards/api-standards.md`, `docs/02-standards/ai-workflow-rules.md`.
-> **Delivery gate:** Approve this `spec.md`, then separately review/approve `plan.md`, then review `tasks.md` before any implementation. No merge or deployment is authorized by this draft.
+> **Delivery gate:** `spec.md` approved; separately review/approve `plan.md`, then review `tasks.md` before implementation. No merge, package installation or deployment is authorized by this specification approval.
 
 ## 1. Goal
 
@@ -96,7 +96,7 @@ Provide the **reusable invariant and safe transaction boundary** for later role/
 | F01-13 | Role, User and permission configuration | Single canonical User provider, `web` guard, no direct User grants, no unconditional Manager bypass |
 | F01-14 | Deferred work absent | No Login/Users/Roles CRUD routes or active Audit endpoint/table/writer introduced by Feature 01; `identity.audit.view` remains just a seeded definition |
 
-**Verification:** Focused PHPUnit tests; **actual MySQL 8 with independent connections/processes** for concurrency and unique-index behavior; Pint and available CI checks. These are **proposed acceptance checks, not executed results**.
+**Verification:** Focused PHPUnit tests; **actual MySQL 8 with independent connections/processes** for concurrency and unique-index behavior; Pint and available CI checks. These are **approved acceptance checks, not executed results**.
 
 ## 8. Explicitly out of scope
 
@@ -109,4 +109,4 @@ Provide the **reusable invariant and safe transaction boundary** for later role/
 
 ## 9. Implementation-plan questions (not new business decisions)
 
-The future reviewed `plan.md` must pin and inspect actual installed Spatie/Laravel versions and indexes; confirm MySQL 8 collations for case-sensitive Username and case-insensitive Email; choose safe blank-contact input handling; define transaction boundaries and the exact **existing-row** serialization strategy; confirm robust initial ID=1 and concurrent Bootstrap behavior; document safe CLI credential collection and failure messages; and identify the available real-MySQL test/CI environment. Do not start implementation or package installation before the project approval gates.
+The separately reviewed `plan.md` must pin and inspect actual installed Spatie/Laravel versions and indexes; confirm MySQL 8 collations for case-sensitive Username and case-insensitive Email; choose safe blank-contact input handling; define transaction boundaries and the exact **existing-row** serialization strategy; confirm robust initial ID=1 and concurrent Bootstrap behavior; document safe CLI credential collection and failure messages; and identify the available real-MySQL test/CI environment. Do not start implementation or package installation before the project approval gates.

@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-25 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: Feature 01 Identity Core & RBAC Foundation **spec.md DRAFT prepared for user review** (not approved). Earlier foundational decisions remain approved: phased permissions, six-permission role-agnostic last admin, deferred Audit, strict Bootstrap, Username/Email/Phone constraints and Single Role, and **no extra `identity_access_guard` table**. No Feature 01 plan/tasks, implementation branch, code, executed tests or deployment. Do not confuse a draft with approved requirements.
+> Status: Feature 01 Identity Core & RBAC Foundation **spec.md APPROVED by user on 2026-11-25**. Technical **plan.md DRAFT for explicit review/approval**. Prior approved business decisions remain unchanged. No tasks.md, implementation branch, packages, code, executed Feature 01 tests or deployment. PR #5 remains open and unmerged.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -15,7 +15,7 @@
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
-- **Current documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (`docs/feature01-seeding-handoff` -> `develop`); includes approved foundational decision updates **and a NEW DRAFT** `specs/identity/identity-core-rbac-foundation/spec.md` with 14 proposed acceptance scenarios. **Neither the spec nor PR is approved/merged.** User must review/approve spec explicitly and separately approve any merge.
+- **Current documentation PR #5:** https://github.com/m-hassan00096/kids-area-api/pull/5 (docs/feature01-seeding-handoff -> develop); approved functional spec with 14 acceptance scenarios and a draft technical plan in the same Feature 01 folder. The plan and merge still require explicit approval. No tasks or code.
 - Canonical Identity Module Reference: https://github.com/m-hassan00096/kids-area-api/blob/develop/docs/03-modules/identity.md
 - Relevant standards:
   - `docs/02-standards/permissions-standards.md`
@@ -77,11 +77,11 @@
 - `Modules/` currently contains only `.gitkeep`; there is no Identity Module code.
 - `app/Models/User.php` was not found, while `config/auth.php` still imports `App\Models\User`; Feature 01 must create/configure canonical `Modules/Identity/app/Models/User.php` and update Laravel auth provider.
 - `bootstrap/app.php` sets API prefix `api/v1` and basic middleware/exception scaffolding.
-- Feature 01 `spec.md` **draft** was created for review on the documentation branch. It is **not approved**. No `plan.md`, `tasks.md` or implementation branch/code has been authored. PR #5 remains open and unmerged.
+- Feature 01 spec.md approved; plan.md drafted for review. No tasks.md or implementation branch/code. PR #5 remains open/unmerged. Existing MySQL 8/PHP 8.2 CI is configured, but its foundation-only module assertions must be updated to allow Identity; Feature 01 checks have not run.
 
 ## 5. Current topic - Feature 01: Identity Core & RBAC Foundation
 
-### Initial proposed scope (not yet approved as Feature 01 spec)
+### Approved Feature 01 scope
 - Generate canonical Identity Module and User model, configure Laravel authentication User provider.
 - Install and configure Spatie Permission with guard `web`, native tables/relationships, aliases and active status.
 - Design User and RBAC migrations, single-role DB constraint, username uniqueness, and protective access checks for future features.
@@ -125,22 +125,20 @@ The decision is documented in `docs/03-modules/identity.md` and `docs/02-standar
 
 **User rejected the proposed `identity_access_guard` table (2026-11-25)** as unnecessary complexity. **Do not add that table or any new dedicated lock/sentinel table in Feature 01.** Continue to enforce the **previously approved** invariant that at least one active User holding all six essential permissions through exactly one active Role remains after every sensitive change. Serialize conflicting User/Role/grant mutations using **existing, guaranteed persistent Identity records** inside MySQL transactions (a stable seeded `manager` Role row is one possible shared serialization point; it is permanent even if a Custom Role User is the final viable admin). Confirm an efficient safe locking order and isolation semantics in `plan.md` and concurrency tests, without changing the business invariant or adding a new table.
 
-### New milestone — draft Feature 01 spec available for review (NOT APPROVED)
+### New milestone — approved Feature 01 specification and draft plan
 
-**Prepared on 2026-11-25:** [`specs/identity/identity-core-rbac-foundation/spec.md`](../../specs/identity/identity-core-rbac-foundation/spec.md) is a **draft** reflecting approved business decisions and 14 **proposed** acceptance scenarios. It includes 8 focused first-Manager bootstrap cases (first install, existing User, second run, missing RBAC definitions/grants, unexpected auto-increment, overlapping invocations, atomic failure and secure credentials), plus data/roles/last-admin foundations. Actual technical locking, schema collation and CLI interaction mechanisms remain for a future approved `plan.md`. No Audit schema or dedicated lock table is in scope. This draft is **not user-approved** and does **not authorize implementation**. Next: obtain explicit review/approval or edits to the `spec.md` content.
+**2026-11-25:** User approved [`spec.md`](../../specs/identity/identity-core-rbac-foundation/spec.md), including all 14 acceptance scenarios, and asked to continue. [`plan.md`](../../specs/identity/identity-core-rbac-foundation/plan.md) is now a technical DRAFT for explicit approval. It proposes Spatie ^6 for PHP 8.2, exact user column/collation choices, secure interactive bootstrap, shared permanent manager-row lock and current reads, additive seeding, MySQL concurrency tests and CI changes. MySQL may consume ID 1 on failed insertion despite rollback; subsequent bootstrap must fail safely without resetting it. No new business requirements or implementation authorization. Audit remains deferred. No tests executed.
 
-### Further details for Feature 01 plan (not silently decided)
-- Identity's 10 initial permissions and six-permission role-agnostic viability are approved. **Exact existing-row lock strategy**, migration/index shapes and real MySQL tests remain technical plan work after approval of the draft spec.
+### Technical review points for the draft Feature 01 plan
+- Identity's 10 initial permissions and six-permission role-agnostic viability are approved. **Exact existing-row lock strategy**, migration/index shapes and real MySQL tests are proposed in the draft plan and still require technical approval.
 - Installed Spatie version and morph-pivot unique index compatibility; actual MySQL 8 constraints and safe lock strategy.
 - Audit schema, actor/target snapshot strategy and audit-write failure tests belong to the **deferred separate Audit feature**, not Feature 01. Future deletion dependencies and integrity rules remain mandatory.
-- Approved bootstrap rejects any nonempty `users` table, requires founder ID 1, and fails without changes if seeded RBAC definitions/grants are missing; **bootstrap never auto-runs seeders**. Remaining technical plan details: safe credential input, lock serialization, sequence validation and concurrency tests.
+- Approved bootstrap rejects any nonempty `users` table, requires founder ID 1, and fails without changes if seeded RBAC definitions/grants are missing; **bootstrap never auto-runs seeders**. The draft plan defines safe credential input, lock serialization, sequence validation and concurrency tests; review before approving.
 - Test harness and CI actual status. All unrun tests must be identified as Not Run.
 
 ## 6. Next action and restrictions
 
-1. **Review the draft** `specs/identity/identity-core-rbac-foundation/spec.md` in open PR #5 and its 14 proposed acceptance scenarios; request focused corrections if needed. Explicit user approval is still needed.
-2. Keep all previous foundational decisions unchanged: first-Manager Bootstrap, user validations, seeded catalogue, Single Role, last-admin safety, no dedicated lock table and deferred Audit. The draft is **not** tested or approved.
-3. After `spec.md` approval, prepare/review `plan.md` (real MySQL 8 schema/locking/Bootstrap CLI strategy) and then `tasks.md`, using normal approval gates. **No feature implementation/code until those gates pass.**
-4. Do not create implementation branch or write code before approved gates; do not merge any PR without explicit approval.
-5. Update **this same GitHub handoff** at every approved decision, milestone or blocker; capture a timestamp, current verified branch/commit/PR state, *approved vs proposed* decisions, work actually done/tests run, current question, and exact next step. Do not use the handoff to override canonical docs or invent completed work.
-6. On a new ChatGPT conversation, open the current `develop` version of this handoff through the connected GitHub app (or supply its exact URL if unavailable), then inspect the current repo/PRs and relevant canonical files before continuing.
+1. **Review/approve the draft** [plan.md](../../specs/identity/identity-core-rbac-foundation/plan.md). Specification approval is recorded; do not reopen settled business rules.
+2. After explicit plan approval prepare and review tasks.md; package installation still requires explicit authorization. No implementation branch/code before gates pass.
+3. Keep PR #5 open until explicit merge approval. After approved documentation merge, implement on a dedicated branch from actual develop with real MySQL 8 tests and Pint.
+4. Do not deploy or mutate real data; Audit remains a separately approved later feature and an acknowledged live rollout gap.
