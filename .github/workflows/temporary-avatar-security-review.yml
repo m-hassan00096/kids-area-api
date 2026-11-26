@@ -77,10 +77,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          unset COMPOSER_NO_AUDIT
           composer --version
           test ! -d vendor
           composer validate --strict
-          composer update 'symfony/http-kernel:7.4.24' 'symfony/mailer:7.4.24' 'symfony/routing:7.4.24' --dry-run --no-install --no-interaction --no-scripts --no-plugins --prefer-dist
+          composer update 'symfony/http-kernel:7.4.24' 'symfony/http-foundation:7.4.24' 'symfony/mailer:7.4.24' 'symfony/routing:7.4.24' --dry-run --no-install --no-interaction --no-scripts --no-plugins --prefer-dist
           git diff --exit-code -- composer.json composer.lock
           test ! -d vendor
           echo SECURITY_PATCH_DRY_RUN_ONLY_VERIFIED
