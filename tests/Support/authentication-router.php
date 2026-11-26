@@ -148,6 +148,17 @@ $pause = static function () use ($prefix): void {
 Route::middleware('api')->post('/api/v1/__fixture-user-link/{user}', static function (int $user) use ($mode, $pause) {
     try {
         DB::transaction(function () use ($user, $mode, $pause): void {
+            if ($mode === 'hold-fk-deadlock') {
+                // Test-only inversion: external fixture holds a parent S
+                // lock and many undo entries, then waits for the manager.
+                // Users holds manager and waits for this parent row. InnoDB
+                // chooses the smaller read-only Users transaction as victim.
+                DB::table('fixture_user_links')->insert(array_fill(0, 100, ['user_id' => $user]));
+                $pause();
+                DB::table('roles')->where('name', 'manager')->where('guard_name', 'web')->lockForUpdate()->first();
+
+                return;
+            }
             DB::table('fixture_user_links')->insert(['user_id' => $user]);
             if ($mode === 'hold-fk-insert') {
                 $pause();

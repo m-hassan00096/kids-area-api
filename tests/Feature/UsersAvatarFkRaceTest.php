@@ -126,4 +126,45 @@ class UsersAvatarFkRaceTest extends AuthenticationHttpTestCase
             Schema::drop('fixture_user_links');
         }
     }
+
+    public function test_real_innodb_deadlock_aborts_users_attempt_once_without_losing_file(): void
+    {
+        $founder = $this->user('Fixture.Founder');
+        $target = $this->user('Fixture.Target', 'reception');
+        $admin = $this->browser($this->server());
+        $external = $this->browser($this->server());
+        $this->assertSame(200, $admin->login($founder->username)->status);
+        $path = '/api/v1/users/'.$target->id;
+        $fields = $this->fields($target) + ['_method' => 'PUT'];
+        $this->assertSame(200, $admin->request('POST', $path, options: $this->upload($fields, AvatarFixtures::image('png'), 'observe'))->status);
+        $before = $target->fresh()->getAttributes();
+        $key = $before['avatar_key'];
+        $bytes = file_get_contents($this->barrierDir.'/avatars/'.$key);
+        Schema::create('fixture_user_links', function (Blueprint $table): void {
+            $table->engine('InnoDB');
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->foreign('user_id', 'fixture_user_protected_fk')->references('id')->on('users')->restrictOnDelete();
+        });
+        try {
+            $deadlocks = (int) DB::selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value;
+            [$first, $second] = $this->race(
+                $external->prepare('POST', '/api/v1/__fixture-user-link/'.$target->id, options: $this->raceOptions('hold-fk-deadlock', 'first')),
+                $admin->prepare('POST', $path, options: $this->upload(array_replace($fields, ['name' => 'Must not retry']), AvatarFixtures::image('png', 16, 8), 'observe', 'second')),
+                'users',
+            );
+            $this->assertSame(201, $first->status);
+            $this->assertSame(503, $second->status, $second->header('X-Test-Exception-Class') ?? '');
+            $this->assertSame('rolled_back', $second->header('X-Test-Users-Outcome'));
+            $this->assertSame('1', $second->header('X-Test-Redacted'));
+            $this->assertSame($deadlocks + 1, (int) DB::selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value);
+            $this->assertSame(100, DB::table('fixture_user_links')->where('user_id', $target->id)->count());
+            $this->assertSame($before, $target->fresh()->getAttributes());
+            $this->assertSame($bytes, file_get_contents($this->barrierDir.'/avatars/'.$key));
+            $this->assertCount(1, glob($this->barrierDir.'/avatars/*'));
+            $this->assertSame(200, $admin->me()->status);
+        } finally {
+            Schema::drop('fixture_user_links');
+        }
+    }
 }
