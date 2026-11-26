@@ -159,5 +159,4 @@ class RolesSecurityTest extends AuthenticationHttpTestCase
         $this->assertSame(200, $a->me()->status);
         $this->assertSame(200, $b->me()->status);
     }
-
 }

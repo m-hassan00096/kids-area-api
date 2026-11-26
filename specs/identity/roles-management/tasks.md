@@ -1,6 +1,6 @@
 # Feature 04 — Roles & Permissions Management: Tasks
 
-> **Status:** APPROVED task breakdown (2026-11-26). **23/44 tasks verified (T01–T13, T15–T23, T27); all 12 composite acceptance criteria pending final reconciliation.** User approved the documented decisions, plan and limited isolated forward-drop test. Read/Select verified in CI 45832455232; write functional suite 185/10320 passed in CI 45834607444, which failed only Pint ordered imports. Style correction and new concurrency/fault tests authored; focused Roles step succeeded in running CI 45837355195; full logs/checks pending. Shared-cache, scale and remaining security tests authored, not yet run.
+> **Status:** APPROVED task breakdown (2026-11-26). **40/44 tasks verified (T01–T40); F04-01–11 verified in synthetic CI, F04-12 pending final exact green CI.** Actual 206/16517 full tests and 35/7019 focused Roles passed at be4b16d / CI 45838272845; one Pint blank-line issue corrected. Final T41–T44 remain open.
 > **Sources:** [spec.md](spec.md), [plan.md](plan.md). Dependencies are numbered Txx (ranges inclusive); acceptance IDs abbreviated F04-xx. Do not treat review drafts or authored tests as completed tasks.
 > **Gate:** D01–D08 and spec/plan/tasks approved; guarded disposable CI forward-drop testing authorized only. New destructive reset/down procedures are not authorized. Documentation gate passed; implementation authorized. Do not execute against a real or unknown DB.
 
@@ -22,7 +22,7 @@
 
 ## Phase C — Role transport, reads and Select Registry (T13–T22)
 - [x] **T13 — Role route inventory and protected transport.** Five independent routes, native Cookie/CSRF/Origin/CORS, numeric ID contract, no target resolution before capability.
-- [ ] **T14 — Role capability and trusted target binding.** Independent authority from fresh context, exact guard/ID, stale and wrong guard handling; no hidden manager bypass.
+- [x] **T14 — Role capability and trusted target binding.** Independent authority from fresh context, exact guard/ID, stale and wrong guard handling; no hidden manager bypass.
 - [x] **T15 — Role index input validation.** Allowlisted filters, literal search, state, bounded page/perPage, reject malformed/unknown sort/include.
 - [x] **T16 — Mutation input contract and Arabic validation.** Strict JSON shape, name length/content/reserved/collation, typed bool, required list including [], no alias/guard/ID injection.
 - [x] **T17 — Permission catalogue resolver.** Exact registered web names, strict uniqueness/guard and safe missing/anomalous state handling, no auto-seed.
@@ -34,25 +34,25 @@
 
 ## Phase D — Transactions and write Actions (T23–T32)
 - [x] **T23 — Current actor/session boundary refactor review.** Factor minimal shared authority primitive or dedicated Role boundary, do not call Users-target-specific lock unchanged; preserve F01-F03 contracts.
-- [ ] **T24 — Role transaction/lock/outcome boundary.** Manager mutex, compatible ordered rows/session locks, one attempt, timeout restore/disconnect, last-admin postcondition, known/unknown outcomes.
-- [ ] **T25 — Known constraint and safe error mapping.** Reviewed role name 1062 -> 422, invariant conflicts, 1205/1213/connectivity/unknown commit -> 503; safe unknown errors.
-- [ ] **T26 — CreateRoleAction with atomic grants.** Use native package, exact D01 approved grant scope, optional inactive per D03, no implicit assignment or direct grants.
+- [x] **T24 — Role transaction/lock/outcome boundary.** Manager mutex, compatible ordered rows/session locks, one attempt, timeout restore/disconnect, last-admin postcondition, known/unknown outcomes.
+- [x] **T25 — Known constraint and safe error mapping.** Reviewed role name 1062 -> 422, invariant conflicts, 1205/1213/connectivity/unknown commit -> 503; safe unknown errors.
+- [x] **T26 — CreateRoleAction with atomic grants.** Use native package, exact D01 approved grant scope, optional inactive per D03, no implicit assignment or direct grants.
 - [x] **T27 — Protected role and custom rename lifecycle.** Protect manager/reception exact names and state; custom unique name stable ID, no session changes on rename.
-- [ ] **T28 — Role-disable revocation primitive.** All affected users incl inactive, safe version bounds, owner-index session deletion, single transaction, no account active-state changes.
-- [ ] **T29 — UpdateRoleAction grant replacement and status.** Atomic name/state/grants, disable only transition, initiating self-revoked handling after commit, re-enable no old sessions.
-- [ ] **T30 — DeleteRoleAction membership protection.** Zero assignments including inactive users, fail closed orphan/foreign morph, serialized native deletion, no permission definition deletion.
-- [ ] **T31 — Permission cache and commit-failure behavior.** Native package + postcommit/rollback eviction, cross-process visibility, safe known/unknown outcome, no blind retries.
-- [ ] **T32 — Wire write controllers and actual HTTP tests.** End-to-end JSON, all five independent capabilities, protected/error/validation cases, grant scope and last-admin.
+- [x] **T28 — Role-disable revocation primitive.** All affected users incl inactive, safe version bounds, owner-index session deletion, single transaction, no account active-state changes.
+- [x] **T29 — UpdateRoleAction grant replacement and status.** Atomic name/state/grants, disable only transition, initiating self-revoked handling after commit, re-enable no old sessions.
+- [x] **T30 — DeleteRoleAction membership protection.** Zero assignments including inactive users, fail closed orphan/foreign morph, serialized native deletion, no permission definition deletion.
+- [x] **T31 — Permission cache and commit-failure behavior.** Native package + postcommit/rollback eviction, cross-process visibility, safe known/unknown outcome, no blind retries.
+- [x] **T32 — Wire write controllers and actual HTTP tests.** End-to-end JSON, all five independent capabilities, protected/error/validation cases, grant scope and last-admin.
 
 ## Phase E — Sessions, concurrency, faults, security, scale (T33–T40)
-- [ ] **T33 — Role lifecycle session matrix.** Affected/all devices/inactive users, unaffected others, no-change edit, disable->enable, self-role disable, stale native saves and old session rejection.
-- [ ] **T34 — Real MySQL race: unique names and role assignment/delete.** Independent connections/barriers both orderings; actual constraint or current-state conflict; no cascaded assignment loss.
-- [ ] **T35 — Real MySQL race: role disable/Login/Profile.** Both winner orderings, concurrent enable/assignment, old credentials/session generation non-restoration, stale actor rejection.
-- [ ] **T36 — Real MySQL race: grants/last admin and Users mutations.** Competing administrative changes across Role/User endpoints, role grants revoked while actor waits, last viable custom path, exact rollback.
-- [ ] **T37 — Fault injection and transaction outcomes.** Actual DB/pivot/session failure, native deadlock/timeout, cache/commit acknowledgement probes; state checks and redaction, no 500-only proof.
-- [ ] **T38 — Security and boundary regression.** Native CSRF/origin and capability ordering, wrong guard/anomalies, request IDs, safe Arabic responses, no sensitive bindings, no production probes.
-- [ ] **T39 — Scale fixture and actual list query plans.** 10/100/200 roles and 100/1k/10k users, 15/100 pages, search/filters/skew, EXPLAIN+ANALYZE, count/query ceiling.
-- [ ] **T40 — Role-disable performance and cache measurement.** Synthetic 1/100/1k target users, measured lock/query/memory/commit; no speculative new index or live SLA.
+- [x] **T33 — Role lifecycle session matrix.** Affected/all devices/inactive users, unaffected others, no-change edit, disable->enable, self-role disable, stale native saves and old session rejection.
+- [x] **T34 — Real MySQL race: unique names and role assignment/delete.** Independent connections/barriers both orderings; actual constraint or current-state conflict; no cascaded assignment loss.
+- [x] **T35 — Real MySQL race: role disable/Login/Profile.** Both winner orderings, concurrent enable/assignment, old credentials/session generation non-restoration, stale actor rejection.
+- [x] **T36 — Real MySQL race: grants/last admin and Users mutations.** Competing administrative changes across Role/User endpoints, role grants revoked while actor waits, last viable custom path, exact rollback.
+- [x] **T37 — Fault injection and transaction outcomes.** Actual DB/pivot/session failure, native deadlock/timeout, cache/commit acknowledgement probes; state checks and redaction, no 500-only proof.
+- [x] **T38 — Security and boundary regression.** Native CSRF/origin and capability ordering, wrong guard/anomalies, request IDs, safe Arabic responses, no sensitive bindings, no production probes.
+- [x] **T39 — Scale fixture and actual list query plans.** 10/100/200 roles and 100/1k/10k users, 15/100 pages, search/filters/skew, EXPLAIN+ANALYZE, count/query ceiling.
+- [x] **T40 — Role-disable performance and cache measurement.** Synthetic 1/100/1k target users, measured lock/query/memory/commit; no speculative new index or live SLA.
 
 ## Phase F — Full verification and review (T41–T44)
 - [ ] **T41 — Final schema/routes/scope and dependency regression.** Only one forward column removal and five Role routes, exact ten permissions, no new packages/tables/modules, previous F03 behavior apart from approved shape.
@@ -113,22 +113,22 @@
 
 | Scenario | Status |
 | --- | --- |
-| F04-01 | Not Run |
-| F04-02 | Not Run |
-| F04-03 | Not Run |
-| F04-04 | Not Run |
-| F04-05 | Not Run |
-| F04-06 | Not Run |
-| F04-07 | Not Run |
-| F04-08 | Not Run |
-| F04-09 | Not Run |
-| F04-10 | Not Run |
-| F04-11 | Not Run |
-| F04-12 | Not Run |
+| F04-01 | Verified |
+| F04-02 | Verified |
+| F04-03 | Verified |
+| F04-04 | Verified |
+| F04-05 | Verified |
+| F04-06 | Verified |
+| F04-07 | Verified |
+| F04-08 | Verified |
+| F04-09 | Verified |
+| F04-10 | Verified |
+| F04-11 | Verified (synthetic CI only) |
+| F04-12 | Pending final exact green CI |
 
 ## Completion rules
 
-Record actual commit, command, CI run/job, pass/fail counts, relevant assertions and limitations. No task marked done merely because its code or a test was written. No unsafe data deletion or scope change; no weaken existing assertions. Final required CI exact head must succeed before Ready for Review; no merge without separate explicit user approval, no production deployment. Keep prior F02 intermittent observation risk, deferred Audit and real-host/backup/restore caveats in final report. Next action: verify exact repaired CI and all baseline regressions, then reconcile T08–T12 and begin T13. No real DB.
+Record actual commit, command, CI run/job, pass/fail counts, relevant assertions and limitations. No task marked done merely because its code or a test was written. No unsafe data deletion or scope change; no weaken existing assertions. Final required CI exact head must succeed before Ready for Review; no merge without separate explicit user approval, no production deployment. Keep prior F02 intermittent observation risk, deferred Audit and real-host/backup/restore caveats in final report. Next action: verify exact corrected-head CI (all required steps incl Pint, module/route-cache/scope); reconcile T41–T44 and F04-12 only with actual evidence, update final handoff and request explicit merge approval. No real DB.
 
 
 ## Approval evidence (2026-11-26)
@@ -188,3 +188,49 @@ Authored nine real HTTP concurrency tests using the existing distinct MySQL conn
 Exact preceding head 96561a6c96ac67cc99d6419f908fbd56b467dc80, [CI 45837355195](https://github.com/m-hassan00096/kids-area-api/actions/runs/45837355195), job 139969629063, was still in progress at inspection. Actual step statuses: guarded legacy backup/forward preservation, focused Authentication, Identity, Users/Avatar/Select and Roles discovery/execution all successful; full PHPUnit in progress, Pint/module/scope checks not finished. Job log download still unavailable (GitHub returned 404 BlobNotFound while running). This supports focused step success, not exact test/assertion counts or a complete green workflow. Keep 23/44 tasks verified until detailed evidence is reconciled. No failure waiver, no premature acceptance checkmarks.
 
 Authored seven additional test methods, confined to the existing guarded synthetic MySQL and HTTP harness, with no production-code change. RolesCacheTest uses native Spatie PermissionRegistrar and an isolated shared file cache across distinct HTTP workers; PDO delegate pauses at actual commit/rollback boundary after native package eviction. Observer repopulates the previous committed grants, then tests required postcommit/rollback eviction, fresh package grants and actual protected API authorization/session behavior. Existing application default and production cache configuration unchanged. Test cache directory lives under the verified temporary fixture path and is removed with existing fixture teardown. RolesSecurityTest tests no-op edits, auth_version zero/PHP_INT_MAX fail-closed whole mutation, orphan/foreign-morph membership and wrong-guard write targets, stale actor after role disable, concurrent disable/re-enable in both transition directions and assignment while the inactive role's enable is uncommitted. RolesPerformanceTest pairs 10 roles/100 Users, 100/1000 and 200/10000, including strongly skewed membership, 15/100 pages, deep and empty pages, literal wildcard search, Arabic/status filters and combinations; 30 list cases, three detail and three combined Select cases. Capture actual service SELECT SQL only inside guarded synthetic test, execute EXPLAIN and EXPLAIN ANALYZE, verify exact resources, four nonempty list SELECTs/one empty, three detail domain + one admission, one snapshot setup, three bounded providers. Measure role-disable for 1, 100 and 1000 affected Users (each includes one actual native session plus 2 synthetic binding rows per additional account; synthetic payloads are intentionally not native cookies), checking one generation increment and indexed session DELETE per member, unaffected sessions/accounts, reactivation without old authority, membership and password preservation. Extend existing test-only PDO measurement for actual manager acquisition-to-commit acknowledgement, commit time, query counts, PHP peak/RSS. Keep linear 2N+100 query ceiling as a test regression guard, not a real host SLA. Measure before considering optimization; no new index or query architecture change. All seven new tests and metrics Not Run until exact-head CI. No new database reset/down, table, dependency, permission, or real data operation.
+
+
+## Verified functional, concurrency, cache and performance evidence (2026-11-26)
+
+Green preceding source 96561a6c96ac67cc99d6419f908fbd56b467dc80, [CI 45837355195](https://github.com/m-hassan00096/kids-area-api/actions/runs/45837355195), job 139969629063. All steps passed: Authentication 41/1585, Identity 56/1007, Users/Avatar/Select 75/7122, Roles 28/1688, full 199/11191, Pint 180 files, Composer lock/platform/audit clean, 19 routes before/after cache, module/scope checks passed. Exact backup and forward-preservation markers present. All five native fault and nine concurrency tests passed in both focused and full runs.
+
+Exact measured source be4b16d8c0d7a6b5966f9d43dc1d798c901ad2ac, [CI 45838272845](https://github.com/m-hassan00096/kids-area-api/actions/runs/45838272845), job 139972820223. Actual log inspected: guarded upgrade/backup/preservation markers present again, Authentication 41/1577, Identity 56/1007, Users/Avatar/Select 75/7118, Roles 35/7019, full PHPUnit 206/16517; all functional tests passed, Composer validate/platform/audit passed. Both native shared-file-cache commit/rollback tests, both scale/disable tests and all three security/generation/re-enable tests passed in both runs. **Overall CI failed only Pint (184 files, one class_attributes_separation issue: extra blank line before closing class in RolesSecurityTest.php).** Subsequent module/route-cache/scope steps skipped. Exact one-line whitespace removal in the test, no production or assertion change. Final exact-head green gate remains. Close T01–T40 on actual evidence; final release tasks T41–T44 remain open. F04-01–11 verified in the synthetic CI environment, F04-12 pending exact final green workflow. Do not claim deployment, real-data restore proof, or final merge readiness yet.
+
+### Observed read measurements (two executions, focused and full)
+
+| Roles / Users | List HTTP range (ms), all 10 cases | Nonempty direct service range (ms) | Detail HTTP (ms) | Detail assigned Users | Combined Select HTTP (ms) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 10 / 100 | 12.972–31.823 | 2.311–4.660 | 14.813–14.912 | 79 | 16.619–22.243 |
+| 100 / 1,000 | 10.866–26.789 | 2.529–6.033 | 12.763–29.232 | 720 | 14.426–16.464 |
+| 200 / 10,000 | 11.063–63.760 | 2.820–20.635 | 18.106–21.038 | 7,200 | 16.656–42.478 |
+
+60 list samples (30 distinct cases twice), six detail and six combined Select samples. Each nonempty list exactly four domain SELECTs plus one snapshot setup, 12 total instrumented HTTP SQL statements; empty/out-of-range one domain SELECT, nine total. Detail three domain SELECTs plus one admission and snapshot setup; three bounded provider reads, LIMIT 201, exact options counts at largest scale [134,200,10]. 222 actual service SELECTs each EXPLAINed and EXPLAIN ANALYZEd (111 per run), not 222 different query shapes. Representative largest full-run first100 count uses covering roles_name_guard_name_unique (200 rows, actual count 0.0496ms), page PRIMARY backward scan (100 rows, actual limit 0.0424ms), membership aggregate optimizer chooses identity_single_role_unique on exact morph candidate (10,000 indexed candidates, 8,100 matching page roles joined by users.PRIMARY, temporary aggregate 9.65ms), grants aggregate uses role_has_permissions_role_id_foreign (101 matched grants, actual group aggregate 0.212ms) and permissions.PRIMARY. Across 60 count plans 42 covering index scans and 18 small roles table scans; page PRIMARY all 48 nonempty cases; membership PRIMARY range/ref/index or identity_single_role_unique ref depending on fanout, not universally a role_id range. All 54 User joins eq_ref PRIMARY. All 48 grant aggregates use role_id foreign-key index scan/range, all six detail grant queries use ref on it. Literal contains search may scan the bounded small roles catalogue; do not claim substring search is indexed. Current measurements do not justify a speculative extra index for the approved single-site V1. Review fanout and actual plans if cardinality/traffic changes.
+
+### Observed role disable measurements (two executions)
+
+| Affected Users | Binding rows removed | HTTP wall ms | Instrumented SQL statements | Manager acquisition-to-commit ack ms | Commit ms | PHP peak MiB | Linux process peak RSS KiB |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1 | 56.780–57.036 | 47 | 31.925–32.615 | 0.686–1.020 | 4 | 112804–113252 |
+| 100 | 199 | 136.659–138.639 | 245 | 112.718–114.071 | 1.068–1.107 | 4 | 113008–113016 |
+| 1,000 | 1,999 | 733.008–800.062 | 2045 | 708.730–775.766 | 3.005–8.389 | 6 | 112956–112964 |
+
+One real native browser per disable size and two explicitly synthetic binding rows per additional account (not real browser cookies). Verified one generation UPDATE and one indexed owner DELETE per member, unchanged memberships/password/active flags, unaffected native session preserved, re-enable does not revive old session. Actual manager wait 0.102–0.125ms in these uncontended cases. The measured largest disable used 1,103 total Users in DB, not 10,000; paired 10,000 dataset is a separate read test. The 2N+constant query growth (2,045 at 1,000) is intentional reuse of existing per-account CredentialRevocation within ONE transaction, not an N+1 read bug; broad currentHasAll staff locking and ~0.71–0.78s manager lock span are write-cost watchpoints. PHP peak excludes some native/runtime memory; observed Linux worker RSS ~110 MiB, not 6 MiB total process. Two CI samples, no p95/p99, concurrent throughput, production capacity/SLA or actual cPanel measurements. Keep current design at measured V1 scope, revisit bounded set-based revocation only after reviewed evidence and same atomic/overflow/affected-row guarantees. No new index/dependency/table, no architecture change.
+
+### Acceptance reconciliation on actual CI evidence
+
+| Criterion | Evidence | Result |
+| --- | --- | --- |
+| F04-01 | RolesReadHttpTest exact resources, literal filters, counts, pagination; RolesPerformanceTest 30 cases and plans twice | Verified |
+| F04-02 | RolesWriteHttpTest Arabic/English name lifecycle, default/explicit inactive, empty grants, actual collation; RolesConcurrencyTest both name race orders and RolesActualFaultTest native 1062 | Verified |
+| F04-03 | RolesWriteHttpTest ID-preserving rename/grant edit, active session and member preservation, permanent role guards; RolesSecurityTest wrong guard and no-op | Verified |
+| F04-04 | RolesWriteHttpTest protected/assigned delete and definition preservation; RolesSecurityTest orphan/foreign morph; RolesConcurrencyTest delete/assign both orders | Verified |
+| F04-05 | RolesWriteHttpTest strict catalogue/body and atomic replacement, RolesActualFaultTest grant rollback, RolesSecurityTest anomalies | Verified |
+| F04-06 | RolesReadHttpTest and RolesWriteHttpTest independent five capabilities, no early target lookup, native CSRF/origin/preflight; RolesConcurrencyTest revoked grant, RolesSecurityTest stale disabled actor | Verified |
+| F04-07 | RolesWriteHttpTest affected/inactive/self-revocation, RolesConcurrencyTest late save, RolesSecurityTest version bounds/re-enable and RolesPerformanceTest one/100/1000 disable and unaffected sessions | Verified |
+| F04-08 | RolesWriteHttpTest protected last path and self-disable rollback, RolesConcurrencyTest opposing Role/User last-admin mutations both orders | Verified |
+| F04-09 | RolesConcurrencyTest nine cases, RolesActualFaultTest five cases including actual 1062/1205/1213 and outcome/redaction; RolesSecurityTest concurrent enable/disable and RolesCacheTest real shared native file-cache commit/rollback repopulation | Verified |
+| F04-10 | SelectRegistryHttpTest/ProviderTest independent capabilities, exact aliases/names, malformed/bounds, combinations; RolesPerformanceTest three bounded providers | Verified |
+| F04-11 | Actual preflight/forward markers, eight fingerprints, four alias backup round-trip, two native sessions, exact schema/index/FK and resource/seed regression | Verified (synthetic only) |
+| F04-12 | Full 206/16517 passed, static scope audit and prior green 19-route cache; latest failed one Pint blank line; exact corrected-head CI still required | Pending final CI |
+
+Review limitations: approved role alias removal is a breaking API contract; coordinate clients. Before any real DROP, inspect actual legacy alias/name mappings with separate approval, decide mismatches, take/verify host backup, review restore with compatible application version; no real restoration proven and down intentionally refuses fabricated data. Shared-cache test uses isolated file storage on CI; host filesystem/permissions/TLS/proxy/native codec and memory/capacity validation remain separate deployment gates. Native JSON/multipart parser duplicate-key/collapsed field limitations remain documented; no custom parser. Existing broad locks and per-member writes limit concurrent write scalability; no load/SLA claim. Deferred F05 Audit means no persistent central trail yet; prior intermittent F02 contention-observation caveat remains, no waiver. No real DB, merge, or deployment authorized.
