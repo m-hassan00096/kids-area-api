@@ -10,6 +10,7 @@ use Modules\Identity\Models\User;
 use Modules\Identity\Services\IdentityAccess;
 use Modules\Identity\Services\IdentityMutex;
 use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 
@@ -22,9 +23,10 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $this->assertSame('ok', $first['code']);
         $this->assertSame('ok', $second['code']);
         $this->assertSame(2, Role::count());
-        $this->assertSame(10, Permission::count());
-        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), Role::findByName('manager', 'web')->permissions()->pluck('name')->all());
-        $this->assertSame(0, Role::findByName('reception', 'web')->permissions()->count());
+        $this->assertSame(15, Permission::count());
+        $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), Role::findByName('manager', 'web')->permissions()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(['activities.index', 'activities.show'], Role::findByName('reception', 'web')->permissions()->pluck('name')->all());
+        $this->assertSame(1, DB::table('identity_feature_provisions')->count());
         $this->assertSame(0, User::count());
     }
 
@@ -47,7 +49,7 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $this->assertSame(['manager'], $founder->roles()->pluck('name')->all());
         $this->assertSame(1, DB::table('model_has_roles')->count());
         $this->assertSame(0, DB::table('model_has_permissions')->count());
-        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), $founder->getAllPermissions()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), $founder->getAllPermissions()->pluck('name')->all());
     }
 
     public static function founderNames(): array

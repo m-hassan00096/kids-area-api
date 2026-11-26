@@ -6,6 +6,7 @@ use App\Services\Select\SelectRegistry;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 use Modules\Identity\Console\BootstrapManagerCommand;
+use Modules\Identity\Console\ProvisionActivityCatalogueCommand;
 use Modules\Identity\Services\Select\PermissionOptionsProvider;
 use Modules\Identity\Services\Select\RoleOptionsProvider;
 
@@ -22,7 +23,7 @@ class IdentityServiceProvider extends ServiceProvider
         $registry->register('permissions', new PermissionOptionsProvider);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([BootstrapManagerCommand::class]);
+            $this->commands([BootstrapManagerCommand::class, ProvisionActivityCatalogueCommand::class]);
         }
     }
 }

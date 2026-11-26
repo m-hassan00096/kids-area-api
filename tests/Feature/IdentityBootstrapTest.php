@@ -14,7 +14,7 @@ use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -39,7 +39,7 @@ class IdentityBootstrapTest extends IdentityDatabaseTestCase
         $this->assertSame(1, $founder->id);
         $this->assertTrue($founder->is_active);
         $this->assertSame(['manager'], $founder->roles()->pluck('name')->all());
-        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), $founder->getAllPermissions()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), $founder->getAllPermissions()->pluck('name')->all());
         $this->assertSame(0, $founder->permissions()->count());
         $this->assertTrue(Hash::check($password, $founder->password));
         $this->assertNull($founder->email);

@@ -6,11 +6,12 @@ use App\Exceptions\BusinessException;
 use Illuminate\Support\Facades\DB;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
+use Modules\Identity\Services\ActivityCatalogueGrants;
 use Modules\Identity\Services\FounderSequence;
 use Modules\Identity\Services\IdentityAccess;
 use Modules\Identity\Services\IdentityMutex;
 use Modules\Identity\Services\InitialUserData;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 use SensitiveParameter;
 
 final class BootstrapManagerAction
@@ -20,6 +21,7 @@ final class BootstrapManagerAction
         private readonly IdentityMutex $mutex,
         private readonly FounderSequence $sequence,
         private readonly IdentityAccess $access,
+        private readonly ActivityCatalogueGrants $activityGrants,
     ) {}
 
     public function execute(#[SensitiveParameter] array $credentials): User
@@ -51,7 +53,7 @@ final class BootstrapManagerAction
                 }
 
                 $user->syncRoles([$manager]);
-                if (! $this->access->currentHasAll(IdentityPermissions::keys(), (int) $user->id)) {
+                if (! $this->access->currentHasAll(PermissionCatalogue::keys(), (int) $user->id)) {
                     throw new BusinessException(__('identity.bootstrap_failed'), errorCode: 'IDENTITY_BOOTSTRAP_INCOMPLETE');
                 }
 
@@ -73,9 +75,10 @@ final class BootstrapManagerAction
             ->lockForUpdate()->first();
 
         $permissions = DB::table('permissions')
-            ->whereIn('name', IdentityPermissions::keys())->where('guard_name', 'web')
-            ->orderBy('id')->lockForUpdate()->get(['id', 'name', 'guard_name'])
-            ->filter(fn ($permission) => $permission->guard_name === 'web' && in_array($permission->name, IdentityPermissions::keys(), true));
+            ->whereIn('name', PermissionCatalogue::keys())->where('guard_name', 'web')
+            ->orderBy('id')->lockForUpdate()->get(['id', 'name', 'guard_name', 'alias_name'])
+            ->filter(fn ($permission) => $permission->guard_name === 'web' && in_array($permission->name, PermissionCatalogue::keys(), true)
+                && is_string($permission->alias_name) && trim($permission->alias_name) !== '');
 
         $ids = $permissions->pluck('id')->map(fn ($id) => (int) $id)->all();
         $granted = DB::table('role_has_permissions')->where('role_id', $manager->id)
@@ -84,8 +87,9 @@ final class BootstrapManagerAction
 
         if (! $manager->is_active || $reception === null || $reception->name !== 'reception'
             || $reception->guard_name !== 'web' || ! (bool) $reception->is_active
-            || $permissions->pluck('name')->unique()->count() !== count(IdentityPermissions::keys())
-            || array_diff($ids, $granted) !== []) {
+            || $permissions->pluck('name')->unique()->count() !== count(PermissionCatalogue::keys())
+            || array_diff($ids, $granted) !== [] || array_diff($granted, $ids) !== []
+            || ! $this->activityGrants->completed()) {
             throw new BusinessException(__('identity.seed_prerequisites'), errorCode: 'IDENTITY_SEED_REQUIRED');
         }
     }

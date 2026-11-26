@@ -8,7 +8,7 @@ use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 use RuntimeException;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -20,8 +20,8 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
 
         $this->assertSame(['manager', 'reception'], Role::orderBy('name')->pluck('name')->all());
         $this->assertSame(2, Role::where('guard_name', 'web')->where('is_active', true)->count());
-        $this->assertEquals(IdentityPermissions::CATALOGUE, Permission::pluck('alias_name', 'name')->all());
-        $this->assertSame(10, Permission::where('guard_name', 'web')->count());
+        $this->assertEquals(PermissionCatalogue::definitions(), Permission::pluck('alias_name', 'name')->all());
+        $this->assertSame(15, Permission::where('guard_name', 'web')->count());
 
         $manager = Role::findByName('manager', 'web');
         $reception = Role::findByName('reception', 'web');
@@ -29,8 +29,9 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
         $this->assertSame('reception', $reception->name);
         $this->assertArrayNotHasKey('alias_name', $manager->getAttributes());
         $this->assertArrayNotHasKey('alias_name', $reception->getAttributes());
-        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), $manager->permissions()->pluck('name')->all());
-        $this->assertSame(0, $reception->permissions()->count());
+        $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), $manager->permissions()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(['activities.index', 'activities.show'], $reception->permissions()->pluck('name')->all());
+        $this->assertSame(1, DB::table('identity_feature_provisions')->where('feature_key', 'activities.catalogue.v1')->count());
         $this->assertSame(0, User::count());
         $this->assertSame(0, DB::table('model_has_roles')->count());
     }
@@ -59,7 +60,7 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
         $action->execute();
         $action->execute();
 
-        $this->assertSame(10, Permission::count());
+        $this->assertSame(15, Permission::count());
         $this->assertSame(3, Role::count());
         $this->assertSame($beforeManager, $manager->fresh()->getRawOriginal());
         $this->assertSame($beforeCustom, $custom->fresh()->getRawOriginal());
@@ -81,11 +82,13 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
 
         app(SeedIdentityCatalogueAction::class)->execute();
 
-        $this->assertSame(10, Permission::count());
+        $this->assertSame(15, Permission::count());
         $this->assertSame(2, Role::count());
         $this->assertSame('Pre-existing', Permission::where('name', 'identity.users.view')->sole()->alias_name);
         $this->assertSame(0, Role::findByName('manager', 'web')->permissions()->count());
         $this->assertSame(0, User::count());
+        $this->assertSame(0, DB::table('identity_feature_provisions')->count());
+        $this->assertSame(0, Role::findByName('reception', 'web')->permissions()->count());
     }
 
     public function test_seed_failure_rolls_back_new_catalogue(): void
@@ -106,6 +109,7 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
         $this->assertSame(0, Role::count());
         $this->assertSame(0, Permission::count());
         $this->assertSame(0, DB::table('role_has_permissions')->count());
+        $this->assertSame(0, DB::table('identity_feature_provisions')->count());
         $this->assertSame(0, User::count());
     }
 }

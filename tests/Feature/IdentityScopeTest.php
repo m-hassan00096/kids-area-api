@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 
 class IdentityScopeTest extends IdentityDatabaseTestCase
 {
@@ -16,8 +16,8 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
     {
         app(SeedIdentityCatalogueAction::class)->execute();
 
-        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), Permission::pluck('name')->all());
-        $this->assertSame(10, Permission::count());
+        $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), Permission::pluck('name')->all());
+        $this->assertSame(15, Permission::count());
         $this->assertEqualsCanonicalizing([
             'migrations', 'users', 'roles', 'permissions', 'model_has_roles',
             'model_has_permissions', 'role_has_permissions', 'sessions', 'identity_login_throttles',
