@@ -2,9 +2,14 @@
 
 namespace Tests\Support;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Modules\Identity\Services\Avatar\AvatarImageNormalizer;
+use Modules\Identity\Services\IdentityAccessMutation;
+use Modules\Identity\Services\StaffSession;
+use Modules\Identity\Support\UsersMutationOutcome;
 use RuntimeException;
+use Spatie\Permission\PermissionRegistrar;
 use Spatie\QueryBuilder\Exceptions\InvalidFieldQuery;
 use Spatie\QueryBuilder\Exceptions\InvalidFilterQuery;
 use Spatie\QueryBuilder\Exceptions\InvalidIncludeQuery;
@@ -19,41 +24,44 @@ final class UsersBoundaryProbe
 
     public const RAW = 'synthetic-multipart-content-sentinel';
 
-    public function index(): never
+    public function index(): JsonResponse
     {
-        $this->execute();
+        return $this->execute();
     }
 
-    public function show(): never
+    public function show(): JsonResponse
     {
-        $this->execute();
+        return $this->execute();
     }
 
-    public function store(): never
+    public function store(): JsonResponse
     {
-        $this->execute();
+        return $this->execute();
     }
 
-    public function update(): never
+    public function update(): JsonResponse
     {
-        $this->execute();
+        return $this->execute();
     }
 
-    public function destroy(): never
+    public function destroy(): JsonResponse
     {
-        $this->execute();
+        return $this->execute();
     }
 
-    public function avatar(): never
+    public function avatar(): JsonResponse
     {
-        $this->execute();
+        return $this->execute();
     }
 
-    private function execute(): never
+    private function execute(): JsonResponse
     {
         $request = request();
         $mode = $request->headers->get('X-Identity-Test-Mode');
         $body = $request->isJson() ? $request->json()->all() : $request->request->all();
+        if (is_string($mode) && str_starts_with($mode, 'users-probe-mutation-')) {
+            return $this->mutationProbe($mode);
+        }
         if ($mode === 'users-probe-transport') {
             abort(503);
         }
@@ -92,5 +100,61 @@ final class UsersBoundaryProbe
         }
 
         abort(503);
+    }
+
+    // Only the guarded test HTTP router binds this controller. These synthetic
+    // callbacks prove the shared boundary, not the production CRUD actions.
+    private function mutationProbe(string $mode): JsonResponse
+    {
+        $request = request();
+        $binding = $request->attributes->get('staff_binding');
+        $actorId = (int) $binding->auth_user_id;
+        $sessionId = $request->session()->getId();
+        $targetId = $request->attributes->get('users_target')->id;
+        $connection = DB::connection();
+        $connection->getPdo()->exec('SET SESSION innodb_lock_wait_timeout = 9');
+        if ($mode === 'users-probe-mutation-stale') {
+            DB::table('sessions')->where('id', $sessionId)->update(['auth_last_activity' => app(StaffSession::class)->now() - StaffSession::IDLE_SECONDS]);
+        } elseif ($mode === 'users-probe-mutation-revoked') {
+            DB::table('sessions')->where('id', $sessionId)->delete();
+        } elseif ($mode === 'users-probe-mutation-owner') {
+            DB::table('sessions')->where('id', $sessionId)->update(['auth_user_id' => $targetId]);
+        } elseif ($mode === 'users-probe-mutation-permission') {
+            $roleId = DB::table('model_has_roles')->where('model_id', $actorId)->value('role_id');
+            $permissionId = DB::table('permissions')->where('name', 'identity.users.update')->value('id');
+            DB::table('role_has_permissions')->where('role_id', $roleId)->where('permission_id', $permissionId)->delete();
+        }
+
+        $outcome = new UsersMutationOutcome;
+        $calls = 0;
+        try {
+            app(IdentityAccessMutation::class)->executeUsers($request, 'identity.users.update', function ($actor, $target) use ($mode, &$calls): void {
+                $calls++;
+                if (DB::transactionLevel() !== 1 || (int) DB::selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS value')->value !== 5) {
+                    throw new RuntimeException('Synthetic boundary did not own the expected transaction.');
+                }
+                DB::table('users')->where('id', $target->id)->update(['name' => 'Synthetic boundary changed']);
+                if ($mode === 'users-probe-mutation-duplicate') {
+                    $username = DB::table('users')->where('id', $actor->id)->value('username');
+                    DB::table('users')->where('id', $target->id)->update(['username' => $username]);
+                } elseif ($mode === 'users-probe-mutation-last-admin') {
+                    DB::table('users')->where('id', $actor->id)->update(['is_active' => false]);
+                } elseif ($mode === 'users-probe-mutation-permanent') {
+                    DB::table('roles')->where('name', 'reception')->update(['is_active' => false]);
+                } elseif (in_array($mode, ['users-probe-mutation-rollback', 'users-probe-mutation-rollback-restore'], true)) {
+                    throw new RuntimeException('Synthetic rollback fault.');
+                } elseif ($mode === 'users-probe-mutation-cache') {
+                    app()->forgetInstance(PermissionRegistrar::class);
+                    app()->bind(PermissionRegistrar::class, static fn () => throw new RuntimeException('Synthetic cache fault.'));
+                }
+            }, $outcome);
+        } finally {
+            $request->attributes->set('_test_mutation_state', $outcome->state);
+            $request->attributes->set('_test_mutation_file_outcome', $outcome->fileOutcome());
+            $request->attributes->set('_test_mutation_calls', (string) $calls);
+            $request->attributes->set('_test_mutation_wait', (string) DB::selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS value')->value);
+        }
+
+        return response()->json(['success' => true]);
     }
 }

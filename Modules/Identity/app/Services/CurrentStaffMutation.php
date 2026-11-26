@@ -4,6 +4,7 @@ namespace Modules\Identity\Services;
 
 use App\Support\SensitiveQueryScope;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -76,7 +77,15 @@ final readonly class CurrentStaffMutation
             if (is_object($binding)) {
                 SensitiveQueryScope::run(DB::connection(), fn () => DB::table('sessions')
                     ->where('id', $request->session()->getId())->where('auth_user_id', $binding->auth_user_id)
-                    ->where('auth_version', $binding->auth_version)->delete());
+                    ->where('auth_version', $binding->auth_version)
+                    ->where(function (Builder $query): void {
+                        $query->where('auth_last_activity', '<=', $this->sessions->now() - StaffSession::IDLE_SECONDS)
+                            ->orWhereNotExists(function (Builder $user): void {
+                                $user->selectRaw('1')->from('users')
+                                    ->whereColumn('users.id', 'sessions.auth_user_id')
+                                    ->whereColumn('users.auth_version', 'sessions.auth_version');
+                            });
+                    })->delete());
             }
         } finally {
             // Never destroy a different owner's row merely because its ID

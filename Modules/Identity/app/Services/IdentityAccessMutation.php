@@ -12,10 +12,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use LogicException;
+use Modules\Identity\Support\IdentityPermissions;
 use Modules\Identity\Support\UsersMutationOutcome;
 use PDOException;
 use SensitiveParameter;
-use Modules\Identity\Support\IdentityPermissions;
 use Spatie\Permission\PermissionRegistrar;
 use Throwable;
 

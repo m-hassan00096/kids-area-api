@@ -33,6 +33,9 @@ $app->instance('request', $request);
 $kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 config()->set('identity-browser.throttle_cleanup_lottery', [0, 100]);
+// Random GC may take unrelated session locks before a targeted SQL barrier.
+// Make the synthetic harness deterministic; probe-events explicitly forces GC.
+config()->set('session.lottery', [0, 100]);
 $connection = DB::connection();
 if (! $app->environment('testing') || $connection->getDatabaseName() !== 'kids_area_test'
     || $connection->getDriverName() !== 'mysql' || $connection->getConfig('username') !== 'kids_area_ci'
@@ -205,7 +208,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     $ns = hrtime(true);
     if (str_starts_with($sql, 'set session innodb_lock_wait_timeout =')) {
         $restoreStatements++;
-        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout'], true)) {
+        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
     }
@@ -273,7 +276,7 @@ if ($mode === 'cleanup') {
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
 $commitFault = null;
-if ($mode === 'fault-commit-ack') {
+if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }
@@ -296,6 +299,12 @@ $response->headers->set('X-Test-Users-Page-Limit', $usersPageLimit);
 $response->headers->set('X-Test-Users-Snapshot', (string) $usersSnapshot);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);
 $response->headers->set('X-Test-Select-Limit', $selectLimit);
+foreach (['state', 'file_outcome', 'calls', 'wait'] as $field) {
+    $value = $request->attributes->get('_test_mutation_'.$field);
+    if (is_string($value)) {
+        $response->headers->set('X-Test-Mutation-'.str_replace('_', '-', $field), $value);
+    }
+}
 if ($request->attributes->get('_test_avatar_validated')) {
     $response->headers->set('X-Test-Avatar-Validated', '1');
 }
