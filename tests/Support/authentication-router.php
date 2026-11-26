@@ -523,7 +523,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         'activity-hold-page' => $activityProjection && $request->is('api/v1/activities'),
         'activity-hold-detail' => $activityProjection && $request->is('api/v1/activities/*'),
         'activity-hold-insert' => $activityInsert,
-        'activity-hold-update' => $activityUpdate,
+        'activity-hold-update', 'activity-performance-hold-update' => $activityUpdate,
         'activity-hold-delete' => $activityDelete,
         'activity-hold-manager' => $managerLock,
         'hold-role-insert' => $roleCreate,
@@ -575,7 +575,7 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
-if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore', 'activity-observe-mysql', 'activity-timeout-restore'], true)) {
+if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore', 'activity-observe-mysql', 'activity-timeout-restore'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
 }
 if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
@@ -587,17 +587,22 @@ if ($mode === 'roles-performance' && $request->isMethod('PUT') && $request->is('
 if (in_array($mode, ['roles-cache-hold-commit', 'roles-cache-hold-rollback'], true) && $request->isMethod('PUT') && $request->is('api/v1/roles/*')) {
     $connection->setPdo(new RolesCacheBarrier($connection->getPdo(), $pause, $mode === 'roles-cache-hold-commit'));
 }
+if (in_array($mode, ['activity-performance', 'activity-performance-hold-update'], true)
+    && ($request->is('api/v1/activities', 'api/v1/activities/*') || $request->is('api/v1/roles/*'))
+    && in_array($request->getMethod(), ['POST', 'PUT', 'DELETE'], true)) {
+    $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
+}
 $commitFault = null;
 if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack', 'activity-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }
 
-if (in_array($mode, ['users-performance', 'roles-performance'], true)) {
+if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update'], true)) {
     memory_reset_peak_usage();
 }
 $response = $kernel->handle($request);
-if (in_array($mode, ['users-performance', 'roles-performance'], true)) {
+if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update'], true)) {
     $response->headers->set('X-Test-Php-Peak-Bytes', (string) memory_get_peak_usage(true));
     $usage = getrusage();
     if (is_array($usage) && isset($usage['ru_maxrss'])) {
@@ -606,7 +611,12 @@ if (in_array($mode, ['users-performance', 'roles-performance'], true)) {
     foreach (['lock_wait_ms' => 'Lock-Wait-Ms', 'lock_span_ms' => 'Lock-Span-Ms', 'commit_ms' => 'Commit-Ms'] as $attribute => $header) {
         $value = $request->attributes->get('_test_users_'.$attribute);
         if (is_float($value)) {
-            $response->headers->set(($mode === 'roles-performance' ? 'X-Test-Roles-' : 'X-Test-Users-').$header, (string) round($value, 3));
+            $prefix = match ($mode) {
+                'roles-performance' => 'X-Test-Roles-',
+                'activity-performance', 'activity-performance-hold-update' => 'X-Test-Activity-',
+                default => 'X-Test-Users-',
+            };
+            $response->headers->set($prefix.$header, (string) round($value, 3));
         }
     }
 }

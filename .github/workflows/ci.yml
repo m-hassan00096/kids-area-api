@@ -143,6 +143,13 @@ jobs:
           cat "$RUNNER_TEMP/activity-api-tests.txt"
       - name: Run focused Activity API tests
         run: php artisan test --filter='ActivityReadHttp|ActivitySelectHttp|ActivityWriteHttp|ActivityRaceHttp|ActivityFaultHttp'
+      - name: Verify Activity performance test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter=ActivityPerformance > "$RUNNER_TEMP/activity-perf-tests.txt"
+          grep -Fq 'Tests\Feature\ActivityPerformanceTest::' "$RUNNER_TEMP/activity-perf-tests.txt"
+          cat "$RUNNER_TEMP/activity-perf-tests.txt"
+      - name: Measure guarded Activity performance
+        run: php artisan test --filter=ActivityPerformance
       - name: Run focused Authentication tests
         run: php artisan test --filter=Authentication
       - name: Run focused Identity tests

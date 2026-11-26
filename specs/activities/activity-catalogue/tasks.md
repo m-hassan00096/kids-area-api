@@ -166,6 +166,10 @@ T31–T33 tests authored with guarded independent HTTP/MySQL connections: duplic
 - [ ] **T41 — Implementation PR review gate** (T40; AC01–AC15). Open/review feature PR against develop; exact allowed files, CI on current head, no unrelated changes; review release/rollback, provisioning marker/cache and host gates. Request explicit merge authorization; no automatic merge/deploy. Evidence: PR link, SHA, CI, reviewer approval.
 - [ ] **T42 — Authorized final merge and tree verification** (T41; AC15). Only after explicit user approval merge reviewed head to develop and verify exact merged tree, update single handoff/PR evidence without recursive status-only commits. No production migration/provisioning/deploy. Evidence: merge SHA, matching tree, next-feature boundary.
 
+### Performance source checkpoint
+
+T36 guarded synthetic performance test authored: 200 and 2,000 activities with Arabic/English/accent/literal names, skewed active state and all mode combinations; 15/100 and deep/out-of-range pages, both sort directions and filters, detail and both bounded Select providers. Captures actual executed domain SQL and MySQL EXPLAIN/EXPLAIN ANALYZE, estimated and actual row counts in plans, three repeated native HTTP timings (median/max), request query counts and PHP peak memory. Existing native PDO timing harness extended only in guarded test router for three real updates per size and observed contention with another Activity write and Role edit. Earlier provisioning races remain verified; 0/200/201 selector boundaries covered by focused API tests. No extra index or production timing claim; measurements pending CI. T20–T42 remain unchecked until dependency/evidence reconciliation.
+
 ## Acceptance traceability — all Not Run
 
 | AC | Evidence-producing tasks | Status |
