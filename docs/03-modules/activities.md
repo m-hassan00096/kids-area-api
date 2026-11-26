@@ -1,6 +1,6 @@
 # Activities Module — Module Reference
 
-> **Status:** Business and module design decisions D01–D102 approved on 2026-11-26; module reference merged via PR #13 at 16eb572c8c64d341bfb614e7ec16d79c45050ba6. Activity Catalogue F01-D01–D06 approved; feature specification submitted for review. No Activities implementation or feature verification has started.
+> **Status:** Business and module design decisions D01–D102 approved on 2026-11-26; module reference merged via PR #13 at 16eb572c8c64d341bfb614e7ec16d79c45050ba6. Activity Catalogue F01-D01–D06 approved; feature specification and approved TP01–TP13 [technical plan](../../specs/activities/activity-catalogue/plan.md) prepared for review alongside feature tasks. Actual MySQL verification and implementation have not started.
 > **Scope:** V1; one location; Laravel 12 modular API-first backend, MySQL 8 / InnoDB, shared hosting, Arabic-first.
 > **Canonical path:** `docs/03-modules/activities.md`.
 > **Owning module:** `Modules/Activities`.
