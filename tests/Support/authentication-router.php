@@ -2,6 +2,8 @@
 
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
+use Illuminate\Hashing\HashManager;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
@@ -146,12 +148,23 @@ $pause = static function () use ($prefix): void {
 Route::middleware('api')->post('/api/v1/__fixture-user-link/{user}', static function (int $user) use ($mode, $pause) {
     try {
         DB::transaction(function () use ($user, $mode, $pause): void {
+            if ($mode === 'hold-fk-deadlock') {
+                // Test-only inversion: external fixture holds a parent S
+                // lock and many undo entries, then waits for the manager.
+                // Users holds manager and waits for this parent row. InnoDB
+                // chooses the smaller read-only Users transaction as victim.
+                DB::table('fixture_user_links')->insert(array_fill(0, 100, ['user_id' => $user]));
+                $pause();
+                DB::table('roles')->where('name', 'manager')->where('guard_name', 'web')->lockForUpdate()->first();
+
+                return;
+            }
             DB::table('fixture_user_links')->insert(['user_id' => $user]);
             if ($mode === 'hold-fk-insert') {
                 $pause();
             }
         }, 1);
-    } catch (\Illuminate\Database\QueryException $failure) {
+    } catch (QueryException $failure) {
         if ((int) ($failure->errorInfo[1] ?? 0) === 1452) {
             return response()->json(['fixture' => 'parent_missing'], 409);
         }
@@ -167,7 +180,7 @@ if (in_array($mode, ['hold-avatar-before-read', 'hold-avatar-after-read', 'fault
 
         public function __construct(private string $mode, private Closure $pause) {}
 
-        public function stage(#[\SensitiveParameter] NormalizedAvatar $image): string
+        public function stage(#[SensitiveParameter] NormalizedAvatar $image): string
         {
             if ($this->mode === 'fault-avatar-stage') {
                 throw new RuntimeException('Synthetic storage unavailable.');
@@ -193,7 +206,15 @@ if (in_array($mode, ['hold-avatar-before-read', 'hold-avatar-after-read', 'fault
     });
 }
 if ($mode === 'fault-users-hash') {
-    Hash::shouldReceive('make')->once()->andThrow(new RuntimeException('Synthetic hash failure.'));
+    // No mock framework in the cli-server bootstrap. Fail only the
+    // actual hashing call; the other native HashManager methods are intact.
+    Hash::swap(new class($app) extends HashManager
+    {
+        public function make(#[SensitiveParameter] $value, array $options = []): string
+        {
+            throw new RuntimeException('Synthetic hash failure.');
+        }
+    });
 }
 if (in_array($mode, ['fault-avatar-write', 'fault-avatar-close'], true)) {
     require __DIR__.'/avatar-io-faults.php';

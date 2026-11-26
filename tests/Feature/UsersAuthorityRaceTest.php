@@ -79,6 +79,46 @@ class UsersAuthorityRaceTest extends AuthenticationHttpTestCase
         $this->assertSame(401, $b->me()->status);
     }
 
+    public function test_delete_only_actor_and_self_disable_cannot_remove_last_admin_in_either_order(): void
+    {
+        $this->user('Fixture.Founder', 'reception');
+        $one = $this->user('Fixture.One');
+        $two = $this->user('Fixture.Two');
+        $role = Role::create(['name' => 'fixture-delete-only', 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+        $role->givePermissionTo('identity.users.delete');
+        $deleter = $this->user('Fixture.Deleter', $role->name);
+        $a = $this->browser($this->server());
+        $b = $this->browser($this->server());
+        $backup = $this->browser($b->server);
+        $this->assertSame(200, $a->login($one->username)->status);
+        $this->assertSame(200, $b->login($deleter->username)->status);
+        $this->assertSame(200, $backup->login($two->username)->status);
+        foreach ([true, false] as $disableFirst) {
+            $disable = $a->prepare('PUT', '/api/v1/users/'.$one->id, $this->fields($one, 'manager', false),
+                $this->raceOptions($disableFirst ? 'hold-users-update' : 'observe', $disableFirst ? 'first' : 'second'));
+            $delete = $b->prepare('DELETE', '/api/v1/users/'.$two->id, options:
+                $this->raceOptions($disableFirst ? 'observe' : 'hold-users-delete-fk', $disableFirst ? 'second' : 'first'));
+            [$first, $second] = $disableFirst ? $this->race($disable, $delete, 'manager') : $this->race($delete, $disable, 'manager');
+            $this->assertSame(200, $first->status);
+            $this->assertSame(409, $second->status);
+            $this->assertSame('IDENTITY_LAST_ADMIN', $second->json()['errors']['code']);
+            $this->assertSame('rolled_back', $second->header('X-Test-Users-Outcome'));
+            if ($disableFirst) {
+                $this->assertFalse($one->fresh()->is_active);
+                $this->assertTrue($two->fresh()->is_active);
+                $this->assertSame(401, $a->me()->status);
+                $this->assertSame(200, $backup->request('PUT', '/api/v1/users/'.$one->id, $this->fields($one, 'manager'))->status);
+                $this->assertSame(200, $a->login($one->username)->status);
+            } else {
+                $this->assertNull($two->fresh());
+                $this->assertTrue($one->fresh()->is_active);
+                $this->assertSame(200, $a->me()->status);
+                $this->assertSame(401, $backup->me()->status);
+            }
+            $this->assertSame(200, $b->me()->status);
+        }
+    }
+
     public function test_logout_first_mutation_first_and_idle_cutoff_recheck(): void
     {
         $actor = $this->user('Fixture.Founder');
