@@ -75,6 +75,12 @@ if (is_string($barrierDir) && dirname($barrierDir) === sys_get_temp_dir()
 }
 $barrier = $request->headers->get('X-Identity-Test-Barrier');
 $mode = $request->headers->get('X-Identity-Test-Mode');
+// Activity-specific fault and barrier modes use the same guarded CI fixture.
+if (is_string($mode) && str_starts_with($mode, 'activity-')
+    && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1')) {
+    http_response_code(503);
+    exit;
+}
 // Role fault and barrier modes are confined to the authorized CI database.
 if (is_string($mode) && (str_contains($mode, 'roles-action-') || str_contains($mode, 'role-write')
     || str_contains($mode, 'role-insert') || str_contains($mode, 'role-delete') || str_contains($mode, 'role-grant')
@@ -338,6 +344,10 @@ $usersPageLimit = '';
 $usersSnapshot = 0;
 $rolesReads = 0;
 $rolesTargetReads = 0;
+$activityReads = 0;
+$activityTargetReads = 0;
+$activityWrites = 0;
+$activityPageLimit = '';
 $roleGenerationWrites = 0;
 $roleSessionDeletes = 0;
 $selectReads = 0;
@@ -346,7 +356,7 @@ $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_
 $armed = true;
 $restoreStatements = 0;
 $staffTouches = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$activityReads, &$activityTargetReads, &$activityWrites, &$activityPageLimit, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -390,6 +400,30 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         && str_contains($sql, 'order by p.name asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
         $selectReads++;
         $selectLimit = $match[1];
+    }
+    $activitySelect = str_starts_with($sql, 'select') && str_contains($sql, ' from activities');
+    $activityAdmission = $activitySelect && preg_match('/\Aselect id from activities where\b/', $sql) === 1;
+    $activityCount = $activitySelect && str_starts_with($sql, 'select count(*) as aggregate');
+    $activityProjection = $activitySelect && str_starts_with($sql, 'select id, name, supports_hourly, supports_subscription, hourly_rate, monthly_price, is_active from activities');
+    if ($activitySelect) {
+        $activityReads++;
+        if ($activityAdmission) {
+            $activityTargetReads++;
+        }
+        if ($activityProjection && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+            $activityPageLimit = $match[1];
+        }
+        if ($request->is('api/v1/selects') && str_starts_with($sql, 'select id, name from activities')
+            && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+            $selectReads++;
+            $selectLimit = $match[1];
+        }
+    }
+    $activityInsert = str_starts_with($sql, 'insert into activities ');
+    $activityUpdate = str_starts_with($sql, 'update activities set ');
+    $activityDelete = str_starts_with($sql, 'delete from activities ');
+    if ($activityInsert || $activityUpdate || $activityDelete) {
+        $activityWrites++;
     }
     if ($mode === 'roles-performance') {
         if (str_starts_with($sql, 'update users set') && str_contains($sql, 'auth_version')) {
@@ -469,6 +503,12 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         'hold-credentials', 'fault-report' => $credentialRead,
         'hold-manager', 'hold-manager-expire' => $managerLock,
         'hold-users-insert' => $userInsert,
+        'activity-hold-page' => $activityProjection && $request->is('api/v1/activities'),
+        'activity-hold-detail' => $activityProjection && $request->is('api/v1/activities/*'),
+        'activity-hold-insert' => $activityInsert,
+        'activity-hold-update' => $activityUpdate,
+        'activity-hold-delete' => $activityDelete,
+        'activity-hold-manager' => $managerLock,
         'hold-role-insert' => $roleCreate,
         'hold-role-write', 'fault-role-write' => $roleWrite,
         'hold-role-delete', 'fault-role-delete' => $roleDelete,
@@ -588,6 +628,14 @@ $response->headers->set('X-Test-Users-Page-Limit', $usersPageLimit);
 $response->headers->set('X-Test-Users-Snapshot', (string) $usersSnapshot);
 $response->headers->set('X-Test-Roles-Reads', (string) $rolesReads);
 $response->headers->set('X-Test-Roles-Target-Reads', (string) $rolesTargetReads);
+$response->headers->set('X-Test-Activity-Reads', (string) $activityReads);
+$response->headers->set('X-Test-Activity-Target-Reads', (string) $activityTargetReads);
+$response->headers->set('X-Test-Activity-Writes', (string) $activityWrites);
+$response->headers->set('X-Test-Activity-Page-Limit', $activityPageLimit);
+$activityOutcome = $request->attributes->get('activities_outcome');
+if (is_string($activityOutcome)) {
+    $response->headers->set('X-Test-Activity-Outcome', $activityOutcome);
+}
 $response->headers->set('X-Test-Roles-Generation-Writes', (string) $roleGenerationWrites);
 $response->headers->set('X-Test-Roles-Session-Deletes', (string) $roleSessionDeletes);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);

@@ -132,6 +132,10 @@ After explicit user approval of the measured collation, staged T07–T10 source 
 - [ ] **T25 — Two Select providers** (T07,T12,T20; AC10, AC11). Register all/active keys in existing registry; name ASC,id ASC; 200 cap + one, exact options, no unauthorized reads, no third provider. Evidence: 0/200/201, mixed authorization, unknown/duplicates/max keys, existing three Identity providers still pass.
 - [ ] **T26 — Read/transport checkpoint** (T20–T25; AC07–AC11, AC15). Native HTTP tests all list/detail/filter/Select shapes, no catalogue mutation by reads, session-touch semantics preserved; run focused suites. Evidence: actual execution logs and query count assertions.
 
+### API verification source checkpoint
+
+Authored native HTTP read/transport, permission matrix, all filters/sorts/query limits, exact resource, snapshot count/page race and detail re-resolution race, Select 0/200/201 and mixed authorization, actual CRUD and strict native validation tests. Test-only guarded SQL counters and actual independent HTTP/MySQL barriers added; five route scope asserted, CI focused discovery plus full existing regression retained. Source and tests are **Not Run** on this new head; 19/42 tasks remain verified. T31–T33 detailed write races/faults and final performance/acceptance remain outstanding. No production database operation or merge.
+
 ## Phase E — Write Actions and atomicity (T27–T34)
 
 - [ ] **T27 — Catalogue write transaction boundary** (T19–T21; AC11, AC14). Reuse IdentityMutex and CurrentStaffMutation original binding and capability, short outer transaction, consistent locks, 5s wait and restoration/disconnect, rollback/commit outcome classification. No broad refactor or ordinary CRUD idempotency. Evidence: actual transaction/session security and wait/fault tests.

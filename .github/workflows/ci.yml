@@ -133,6 +133,16 @@ jobs:
           cat "$RUNNER_TEMP/activity-tests.txt"
       - name: Run focused Activity foundation tests
         run: php artisan test --filter='ActivitySchema|ActivityConstraintErrors|ActivityProvisioning'
+      - name: Verify focused Activity API test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter='ActivityReadHttp|ActivitySelectHttp|ActivityWriteHttp' > "$RUNNER_TEMP/activity-api-tests.txt"
+          for source in tests/Feature/Activity*HttpTest.php; do
+            class="$(basename "$source" .php)"
+            grep -Fq "Tests\Feature\${class}::" "$RUNNER_TEMP/activity-api-tests.txt"
+          done
+          cat "$RUNNER_TEMP/activity-api-tests.txt"
+      - name: Run focused Activity API tests
+        run: php artisan test --filter='ActivityReadHttp|ActivitySelectHttp|ActivityWriteHttp'
       - name: Run focused Authentication tests
         run: php artisan test --filter=Authentication
       - name: Run focused Identity tests
