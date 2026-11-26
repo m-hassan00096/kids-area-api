@@ -8,6 +8,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Modules\Identity\Actions\DeleteUserAction;
 use Modules\Identity\Http\Controllers\UsersController;
 use Modules\Identity\Http\Middleware\FinalizeLoginSession;
 use Modules\Identity\Http\Middleware\RequireStaffSession;
@@ -65,8 +66,13 @@ if (is_string($barrierDir) && dirname($barrierDir) === sys_get_temp_dir()
 $barrier = $request->headers->get('X-Identity-Test-Barrier');
 $mode = $request->headers->get('X-Identity-Test-Mode');
 if (is_string($mode) && str_starts_with($mode, 'users-probe-') && $request->is('api/v1/users', 'api/v1/users/*')) {
-    // Swap only the unimplemented controller in the guarded test router. The real route and middleware stack runs unchanged.
+    // Swap only the controller in the guarded test router for isolated boundary probes. The real route and middleware stack runs unchanged.
     $app->bind(UsersController::class, fn () => new UsersBoundaryProbe);
+}
+
+// The fixture FK is a reviewed test-only dependency, never a production table.
+if ($mode === 'users-action-protected-fk') {
+    $app->when(DeleteUserAction::class)->needs('$protectedUserForeignKeys')->give(['fixture_user_protected_fk']);
 }
 
 // Isolated test-only route: prove ordinary API query events remain visible
@@ -176,7 +182,7 @@ $selectLimit = '';
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, $request): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -208,6 +214,12 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     $ns = hrtime(true);
     if (str_starts_with($sql, 'set session innodb_lock_wait_timeout =')) {
         $restoreStatements++;
+        if ($restoreStatements === 1 && $mode === 'users-action-duplicate-create') {
+            // Inject a real uniqueness collision AFTER validation and staging,
+            // before BEGIN. Only synthetic fixtures in the guarded database.
+            $statement = $connection->getPdo()->prepare('UPDATE users SET username = ? WHERE username = ?');
+            $statement->execute(['Fixture.New', 'Fixture.Collision']);
+        }
         if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
@@ -276,7 +288,7 @@ if ($mode === 'cleanup') {
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
 $commitFault = null;
-if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack'], true)) {
+if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }

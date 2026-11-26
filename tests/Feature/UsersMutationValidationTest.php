@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Modules\Identity\Models\User;
 use Modules\Identity\Models\Role;
 use Tests\Support\AvatarFixtures;
 
 class UsersMutationValidationTest extends AuthenticationHttpTestCase
 {
-    public function test_actual_create_and_full_update_validate_without_mutating(): void
+    public function test_actual_create_and_full_update_validate_and_save_explicit_fields(): void
     {
         $founder = $this->user('Fixture.Founder');
         $target = $this->user('Exact.Target', 'reception', ['email' => 'Case@Example.test', 'phone' => '00012345678']);
@@ -17,7 +19,6 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
         $role = Role::findByName('reception', 'web');
         $create = ['name' => '  Fixture new  ', 'username' => 'Exact.New', 'roleId' => $role->id,
             'password' => '        ', 'passwordConfirmation' => '        '];
-        $this->assertSame(503, $browser->request('POST', '/api/v1/users', $create)->status);
         foreach (['name', 'username', 'roleId', 'password', 'passwordConfirmation'] as $field) {
             $bad = $create;
             unset($bad[$field]);
@@ -33,11 +34,30 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
             $this->assertSame(422, $response->status, $field);
             $this->assertArrayHasKey($field, $response->json()['errors']);
         }
-        $this->assertSame(503, $browser->request('POST', '/api/v1/users', array_replace($create, ['username' => 'exact.target']))->status);
+        $response = $browser->request('POST', '/api/v1/users', $create);
+        $this->assertSame(201, $response->status, $response->header('X-Test-Exception-Class') ?? '');
+        $this->assertSame(['success' => true, 'message' => __('identity.user_created'), 'data' => []], $response->json());
+        $created = User::where('username', 'Exact.New')->sole();
+        $this->assertSame('Fixture new', $created->name);
+        $this->assertTrue($created->is_active);
+        $this->assertNull($created->phone);
+        $this->assertNull($created->email);
+        $this->assertNull($created->avatar_key);
+        $this->assertSame(1, $created->auth_version);
+        $this->assertTrue(Hash::check('        ', $created->password));
+        $this->assertSame('argon2id', password_get_info($created->password)['algoName']);
+        $this->assertSame([$role->id], $created->roles()->pluck('roles.id')->all());
+        $this->assertSame(0, $created->permissions()->count());
+        $this->assertSame(201, $browser->request('POST', '/api/v1/users', array_replace($create, ['username' => 'exact.target']))->status);
         $path = '/api/v1/users/'.$target->id;
         $update = ['name' => '  Fixture edit  ', 'username' => $target->username, 'email' => $target->email, 'phone' => $target->phone,
             'roleId' => $role->id, 'isActive' => true];
-        $this->assertSame(503, $browser->request('PUT', $path, $update)->status);
+        $response = $browser->request('PUT', $path, $update);
+        $this->assertSame(200, $response->status);
+        $this->assertSame(['success' => true, 'message' => __('identity.user_updated'), 'data' => []], $response->json());
+        $this->assertSame('Fixture edit', $target->fresh()->name);
+        $this->assertSame($target->password, $target->fresh()->password);
+        $this->assertSame(1, $target->fresh()->auth_version);
         foreach (array_keys($update) as $field) {
             $bad = $update;
             unset($bad[$field]);
@@ -50,16 +70,19 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
             ['password' => '  abcdef  ', 'passwordConfirmation' => '  abcdef  '],
             ['removeAvatar' => true],
         ] as $extra) {
-            $this->assertSame(503, $browser->request('PUT', $path, array_replace($update, $extra))->status);
+            $this->assertSame(200, $browser->request('PUT', $path, array_replace($update, $extra))->status);
         }
         $response = $browser->request('PUT', $path, $update + ['passwordConfirmation' => 'orphan-fixture']);
         $this->assertSame(422, $response->status);
         $this->assertArrayHasKey('passwordConfirmation', $response->json()['errors']);
         $this->assertSame(422, $browser->request('PUT', $path, $update + ['userId' => $founder->id])->status);
         $this->assertSame(422, $browser->request('PUT', $path, array_replace($update, ['username' => $founder->username]))->status);
-        $this->assertSame(2, DB::table('users')->count());
-        $this->assertSame($target->name, $target->fresh()->name);
-        $this->assertSame($target->password, $target->fresh()->password);
+        $this->assertSame(4, DB::table('users')->count());
+        $this->assertSame('Fixture edit', $target->fresh()->name);
+        $this->assertTrue(Hash::check('  abcdef  ', $target->fresh()->password));
+        $this->assertSame(2, $target->fresh()->auth_version);
+        $this->assertSame($target->email, $target->fresh()->email);
+        $this->assertSame($target->phone, $target->fresh()->phone);
     }
 
     public function test_early_founder_self_password_and_inactive_role_rules(): void
@@ -75,9 +98,10 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
         $self = array_replace($data, ['username' => $actor->username, 'roleId' => Role::findByName('manager', 'web')->id]);
         $this->assertSame(403, $browser->request('PUT', '/api/v1/users/'.$actor->id, $self + ['password' => '12345678', 'passwordConfirmation' => '12345678'])->status);
         $path = '/api/v1/users/'.$target->id;
-        $this->assertSame(503, $browser->request('PUT', $path, $data)->status);
-        $this->assertSame(503, $browser->request('PUT', $path, array_replace($data, ['isActive' => false]))->status);
-        $target->update(['is_active' => false]);
+        $this->assertSame(200, $browser->request('PUT', $path, $data)->status);
+        $this->assertSame(200, $browser->request('PUT', $path, array_replace($data, ['isActive' => false]))->status);
+        $this->assertFalse($target->fresh()->is_active);
+        $this->assertSame(2, $target->fresh()->auth_version);
         $response = $browser->request('PUT', $path, $data);
         $this->assertSame(422, $response->status);
         $this->assertArrayHasKey('roleId', $response->json()['errors']);
@@ -89,7 +113,7 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
         $this->assertSame(403, $founderBrowser->request('PUT', '/api/v1/users/'.$founder->id, $founderData)->status);
     }
 
-    public function test_actual_form_requests_normalize_native_avatar_without_staging(): void
+    public function test_actual_native_avatar_create_update_replace_remove_and_invalid_preservation(): void
     {
         $founder = $this->user('Fixture.Founder');
         $target = $this->user('Fixture.Target', 'reception');
@@ -100,16 +124,37 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
             'password' => '        ', 'passwordConfirmation' => '        '];
         $update = ['_method' => 'PUT', 'name' => 'Fixture', 'username' => $target->username, 'roleId' => (string) $roleId,
             'isActive' => 'true', 'email' => '', 'phone' => ''];
-        foreach ([['/api/v1/users', $create], ['/api/v1/users/'.$target->id, $update]] as [$path, $fields]) {
-            $response = $browser->request('POST', $path, options: $this->multipart($fields, AvatarFixtures::image('png')));
-            $this->assertSame(503, $response->status, $response->header('X-Test-Exception-Class') ?? '');
+        foreach ([['/api/v1/users', $create, 201], ['/api/v1/users/'.$target->id, $update, 200]] as [$path, $fields, $status]) {
             $response = $browser->request('POST', $path, options: $this->multipart($fields, 'synthetic invalid image'));
             $this->assertSame(422, $response->status);
             $this->assertArrayHasKey('avatar', $response->json()['errors']);
+            $response = $browser->request('POST', $path, options: $this->multipart($fields, AvatarFixtures::image('png')));
+            $this->assertSame($status, $response->status, $response->header('X-Test-Exception-Class') ?? '');
         }
+        $created = User::where('username', 'Fixture.New')->sole();
+        $old = $target->fresh()->avatar_key;
+        $this->assertNotNull($old);
+        $this->assertNotNull($created->avatar_key);
+        $this->assertNotSame($created->avatar_key, $old);
+        $this->assertFileExists($this->barrierDir.'/avatars/'.$old);
+        $this->assertSame(200, $browser->request('GET', '/api/v1/users/'.$target->id.'/avatar')->status);
+        $response = $browser->request('POST', '/api/v1/users/'.$target->id, options: $this->multipart($update, 'invalid replacement'));
+        $this->assertSame(422, $response->status);
+        $this->assertSame($old, $target->fresh()->avatar_key);
+        $response = $browser->request('POST', '/api/v1/users/'.$target->id, options: $this->multipart($update, AvatarFixtures::image('png', 32, 16)));
+        $this->assertSame(200, $response->status);
+        $new = $target->fresh()->avatar_key;
+        $this->assertNotSame($old, $new);
+        $this->assertFileDoesNotExist($this->barrierDir.'/avatars/'.$old);
+        $this->assertFileExists($this->barrierDir.'/avatars/'.$new);
+        $ordinary = ['name' => 'Fixture', 'username' => $target->username, 'roleId' => $roleId, 'isActive' => true, 'email' => null, 'phone' => null];
+        $this->assertSame(200, $browser->request('PUT', '/api/v1/users/'.$target->id, $ordinary)->status);
+        $this->assertSame($new, $target->fresh()->avatar_key);
+        $this->assertSame(200, $browser->request('PUT', '/api/v1/users/'.$target->id, $ordinary + ['removeAvatar' => true])->status);
         $this->assertNull($target->fresh()->avatar_key);
-        $this->assertSame(2, DB::table('users')->count());
-        $this->assertSame([], glob($this->barrierDir.'/avatars/*'));
+        $this->assertFileDoesNotExist($this->barrierDir.'/avatars/'.$new);
+        $this->assertFileExists($this->barrierDir.'/avatars/'.$created->avatar_key);
+        $this->assertSame(3, DB::table('users')->count());
     }
 
     private function multipart(array $fields, string $bytes): array
