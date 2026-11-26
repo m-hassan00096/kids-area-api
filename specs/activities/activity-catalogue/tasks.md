@@ -1,6 +1,6 @@
 # Activities Feature 01 — Activity Catalogue: Tasks
 
-> **Status:** TP01–TP13 approved; task breakdown prepared for review, **1/42 implementation/delivery tasks verified**, all 15 feature ACs Not Run. This document does not authorize code, merge or production operations. PR #14 exact documentation head a4fb5aa passed CI 45897637775 (206/16562); merged b604d51893b89312096703d31fe3065ebb049227, exact tree verified. User authorized starting preparatory tests; feature branch feature/activities-catalogue from that exact develop. Existing tests are baseline only; T03/T04 synthetic preflight authored, execution Not Run at publication; remaining tasks unchecked.
+> **Status:** TP01–TP13 approved; task breakdown prepared for review, **1/42 implementation/delivery tasks verified**, all 15 feature ACs Not Run. This document does not authorize code, merge or production operations. PR #14 exact documentation head a4fb5aa passed CI 45897637775 (206/16562); merged b604d51893b89312096703d31fe3065ebb049227, exact tree verified. User authorized starting preparatory tests; feature branch feature/activities-catalogue from that exact develop. Existing tests are baseline only; T03/T04 actual synthetic preflight completed on CI 45899369824: environment and DDL passed; two unapproved collation equivalences caused deliberate gate failure. T02/T06 reviewed in part; formal dependent task closure pending. See checkpoint below.
 > **Sources:** [spec.md](spec.md), [plan.md](plan.md). Txx dependencies are mandatory; ACxx references correspond exactly to spec §8. Every unchecked task requires recorded actual verification; authored code/tests alone are insufficient. No task checkbox is closed merely because a previous baseline passed.
 > **Gate:** PR #14 docs-only review, exact-head CI, explicit merge approval, then reviewed task list and implementation authorization. Guarded synthetic MySQL only; no real DB/reset/down/deploy or future feature. Reopen any affected decision if actual MySQL behavior conflicts with approved collation expectations.
 
@@ -12,6 +12,55 @@
 - [ ] **T04 — Collation and lexical feasibility** (T03; AC01, AC03, AC04, AC08). Measure actual equality, LIKE and unique behavior for every plan sample including Arabic variants, accents, canonical forms, edge/internal whitespace, mixed scripts and literal search. Record results and stop affected work for review on material mismatch; no fallback. Evidence: actual MySQL test matrix, not PHP-only.
 - [ ] **T05 — Forward/fresh migration test design** (T03,T04; AC01, AC13, AC15). Prepare synthetic historical fixture and exact snapshot of existing users/roles/permission aliases/pivots/sessions/throttles/migrations; verify prior Roles migration preservation and clean new install paths. Confirm no unapproved down/reset or business data. Evidence: guard, snapshot comparison strategy, safe synthetic backup/restore plan.
 - [ ] **T06 — Test harness and CI transition design** (T02,T03; AC11–AC15). Reuse guarded real browser/independent DB connection and process barrier harness; identify actual new tests discovery, scope and route inventory changes. Do not relax Identity assertions or enable modules outside scope. Evidence: harness/CI review and guard checks.
+
+
+### Preflight checkpoint — observed MySQL evidence (2026-11-26)
+
+- Exact source `b1393451e0d636ee7e9d71363793814d15e76a52`, [CI 45899369824](https://github.com/m-hassan00096/kids-area-api/actions/runs/45899369824). Foundation job [140181084269](https://github.com/m-hassan00096/kids-area-api/actions/runs/45899369824/job/140181084269) **success**: Authentication 41/1614, Identity 56/1007, Users/Avatar/Select 75/7150, Roles 35/7054, full 206/16611, Pint 185 files, Composer audit, guarded Roles forward preservation and 19-route/cache/module scope all passed.
+- Preflight job [140181083982](https://github.com/m-hassan00096/kids-area-api/actions/runs/45899369824/job/140181083982) **failure by deliberate review gate** (exit 1 after emitting all seven evidence markers). Actual server MySQL 8.0.46, InnoDB, STRICT_TRANS_TABLES, utf8mb4, SYSTEM time zone with UTC system and 00:00:00 observed offset, approved collation NO PAD. All eight baseline migrations present; nine existing InnoDB tables (including migrations) unchanged by probe. No production host inference.
+- Actual DDL fixture metadata: nine approved columns, five named enforced CHECKs, PRIMARY(id) and uq_activities_name(name), no extra indexes. Three valid mode inserts and exact DECIMAL round-trips including 0.01 and 9999999999.99 passed. 17 invalid inserts rejected (14 CHECK violations 3819, overlong name 1406, rate overflow 1264, NULL flag 1048); duplicate rename 1062, invalid update 3819, same-record case update succeeded. Six literal substring cases passed (%/_/!/backslash/comma/Arabic). Zero fixture rows after transaction rollback; existing table counts unchanged. This is isolated fixture feasibility, **not** the eventual Activities migration, API or AC completion.
+- All 18 equality/LIKE pairs matched actual unique-index behavior for equality. No explicit expected equality mismatch. Two intentionally unapproved equivalences require user review; the gate correctly fails.
+
+| Case | Equality / unique conflict | SQL LIKE |
+|---|---|---|
+| English case, edge-trimmed and identical Arabic (3 pairs) | Equal / conflict | Match |
+| Cafe vs Café | Distinct | No match |
+| الرسم vs الرَسم | Distinct | No match |
+| كرة قدم vs كرة  قدم (two spaces) | Distinct | No match |
+| ا vs أ, إ, آ (3 pairs) | Distinct | No match |
+| ي vs ى | Distinct | No match |
+| ه vs ة | Distinct | No match |
+| الرسم vs الـرسم (U+0640 tatweel) | **Equal / conflict — review** | No match |
+| Café vs Cafe + combining acute | Equal / conflict | No match |
+| سباحة Swim vs سباحة SWIM | Equal / conflict | Match |
+| 🎨 vs 🎭 | Distinct | No match |
+| كرة قدم with ASCII space vs U+00A0 NBSP | **Equal / conflict — review** | Match |
+| Swimming vs Swimming + trailing ASCII space (DB only) | Distinct (NO PAD) | No match |
+| Unicode whitespace edge-trimmed Swimming | Equal / conflict | Match |
+
+Recommendation, **not approved yet**: retain the selected collation; treat tatweel and NBSP spellings as duplicate-equivalent for uniqueness, retain exact trimmed display name, keep native literal LIKE semantics (not promised identical to equality). This avoids new columns/normalization/global changes. If user requires them to distinguish names, revise and verify an alternative design before affected code. Do not weaken or bypass the failed gate. The application must still return approved 409 duplicate error when the actual DB unique constraint rejects a name.
+
+Additional local lexical feasibility check: PHP 8.4.24 standalone exact approved regex and string-only normalization, 33/33 cases (7 valid normalized, 26 invalid including numeric, bool, array, object, leading zero, whitespace, newline, non-ASCII digits, precision and range). Actual local command exit 0; no application implementation, no claim this is PHPUnit or the PHP 8.2 CI suite. Implement and verify real Request tests later. Earlier standalone counts without retained execution evidence are not counted toward feature acceptance.
+
+### T02/T06 reviewed consumer inventory — preparation, not implementation
+
+| Actual baseline path (under Modules/Identity/app unless noted) | Scope / required integration |
+|---|---|
+| Support/IdentityPermissions.php | Preserve ten module-owned definitions and six ESSENTIAL keys. The latter stay identity-only. |
+| Support/PermissionCatalogue.php | Existing global read filter hardcodes Identity keys; aggregate exact 15 keys, keep indexed and BINARY guard/name checks. |
+| Http/Requests/RoleMutationRequest.php; Services/RoleMutationData.php | Global allowed list, grant count bound and locked definition/grant resolution need aggregate; do not relax wrong-guard or anomaly rejection. |
+| Queries/RolesQuery.php; Services/Select/PermissionOptionsProvider.php | Both use PermissionCatalogue::constrain. Preserve snapshot, authorization, bound and option shape. |
+| Actions/SeedIdentityCatalogueAction.php | Definition creation and fresh manager grants; routine existing-install behavior stays non-destructive. |
+| Actions/BootstrapManagerAction.php | Full fresh catalogue assertion/currentHasAll uses old keys; expand full fresh checks, never change six essential viability checks. |
+| Services/IdentityAccess.php; Http/Resources/MeResource.php | Current primary, exact BINARY guard and permission checks, single-role/no-direct-grant eligibility. Context returns effective stored web grants, not hardcoded ten; preserve existing behavior and verify new exact capabilities, no role-name bypass. |
+| Providers/IdentityServiceProvider.php; app/Services/Select/SelectRegistry.php | Existing provider registration and complete authorization-before-query pass; add only two Activities providers under existing registry. |
+| routes/api.php; modules_statuses.json; Modules/Identity/module.json; composer.json | Existing root v1 route registration and module discovery, one active module baseline. Avoid duplicate prefix/route registration or package additions. |
+| tests/Feature/IdentityScopeTest.php; tests/Feature/IdentityCatalogueTest.php | Exact ten and zero-reception baseline assertions; update deliberately for 15 and two fresh reception grants without altering old definitions. Inspect all other fixture and assertion references before implementation. |
+| tests/Support/roles-migration-preflight.php; tests/Feature/IdentityDatabaseTestCase.php | Existing historical fixture/forward guard and synthetic CI-only initialization retained. New separate preflight uses an empty service, no reset or down. |
+| tests/Support/AuthenticationRaceHarness.php and existing real HTTP harness | Reuse committed barriers, independently connected workers, native browser cookie/CSRF and actual PDO fault evidence; do not replace with mock-only tests. |
+| .github/workflows/ci.yml | New preflight job separate, foundation job unchanged. Later explicit Identity + Activities module scope and 24-route inventory, focused Activity discovery, full regression; keep previous forward preservation and guard steps. |
+
+T02 consumer review is in progress; an exhaustive scan of remaining test/fixture/command and application references still required. T03 environment/DDL evidence **passed**, formal checkbox remains open pending T02 prerequisite closure. T04 comparison/lexical evidence recorded but **blocked on user decision**. T05 awaits T04. T06 preparation started, formal closure awaits T02/T03. Keep 1/42 checked, all 15 ACs Not Run. Do not proceed with affected schema/name implementation, alter the collation, or remove the guard without reviewed decision. No Activities application code or migration, grant, production database or deployment; no merge.
 
 ## Phase B — Activities schema, module and domain foundations (T07–T11)
 
