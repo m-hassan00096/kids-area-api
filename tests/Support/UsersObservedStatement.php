@@ -17,7 +17,7 @@ class UsersObservedStatement extends PDOStatement
     public function execute(#[SensitiveParameter] ?array $params = null): bool
     {
         $sql = strtolower(str_replace(chr(96), '', $this->queryString));
-        $measure = request()->headers->get('X-Identity-Test-Mode') === 'users-performance'
+        $measure = in_array(request()->headers->get('X-Identity-Test-Mode'), ['users-performance', 'roles-performance'], true)
             && ! request()->attributes->has('_test_users_lock_acquired_ns')
             && str_contains($sql, 'from roles') && str_contains($sql, 'for update');
         $started = $measure ? hrtime(true) : null;

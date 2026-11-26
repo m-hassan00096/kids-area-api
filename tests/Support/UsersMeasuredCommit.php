@@ -20,9 +20,11 @@ final class UsersMeasuredCommit
 
     public function commit(): bool
     {
+        $started = hrtime(true);
         $result = $this->pdo->commit();
         $acquired = request()->attributes->get('_test_users_lock_acquired_ns');
         if ($result && is_int($acquired)) {
+            request()->attributes->set('_test_users_commit_ms', (hrtime(true) - $started) / 1000000);
             request()->attributes->set('_test_users_lock_span_ms', (hrtime(true) - $acquired) / 1000000);
         }
 

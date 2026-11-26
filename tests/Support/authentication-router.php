@@ -7,6 +7,7 @@ use Illuminate\Hashing\HashManager;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +22,7 @@ use Modules\Identity\Services\Avatar\NormalizedAvatar;
 use Modules\Identity\Services\LoginThrottle;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\AuthenticationCommitFault;
+use Tests\Support\RolesCacheBarrier;
 use Tests\Support\UsersBoundaryProbe;
 use Tests\Support\UsersMeasuredCommit;
 use Tests\Support\UsersObservedStatement;
@@ -76,10 +78,23 @@ $mode = $request->headers->get('X-Identity-Test-Mode');
 // Role fault and barrier modes are confined to the authorized CI database.
 if (is_string($mode) && (str_contains($mode, 'roles-action-') || str_contains($mode, 'role-write')
     || str_contains($mode, 'role-insert') || str_contains($mode, 'role-delete') || str_contains($mode, 'role-grant')
-    || str_contains($mode, 'role-generation') || str_contains($mode, 'role-session') || str_contains($mode, 'roles-deadlock'))
+    || str_contains($mode, 'role-generation') || str_contains($mode, 'role-session') || str_contains($mode, 'roles-deadlock')
+    || str_starts_with($mode, 'roles-cache-') || $mode === 'roles-performance')
     && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1')) {
     http_response_code(503);
     exit;
+}
+// Shared local file cache exists only inside the guarded synthetic fixture.
+if (is_string($mode) && str_starts_with($mode, 'roles-cache-')) {
+    $cachePath = $barrierDir.DIRECTORY_SEPARATOR.'permission-cache';
+    if (is_link($cachePath)) {
+        http_response_code(503);
+        exit;
+    }
+    config()->set('cache.stores.file.path', $cachePath);
+    config()->set('cache.stores.file.lock_path', $cachePath);
+    config()->set('permission.cache.store', 'file');
+    $app->forgetInstance(PermissionRegistrar::class);
 }
 if (is_string($mode) && str_starts_with($mode, 'users-probe-') && $request->is('api/v1/users', 'api/v1/users/*')) {
     // Swap only the controller in the guarded test router for isolated boundary probes. The real route and middleware stack runs unchanged.
@@ -152,6 +167,24 @@ $pause = static function () use ($prefix): void {
     }
     throw new RuntimeException('Synthetic barrier timed out.');
 };
+
+// A separate worker observes native Spatie's shared cache, not an imitation.
+// No sensitive payload, SQL or session information is returned.
+Route::middleware('api')->get('/api/v1/__fixture-roles-cache/{role}', static function (int $role) use ($mode) {
+    abort_unless($mode === 'roles-cache-probe' && getenv('GITHUB_ACTIONS') === 'true', 404);
+    $cache = Cache::store('file');
+    $key = config('permission.cache.key');
+    $cachedBefore = $cache->has($key);
+    $permission = app(PermissionRegistrar::class)->getPermissions([
+        'name' => 'identity.roles.show', 'guard_name' => 'web',
+    ])->sole();
+
+    return response()->json([
+        'cachedBefore' => $cachedBefore, 'cachedAfter' => $cache->has($key),
+        'granted' => $permission->roles->contains(fn ($item) => (int) $item->id === $role),
+        'worker' => getmypid(),
+    ]);
+});
 
 // A fixture-only FK writer models a future owning module, without adding
 // a real production route or table. This route runs only in this guarded router.
@@ -305,13 +338,15 @@ $usersPageLimit = '';
 $usersSnapshot = 0;
 $rolesReads = 0;
 $rolesTargetReads = 0;
+$roleGenerationWrites = 0;
+$roleSessionDeletes = 0;
 $selectReads = 0;
 $selectLimit = '';
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
 $staffTouches = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -355,6 +390,14 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         && str_contains($sql, 'order by p.name asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
         $selectReads++;
         $selectLimit = $match[1];
+    }
+    if ($mode === 'roles-performance') {
+        if (str_starts_with($sql, 'update users set') && str_contains($sql, 'auth_version')) {
+            $roleGenerationWrites++;
+        }
+        if (str_starts_with($sql, 'delete from sessions') && str_contains($sql, 'auth_user_id')) {
+            $roleSessionDeletes++;
+        }
     }
     $ns = hrtime(true);
     if (str_starts_with($sql, 'set session innodb_lock_wait_timeout =')) {
@@ -475,11 +518,17 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
-if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore'], true)) {
+if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
 }
 if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
     $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
+}
+if ($mode === 'roles-performance' && $request->isMethod('PUT') && $request->is('api/v1/roles/*')) {
+    $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
+}
+if (in_array($mode, ['roles-cache-hold-commit', 'roles-cache-hold-rollback'], true) && $request->isMethod('PUT') && $request->is('api/v1/roles/*')) {
+    $connection->setPdo(new RolesCacheBarrier($connection->getPdo(), $pause, $mode === 'roles-cache-hold-commit'));
 }
 $commitFault = null;
 if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack'], true)) {
@@ -487,20 +536,20 @@ if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-acti
     $connection->setPdo($commitFault);
 }
 
-if ($mode === 'users-performance') {
+if (in_array($mode, ['users-performance', 'roles-performance'], true)) {
     memory_reset_peak_usage();
 }
 $response = $kernel->handle($request);
-if ($mode === 'users-performance') {
+if (in_array($mode, ['users-performance', 'roles-performance'], true)) {
     $response->headers->set('X-Test-Php-Peak-Bytes', (string) memory_get_peak_usage(true));
     $usage = getrusage();
     if (is_array($usage) && isset($usage['ru_maxrss'])) {
         $response->headers->set('X-Test-Process-Peak-Rss', (string) $usage['ru_maxrss']);
     }
-    foreach (['lock_wait_ms' => 'Lock-Wait-Ms', 'lock_span_ms' => 'Lock-Span-Ms'] as $attribute => $header) {
+    foreach (['lock_wait_ms' => 'Lock-Wait-Ms', 'lock_span_ms' => 'Lock-Span-Ms', 'commit_ms' => 'Commit-Ms'] as $attribute => $header) {
         $value = $request->attributes->get('_test_users_'.$attribute);
         if (is_float($value)) {
-            $response->headers->set('X-Test-Users-'.$header, (string) round($value, 3));
+            $response->headers->set(($mode === 'roles-performance' ? 'X-Test-Roles-' : 'X-Test-Users-').$header, (string) round($value, 3));
         }
     }
 }
@@ -539,6 +588,8 @@ $response->headers->set('X-Test-Users-Page-Limit', $usersPageLimit);
 $response->headers->set('X-Test-Users-Snapshot', (string) $usersSnapshot);
 $response->headers->set('X-Test-Roles-Reads', (string) $rolesReads);
 $response->headers->set('X-Test-Roles-Target-Reads', (string) $rolesTargetReads);
+$response->headers->set('X-Test-Roles-Generation-Writes', (string) $roleGenerationWrites);
+$response->headers->set('X-Test-Roles-Session-Deletes', (string) $roleSessionDeletes);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);
 $response->headers->set('X-Test-Select-Limit', $selectLimit);
 foreach (['state', 'file_outcome', 'calls', 'wait'] as $field) {
