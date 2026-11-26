@@ -70,8 +70,8 @@ final class AvatarFormat
         $frame = false;
         $restart = 0;
         $interval = 0;
-        $frames = [0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf];
-        $segments = array_merge($frames, [0xc4, 0xcc, 0xda, 0xdb, 0xdd, 0xfe], range(0xe0, 0xef));
+        $frames = [0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF];
+        $segments = array_merge($frames, [0xC4, 0xCC, 0xDA, 0xDB, 0xDD, 0xFE], range(0xE0, 0xEF));
         while ($position < $size) {
             if ($scan) {
                 $next = strpos($bytes, "\xff", $position);
@@ -93,8 +93,8 @@ final class AvatarFormat
             if ($scan && $marker === 0) {
                 continue;
             }
-            if ($scan && $marker >= 0xd0 && $marker <= 0xd7) {
-                if ($interval === 0 || $marker !== 0xd0 + $restart) {
+            if ($scan && $marker >= 0xD0 && $marker <= 0xD7) {
+                if ($interval === 0 || $marker !== 0xD0 + $restart) {
                     return false;
                 }
                 $restart = ($restart + 1) % 8;
@@ -102,7 +102,7 @@ final class AvatarFormat
                 continue;
             }
             $scan = false;
-            if ($marker === 0xd9) {
+            if ($marker === 0xD9) {
                 return $frame && $scans > 0 && $position === $size;
             }
             if (! in_array($marker, $segments, true) || $position + 2 > $size) {
@@ -118,7 +118,7 @@ final class AvatarFormat
                 }
                 $frame = true;
             }
-            if ($marker === 0xda) {
+            if ($marker === 0xDA) {
                 if (! $frame || $length < 8 || $length !== 6 + 2 * ord($bytes[$position + 2])) {
                     return false;
                 }
@@ -126,7 +126,7 @@ final class AvatarFormat
                 $scans++;
                 $restart = 0;
             }
-            if ($marker === 0xdd) {
+            if ($marker === 0xDD) {
                 if ($length !== 4) {
                     return false;
                 }
@@ -209,7 +209,7 @@ final class AvatarFormat
                 return false;
             }
             if ($tag === 'VP8X') {
-                if ($extended || $position !== 12 || $length !== 10 || (ord($bytes[$position + 8]) & 0xc3)
+                if ($extended || $position !== 12 || $length !== 10 || (ord($bytes[$position + 8]) & 0xC3)
                     || substr($bytes, $position + 9, 3) !== "\x00\x00\x00") {
                     return false;
                 }
