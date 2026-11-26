@@ -8,6 +8,9 @@ use Illuminate\Http\Request;
 use Modules\Identity\Http\Requests\UsersIndexRequest;
 use Modules\Identity\Models\User;
 use Modules\Identity\Queries\UsersQuery;
+use Modules\Identity\Services\Avatar\AvatarFormat;
+use Modules\Identity\Services\Avatar\ReadUserAvatar;
+use Symfony\Component\HttpFoundation\Response;
 
 final class UsersController
 {
@@ -27,7 +30,7 @@ final class UsersController
         return ApiResponse::success($query->detail($target, $request));
     }
 
-    // Mutations and binary avatar delivery remain fail closed until their
+    // Mutations remain fail closed until their
     // respective reviewed implementation tasks.
 
     public function store(): never
@@ -45,8 +48,19 @@ final class UsersController
         abort(503);
     }
 
-    public function avatar(): never
+    public function avatar(Request $request, ReadUserAvatar $read): Response
     {
-        abort(503);
+        $target = $request->attributes->get('users_target');
+        abort_unless($target instanceof User, 404);
+        abort_if($request->query->count() !== 0 || $request->getContent() !== '' || $request->files->count() !== 0, 422);
+        $image = $read->execute($target);
+
+        return response($image->bytes, 200, [
+            'Content-Type' => AvatarFormat::mime($image->extension),
+            'Content-Disposition' => 'inline; filename="avatar.'.$image->extension.'"',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Length' => (string) strlen($image->bytes),
+        ]);
     }
 }

@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 20/49 complete (T01–T20); Phase C verified (§20.1). Next T21–T25 approved private avatar infrastructure. 19/19 full acceptance scenarios Not Run. No production or merge.
+> **Progress:** 20/49 complete (T01–T20); T21–T25 private avatar infrastructure in progress; verification pending. All 19 full acceptance scenarios Not Run. No production or merge.
 
 ## 1. Gates and evidence rules
 
@@ -308,3 +308,7 @@ CI 45713619929 failed 1 of 124 tests; literal search returned HTTP 500, remainin
 ### 20.1 Phase C actual verification
 
 T14–T20 verified on exact `8e3a1f9d4dd54cc530897424aaf0f1ac46813500`, [CI 45719749580](https://github.com/m-hassan00096/kids-area-api/actions/runs/45719749580), job 139574786921 success, actual logs reviewed: Auth 41/1445 assertions, Identity 56/827, full 124/3559, Pint 122, route cache and module/scope checks passed. Four UsersManagementReadTest cases, three SelectRegistryHttpTest cases and one SelectRegistryProviderTest case passed. Verified literal Arabic/ASCII/wildcard/comma/boolean search, grouped role/state predicates, exact resources and Me unchanged, invalid input before domain reads, three domain SQL reads per nonempty page and bounded pagination, independent provider authorization, zero provider reads on mixed forbidden, exact 200 options/201 overflow409, empty options. Earlier CI 45713619929 failed literal search HTTP500; Unicode/ASCII comparison avoidance corrected the tested failure, exact original exception not independently captured. No schema/index/package change. Full scale EXPLAIN/load T45 still due; all 19 feature acceptance scenarios Not Run. T14–T20 complete, 20/49. User authorized T21–T25 only next, no production or merge.
+
+## 21. Phase D private avatar infrastructure (implementation in progress)
+
+Private identity-avatars disk, exclusive immutable staged files, format-aware JPEG/PNG/WebP structural validation and bounded GD normalization, outcome-aware cleanup and authorized binary read authored. Disabled generic local disk serving because avatar root is nested within it; dedicated disk also serve=false. Native file bag metadata rejects visible errors/arrays/extra fields even when Symfony drops an empty upload. Actual CRUD remains fail closed; T23 real mutation integration and fault/replacement concurrency remain T28–T36/T41; T25 guarded native tests next. No new packages or migrations. Tasks unchecked until actual evidence.

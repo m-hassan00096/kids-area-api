@@ -73,6 +73,15 @@ final class NormalizeUsersInput
             $this->invalid('request');
         }
 
+        // Symfony can discard UPLOAD_ERR_NO_FILE entries. Inspect only the
+        // native parsed file metadata, never the raw multipart wire body.
+        if ($multipart && $_FILES !== []) {
+            $native = $_FILES['avatar'] ?? null;
+            if (array_keys($_FILES) !== ['avatar'] || ! is_array($native)
+                || ! is_string($native['name'] ?? null) || ($native['error'] ?? null) !== UPLOAD_ERR_OK) {
+                $this->invalid('avatar');
+            }
+        }
         $files = $request->files->all();
         if ($files !== [] && (! ($create || $update) || ! $multipart || array_keys($files) !== ['avatar'] || ! $files['avatar'] instanceof UploadedFile)) {
             $this->invalid('avatar');

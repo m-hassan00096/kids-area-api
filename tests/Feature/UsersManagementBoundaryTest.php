@@ -35,7 +35,7 @@ class UsersManagementBoundaryTest extends AuthenticationHttpTestCase
                 $options = in_array($method, ['GET', 'HEAD'], true) ? [] : ['raw' => '{}'];
                 $response = $browser->request($method, $uri, options: $options);
                 $allowed = $capability === $required;
-                $status = ! $allowed ? 403 : ($method === 'GET' && ! str_ends_with($uri, '/avatar') ? 200 : 503);
+                $status = ! $allowed ? 403 : ($method === 'GET' ? (str_ends_with($uri, '/avatar') ? 404 : 200) : 503);
                 $this->assertSame($status, $response->status, $capability.' '.$method.' '.$uri);
                 $this->assertSame($allowed && $lookup ? '1' : '0', $response->header('X-Test-Users-Target-Reads'));
             }
