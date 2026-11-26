@@ -1,0 +1,72 @@
+name: Temporary approved Symfony security patch verification
+on:
+  push:
+    branches: [probe/feature03-approved-security-install]
+permissions:
+  contents: read
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, dom, simplexml, pdo_mysql, intl, bcmath, curl, zip, fileinfo, gd
+          coverage: none
+      - name: Resolve exact approved security patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset COMPOSER_NO_AUDIT
+          php -v
+          composer --version
+          cp composer.lock /tmp/kids-before.lock
+          composer update 'symfony/http-foundation:7.4.24' 'symfony/http-kernel:7.4.24' 'symfony/mailer:7.4.24' 'symfony/routing:7.4.24' --no-install --no-interaction --no-scripts --no-plugins --prefer-dist
+          git diff --exit-code -- composer.json
+          python3 - <<'PY'
+          import json, pathlib
+          a=json.loads(pathlib.Path('/tmp/kids-before.lock').read_bytes())
+          b=json.loads(pathlib.Path('composer.lock').read_bytes())
+          expected={'symfony/http-foundation','symfony/http-kernel','symfony/mailer','symfony/routing'}
+          for field in ['packages','packages-dev']:
+              x={p['name']:p for p in a[field]}
+              y={p['name']:p for p in b[field]}
+              assert x.keys()==y.keys()
+              changes={k for k in x if x[k]!=y[k]}
+              assert changes==(expected if field=='packages' else set()), changes
+              for k in sorted(changes):
+                  assert y[k]['version']=='v7.4.24'
+                  print('SECURITY_PATCH',k,x[k]['version'],y[k]['version'])
+          assert {k:v for k,v in a.items() if k not in ['packages','packages-dev']}=={k:v for k,v in b.items() if k not in ['packages','packages-dev']}
+          print('EXACT_FOUR_PATCH_LOCK_DIFF_VERIFIED')
+          PY
+          composer validate --strict
+          composer audit --locked
+      - name: Install and verify patched lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset COMPOSER_NO_AUDIT
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          composer check-platform-reqs
+          composer audit --locked
+          php -r 'require "vendor/autoload.php"; foreach (["symfony/http-foundation","symfony/http-kernel","symfony/mailer","symfony/routing"] as $p) {if(Composer\InstalledVersions::getPrettyVersion($p)!=="v7.4.24") exit(1); echo $p." ".Composer\InstalledVersions::getPrettyVersion($p).PHP_EOL;}'
+          echo APPROVED_SECURITY_INSTALL_VERIFIED
+      - name: Export authenticated generated lock delta
+        run: |
+          python3 - <<'PY'
+          import difflib, hashlib, json, pathlib
+          path='composer.lock'
+          old=pathlib.Path('/tmp/kids-before.lock').read_bytes()
+          new=pathlib.Path(path).read_bytes()
+          a=old.decode().splitlines(keepends=True)
+          b=new.decode().splitlines(keepends=True)
+          for tag,i,j,k,l in difflib.SequenceMatcher(None,a,b,autojunk=False).get_opcodes():
+              if tag!='equal':
+                  print('SECURITY_REPLAY '+json.dumps({'path':path,'start':i,'end':j,'old':a[i:j],'new':b[k:l]},separators=(',',':')))
+          print('SECURITY_BLOB '+json.dumps({'path':path,'sha':hashlib.sha1(b'blob '+str(len(new)).encode()+b'\0'+new).hexdigest(),'size':len(new)}))
+          PY
