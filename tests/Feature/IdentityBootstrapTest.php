@@ -109,6 +109,7 @@ class IdentityBootstrapTest extends IdentityDatabaseTestCase
                 'role-wrong-guard' => $reception->update(['guard_name' => 'other']),
                 'permission-missing' => $permission->delete(),
                 'permission-wrong-guard' => $permission->update(['guard_name' => 'other']),
+                'marker-missing' => DB::table('identity_feature_provisions')->where('feature_key', 'activities.catalogue.v1')->delete(),
                 'grant-missing' => $manager->revokePermissionTo($permission),
             };
         }
@@ -124,7 +125,7 @@ class IdentityBootstrapTest extends IdentityDatabaseTestCase
         return array_map(fn ($problem) => [$problem], [
             'unseeded', 'manager-missing', 'reception-missing', 'manager-inactive',
             'reception-inactive', 'role-wrong-guard', 'permission-missing',
-            'permission-wrong-guard', 'grant-missing',
+            'permission-wrong-guard', 'grant-missing', 'marker-missing',
         ]);
     }
 
@@ -269,7 +270,7 @@ class IdentityBootstrapTest extends IdentityDatabaseTestCase
     private function state(): array
     {
         $state = [];
-        foreach (['users', 'roles', 'permissions', 'model_has_roles', 'model_has_permissions', 'role_has_permissions'] as $table) {
+        foreach (['users', 'roles', 'permissions', 'model_has_roles', 'model_has_permissions', 'role_has_permissions', 'identity_feature_provisions'] as $table) {
             $state[$table] = DB::table($table)->get()->map(fn ($row) => (array) $row)->all();
         }
 

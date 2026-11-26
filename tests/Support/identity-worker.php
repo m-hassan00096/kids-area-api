@@ -4,6 +4,7 @@ use App\Exceptions\BusinessException;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Modules\Identity\Actions\ProvisionActivityCatalogueAction;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
@@ -53,6 +54,9 @@ try {
 
     $input = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR);
     $mode = $input['mode'];
+    if ($mode === 'provision' && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1')) {
+        throw new RuntimeException('Unsafe provisioning worker.');
+    }
     $barrier = $input['barrier'];
     if (dirname($barrier) !== sys_get_temp_dir() || ! str_starts_with(basename($barrier), 'identity-race-')) {
         throw new RuntimeException('Invalid test barrier');
@@ -80,7 +84,7 @@ try {
     };
 
     // Warm each independent process's package cache before the serialized write.
-    if (in_array($mode, ['seed', 'bootstrap', 'access'], true)) {
+    if (in_array($mode, ['seed', 'bootstrap', 'access', 'provision'], true)) {
         app(PermissionRegistrar::class)->getPermissions();
     }
 
@@ -91,7 +95,7 @@ try {
         $managerLock = str_contains($sql, 'from roles') && str_contains($sql, 'for update');
         $attempt = match ($mode) {
             'seed' => str_starts_with($sql, 'insert into roles'),
-            'bootstrap', 'access' => $managerLock,
+            'bootstrap', 'access', 'provision' => $managerLock,
             'unique' => str_starts_with($sql, 'insert into users'),
         };
 
@@ -103,6 +107,7 @@ try {
         $holdPoint = match ($mode) {
             'seed' => str_starts_with($sql, 'insert into permissions'),
             'bootstrap' => str_starts_with($sql, 'insert into users'),
+            'provision' => str_starts_with($sql, 'insert into identity_feature_provisions'),
             default => false,
         };
 
@@ -116,6 +121,10 @@ try {
         case 'seed':
             app(SeedIdentityCatalogueAction::class)->execute();
             break;
+        case 'provision':
+            $applied = app(ProvisionActivityCatalogueAction::class)->execute();
+            identityWorkerEvent('result', ['code' => 'ok', 'applied' => $applied]);
+            exit(0);
         case 'bootstrap':
             $command = new IdentityPrompts;
             $command->setLaravel(app());
@@ -144,9 +153,9 @@ try {
                 $input['permission'],
                 function () use ($input, $pause): void {
                     $pause();
-                    if ($input['change'] === 'revoke') {
+                    if (in_array($input['change'], ['revoke', 'revoke-activity'], true)) {
                         $role = Role::findOrFail($input['target']);
-                        $permission = Permission::where('name', 'identity.users.view')->sole();
+                        $permission = Permission::where('name', $input['change'] === 'revoke-activity' ? 'activities.store' : 'identity.users.view')->sole();
                         $role->revokePermissionTo($permission);
                     } else {
                         User::findOrFail($input['target'])->update(['is_active' => false]);
