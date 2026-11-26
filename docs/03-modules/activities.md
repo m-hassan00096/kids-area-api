@@ -1,6 +1,6 @@
 # Activities Module — Module Reference
 
-> **Status:** Business and module design decisions D01–D102 approved on 2026-11-26; module reference submitted for documentation review. No Activities application implementation or verification has started.
+> **Status:** Business and module design decisions D01–D102 approved on 2026-11-26; module reference merged via PR #13 at 16eb572c8c64d341bfb614e7ec16d79c45050ba6. Activity Catalogue F01-D01–D06 approved; feature specification and approved TP01–TP13 [technical plan](../../specs/activities/activity-catalogue/plan.md) prepared for review alongside feature tasks. Actual MySQL verification and implementation have not started.
 > **Scope:** V1; one location; Laravel 12 modular API-first backend, MySQL 8 / InnoDB, shared hosting, Arabic-first.
 > **Canonical path:** `docs/03-modules/activities.md`.
 > **Owning module:** `Modules/Activities`.
@@ -48,6 +48,8 @@ Logical `activities` data (first feature):
 At least one mode must be enabled. Disabled-mode price must be omitted or explicitly null; reject an incompatible non-null price, not silently accept it. Monetary inputs are exact two-decimal-compatible values; validate syntax, range and precision before persistence. No separate persisted billing_mode column. Name equivalence/actual collation and exact SQL constraints must be verified in the catalogue plan; do not rely on an application duplicate precheck alone.
 
 `ActivityBillingMode` is an int-backed query enum: hourly=0, subscription=1. An activity supporting both matches either filter. Missing filter means all. Zero is a valid value, not empty. API booleans are JSON booleans; filter codes 0/1 are explicit query values.
+
+**Approved Activity Catalogue refinement (F01-D01–D06, 2026-11-26):** English letter case does not distinguish names (Swimming/swimming conflict, including inactive); trim edges and preserve display case. Sort id/name asc/desc, default -id. Both catalogue Select keys require activities.index, name ASC. Use ACTIVITY_NAME_ALREADY_EXISTS, ACTIVITY_IN_USE and existing SELECT_OPTIONS_LIMIT via shared BusinessException (409), invalid fields 422. Standalone unused activity deletion now, real dependent protection at dependent feature. Prices accept exact strings with zero to two fractional digits and return exactly two decimal places; no float or rounding invalid precision. Exact collation/constraints and one-time provision mechanism in plan. See [Feature 01 spec](../../specs/activities/activity-catalogue/spec.md).
 
 ### 2.2 Lifecycle
 
@@ -404,7 +406,7 @@ Catalogue can precede People/Employees because it has no dependent writes. Sessi
 - `specs/activities/activity-catalogue/plan.md`
 - `specs/activities/activity-catalogue/tasks.md`
 
-These files do **not** exist as a result of this reference. Next action: review/approve the documentation PR, then draft and discuss first feature spec before plan/tasks/implementation.
+Module reference merged via PR #13. Feature 01 [spec.md](../../specs/activities/activity-catalogue/spec.md) prepared after F01-D01–D06 approval, for documentation review; plan.md and tasks.md still to review/author. No Activities code or verification; do not implement before plan and tasks approvals.
 
 ## 13. Explicit feature-level technical details still to review
 
