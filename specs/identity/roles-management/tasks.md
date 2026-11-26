@@ -1,6 +1,6 @@
 # Feature 04 — Roles & Permissions Management: Tasks
 
-> **Status:** APPROVED task breakdown (2026-11-26). **40/44 tasks verified (T01–T40); F04-01–11 verified in synthetic CI, F04-12 pending final exact green CI.** Actual 206/16517 full tests and 35/7019 focused Roles passed at be4b16d / CI 45838272845; one Pint blank-line issue corrected. Final T41–T44 remain open.
+> **Status:** APPROVED task breakdown (2026-11-26). **43/44 verified (T01–T43); 12/12 acceptance criteria verified on exact application/test source 1ad5649 / CI 45839858158 (206/16610, Pint 184).** T44 handoff documented; final documentation-only head CI/Ready for Review gate pending at publication, closed by verified live PR #12 evidence. No merge or deployment.
 > **Sources:** [spec.md](spec.md), [plan.md](plan.md). Dependencies are numbered Txx (ranges inclusive); acceptance IDs abbreviated F04-xx. Do not treat review drafts or authored tests as completed tasks.
 > **Gate:** D01–D08 and spec/plan/tasks approved; guarded disposable CI forward-drop testing authorized only. New destructive reset/down procedures are not authorized. Documentation gate passed; implementation authorized. Do not execute against a real or unknown DB.
 
@@ -55,10 +55,10 @@
 - [x] **T40 — Role-disable performance and cache measurement.** Synthetic 1/100/1k target users, measured lock/query/memory/commit; no speculative new index or live SLA.
 
 ## Phase F — Full verification and review (T41–T44)
-- [ ] **T41 — Final schema/routes/scope and dependency regression.** Only one forward column removal and five Role routes, exact ten permissions, no new packages/tables/modules, previous F03 behavior apart from approved shape.
-- [ ] **T42 — Scoped CI discovery and full regression.** Guarded real MySQL upgrade/fresh as authorized, Role focused, existing Auth/Identity/Users/Avatar/Select, full PHPUnit, Pint, Composer audit/platform, route cache/scope.
-- [ ] **T43 — Acceptance reconciliation and draft PR evidence.** Inspect exact head and logs; map 12 criteria to actual assertions and measured evidence, close only verified tasks; record risks and blockers.
-- [ ] **T44 — Final handoff and review gate.** Update same handoff and PR with exact counts/links, final doc-only CI if needed; request explicit merge approval, no deployment.
+- [x] **T41 — Final schema/routes/scope and dependency regression.** Only one forward column removal and five Role routes, exact ten permissions, no new packages/tables/modules, previous F03 behavior apart from approved shape.
+- [x] **T42 — Scoped CI discovery and full regression.** Guarded real MySQL upgrade/fresh as authorized, Role focused, existing Auth/Identity/Users/Avatar/Select, full PHPUnit, Pint, Composer audit/platform, route cache/scope.
+- [x] **T43 — Acceptance reconciliation and draft PR evidence.** Inspect exact head and logs; map 12 criteria to actual assertions and measured evidence, close only verified tasks; record risks and blockers.
+- [ ] **T44 — Final handoff and review gate.** Handoff and review evidence published in this docs-only checkpoint; last exact-head CI and Ready for Review transition must be verified in [PR #12 checks](https://github.com/m-hassan00096/kids-area-api/pull/12/checks). Live PR evidence closes T44 without a recursive status-only commit. Explicit merge approval still required; no deployment.
 
 ## Dependencies and evidence matrix
 
@@ -124,11 +124,11 @@
 | F04-09 | Verified |
 | F04-10 | Verified |
 | F04-11 | Verified (synthetic CI only) |
-| F04-12 | Pending final exact green CI |
+| F04-12 | Verified (CI 45839858158) |
 
 ## Completion rules
 
-Record actual commit, command, CI run/job, pass/fail counts, relevant assertions and limitations. No task marked done merely because its code or a test was written. No unsafe data deletion or scope change; no weaken existing assertions. Final required CI exact head must succeed before Ready for Review; no merge without separate explicit user approval, no production deployment. Keep prior F02 intermittent observation risk, deferred Audit and real-host/backup/restore caveats in final report. Next action: verify exact corrected-head CI (all required steps incl Pint, module/route-cache/scope); reconcile T41–T44 and F04-12 only with actual evidence, update final handoff and request explicit merge approval. No real DB.
+Record actual commit, command, CI run/job, pass/fail counts, relevant assertions and limitations. No task marked done merely because its code or a test was written. No unsafe data deletion or scope change; no weaken existing assertions. Final required CI exact head must succeed before Ready for Review; no merge without separate explicit user approval, no production deployment. Keep prior F02 intermittent observation risk, deferred Audit and real-host/backup/restore caveats in final report. Next action: verify the documentation-only head's required CI, record T44 and Ready for Review in PR #12 (no recursive documentation push), then request explicit merge approval. No real DB.
 
 
 ## Approval evidence (2026-11-26)
@@ -234,3 +234,44 @@ One real native browser per disable size and two explicitly synthetic binding ro
 | F04-12 | Full 206/16517 passed, static scope audit and prior green 19-route cache; latest failed one Pint blank line; exact corrected-head CI still required | Pending final CI |
 
 Review limitations: approved role alias removal is a breaking API contract; coordinate clients. Before any real DROP, inspect actual legacy alias/name mappings with separate approval, decide mismatches, take/verify host backup, review restore with compatible application version; no real restoration proven and down intentionally refuses fabricated data. Shared-cache test uses isolated file storage on CI; host filesystem/permissions/TLS/proxy/native codec and memory/capacity validation remain separate deployment gates. Native JSON/multipart parser duplicate-key/collapsed field limitations remain documented; no custom parser. Existing broad locks and per-member writes limit concurrent write scalability; no load/SLA claim. Deferred F05 Audit means no persistent central trail yet; prior intermittent F02 contention-observation caveat remains, no waiver. No real DB, merge, or deployment authorized.
+
+
+## Final verified application/test checkpoint and release handoff (2026-11-26)
+
+Exact tested source `1ad564969bcf00c45d90846e6029be1f4b31bb73`, [CI 45839858158](https://github.com/m-hassan00096/kids-area-api/actions/runs/45839858158), job 139978347999, actual run head verified against GitHub metadata and job logs. **All required steps succeeded**. Disposable GitHub Actions MySQL 8/InnoDB guard and seven historical migrations; both actual ROLES_LEGACY_FIXTURE and ROLES_FORWARD_MIGRATION completion markers; four alias export/round-trip, eight preserved table fingerprints, two existing authoritative browser sessions, Role Select name/eligibility and Permission alias preservation. Composer locked dependency validation/install/platform/security audit passed (no security vulnerability advisories found), native codecs verified. Focused discovery and tests, full PHPUnit, Pint, route/module/cache and scope checks all passed, including cleanup. No skipped or waived required check.
+
+| Command / gate | Tests | Assertions | Result |
+| --- | ---: | ---: | --- |
+| php artisan test --filter=Authentication | 41 | 1,588 | Passed |
+| php artisan test --filter=Identity | 56 | 1,007 | Passed |
+| php artisan test --filter='Users&#124;Avatar&#124;SelectRegistry' | 75 | 7,193 | Passed |
+| php artisan test --filter=Roles | 35 | 7,049 | Passed |
+| php artisan test | 206 | 16,610 | Passed |
+| vendor/bin/pint --test -v | 184 files | — | Passed |
+| module:list / route:list / route:cache / route:list / route:clear | 19 routes before and after cache; only Identity | — | Passed |
+
+T41–T43 verified on exact tested source; T01–T43 complete; all F04-01–F04-12 criteria verified on the authorized isolated environment (F04-11 synthetic only, not real-data recovery proof). Static scope review against develop 92f8845a5cb15526965448eab93735902936d612: 69 changed files before this documentation-only checkpoint, identical composer.json/lock and IdentityPermissions catalogue blobs, no altered historical migration, sole new migration removes roles.alias_name forward-only, exact existing nine tables including migrations, ten existing permission keys, five additional Role routes, no new package/table/index/module. Previous F01–F03 behavior preserved except approved name-only Role payload/Select labels. Prior Pint-only failures now fully resolved. This documentation-only checkpoint does not change application, test, workflow, migration, configuration or dependency files. F04 measured/security/acceptance evidence above remains valid for the unchanged application/test tree.
+
+### Repeated performance evidence on the green source
+
+| Roles / Users | List HTTP ms | Nonempty direct service ms | Detail HTTP ms | Three Selects HTTP ms |
+| --- | ---: | ---: | ---: | ---: |
+| 10 / 100 | 13.509–34.537 | 2.861–5.658 | 14.945–20.944 | 16.617–19.857 |
+| 100 / 1,000 | 13.557–35.522 | 3.291–8.546 | 15.539–18.509 | 17.957–21.127 |
+| 200 / 10,000 | 13.344–31.728 | 3.184–19.407 | 22.369–91.246 | 20.729–92.787 |
+
+60 list samples, six detail, six Select and six disable samples; another 222 actual EXPLAIN + ANALYZE pairs. Four/one domain SELECTs and 12/9 total HTTP SQL statements nonempty/empty maintained. The latest run is independently measured, not a claim that the previous timing samples are bounds or a p95/p99.
+
+| Affected Users | HTTP ms | SQL statements | Manager lock-to-commit ack ms | Commit ms | PHP peak MiB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 64.484–66.974 | 47 | 36.057–37.791 | 0.784–0.806 | 4 |
+| 100 | 172.726–180.968 | 245 | 144.911–155.097 | 0.966–12.379 | 4 |
+| 1,000 | 992.487–1005.478 | 2045 | 964.838–977.174 | 3.183–6.221 | 6 |
+
+Latest 1,000-member disable is approximately one second, not guaranteed below one second. Removed 1,999 bindings, one actual native browser and 1,998 synthetic bindings, 1,103 total Users in this separate fixture. Linux worker RSS 113080–113460 KiB at 1,000 affected (around 110 MiB); PHP allocator peak is not total process RSS. Manager wait 0.144–0.154ms in this uncontended case. Preserve current reviewed single-location V1 design; per-member writes, broad access-row locks and the measured ~0.965–0.977s held mutex are explicit scaling watchpoints. No speculative index, queue, Redis or architectural change. CI measures not host capacity or production SLA.
+
+### T44 and final exact-head gate
+
+The living handoff, spec/plan/tasks and module reference are updated together in this documentation-only checkpoint, and [PR #12](https://github.com/m-hassan00096/kids-area-api/pull/12) carries the actual tested-source evidence and review limitations. **43/44 tasks verified at publication; T44's documentation deliverable is complete, but its exact final documentation-head CI / Ready for Review condition remains pending until verified.** The last gate is intentionally evidenced by the live [PR checks](https://github.com/m-hassan00096/kids-area-api/pull/12/checks) and PR review status rather than another status-only commit that would recursively trigger CI. T44 is verified only when the current documentation-only head's complete green workflow and Ready for Review transition have been inspected and recorded in PR #12. The checkbox below/above is the pre-gate checkpoint, not a substitute for that live evidence. Do not push another commit simply to record the success of a status-only CI; if any required check fails, keep Draft and repair it. Separate explicit user merge approval is mandatory after readiness, and merge to develop does not authorize deployment.
+
+Remaining deployment limitations (not blockers to code review): prior intermittent F02 contention-observation caveat, deferred F05 Audit (no persistent central sensitive-operation trail), real host filesystem/TLS/cookie/proxy/native GD/Argon2id and memory/capacity checks, no actual production restore proof. Before real DROP, separately authorize real-data inspection and decide legacy name/alias disposition, verify backup and compatible code/database restore, coordinate approved breaking nested Role aliasName removal/role Select label changes with clients. The down migration intentionally refuses invented alias recovery. D01/D04 delegation capabilities may assign approved grants the actor does not hold, so grant store/update deliberately. No real DB, merge or deployment performed.
