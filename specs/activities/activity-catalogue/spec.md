@@ -186,7 +186,7 @@ Order name ASC with stable ID tie-break; option fields only numeric value (id) a
   "success": true,
   "message": "",
   "data": [
-    {"label":"activities","options":[{"value":1,"label":"السباحة"},{"value":2,"label":"الرسم"}]},
+    {"label":"activities","options":[{"value":2,"label":"الرسم"},{"value":1,"label":"السباحة"}]},
     {"label":"activeActivities","options":[{"value":1,"label":"السباحة"}]}
   ]
 }
