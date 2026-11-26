@@ -22,6 +22,8 @@ class IdentitySchemaTest extends IdentityDatabaseTestCase
         $this->assertSame(Permission::class, config('permission.models.permission'));
         $this->assertFalse(config('permission.teams'));
         $this->assertSame('web', config('auth.defaults.guard'));
+        $this->assertSame(['id', 'name', 'guard_name', 'is_active', 'created_at', 'updated_at'], Schema::getColumnListing('roles'));
+        $this->assertSame(['id', 'name', 'guard_name', 'alias_name', 'created_at', 'updated_at'], Schema::getColumnListing('permissions'));
         $this->assertSame(['id', 'name', 'username', 'email', 'phone', 'password', 'is_active', 'created_at', 'updated_at', 'auth_version', 'avatar_key'], Schema::getColumnListing('users'));
 
         $columns = DB::table('information_schema.columns')
@@ -70,8 +72,8 @@ class IdentitySchemaTest extends IdentityDatabaseTestCase
 
     public function test_native_single_role_constraint_and_replacement(): void
     {
-        $first = Role::create(['name' => 'first', 'alias_name' => 'First', 'guard_name' => 'web']);
-        $second = Role::create(['name' => 'second', 'alias_name' => 'Second', 'guard_name' => 'web']);
+        $first = Role::create(['name' => 'first', 'guard_name' => 'web']);
+        $second = Role::create(['name' => 'second', 'guard_name' => 'web']);
         $staff = User::factory()->create();
         $staff->syncRoles([$first]);
 

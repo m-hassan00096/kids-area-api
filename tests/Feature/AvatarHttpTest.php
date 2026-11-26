@@ -51,7 +51,7 @@ class AvatarHttpTest extends AuthenticationHttpTestCase
         }
         $this->assertSame(401, $this->browser($server)->request('GET', $path)->status);
         $this->assertSame(403, $browser->request('GET', $path, options: ['headers' => ['Origin' => 'https://unapproved.invalid']])->status);
-        $limited = Role::create(['name' => 'fixture-avatar-denied', 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+        $limited = Role::create(['name' => 'fixture-avatar-denied', 'guard_name' => 'web']);
         $staff = $this->user('Fixture.Avatar.Denied', $limited->name);
         $denied = $this->browser($server);
         $this->assertSame(200, $denied->login($staff->username)->status);

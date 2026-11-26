@@ -6,26 +6,77 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Modules\Identity\Actions\SeedIdentityCatalogueAction;
+use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
+use Modules\Identity\Support\IdentityPermissions;
 
 class AuthenticationSchemaTest extends IdentityDatabaseTestCase
 {
+    protected function fixtureMigrationPaths(): array
+    {
+        if ($this->name() !== 'test_forward_authentication_migrations_preserve_existing_staff_and_roles') {
+            return parent::fixtureMigrationPaths();
+        }
+
+        $directory = 'Modules/Identity/database/migrations/';
+
+        return array_map(fn ($file) => $directory.$file, [
+            '2026_11_25_000001_create_users_table.php',
+            '2026_11_25_000002_create_permission_tables.php',
+            '2026_11_25_000003_enforce_single_staff_role.php',
+        ]);
+    }
+
     public function test_forward_authentication_migrations_preserve_existing_staff_and_roles(): void
     {
-        // Only the guarded empty disposable MySQL schema is rolled back: F03 avatar plus the three F02 migrations.
-        $this->assertSame(0, Artisan::call('migrate:rollback', ['--step' => 4, '--force' => true]), Artisan::output());
+        // Start from the exact F01 schema via the existing guarded fixture setup.
+        // The forward-only Role alias migration must never be rolled back.
         $this->assertFalse(Schema::hasColumn('users', 'auth_version'));
         $this->assertFalse(Schema::hasColumn('users', 'avatar_key'));
         $this->assertFalse(Schema::hasTable('sessions'));
-        app(SeedIdentityCatalogueAction::class)->execute();
+        $this->assertTrue(Schema::hasColumn('roles', 'alias_name'));
+        // Historical schema requires the old Role alias; do not use the F04 seeder.
+        // Seed the historical columns explicitly, as in the verified CI upgrade
+        // fixture. Current Spatie Role::create is not the historical insert path.
+        $now = now();
+        $managerId = DB::table('roles')->insertGetId([
+            'name' => 'manager', 'guard_name' => 'web', 'alias_name' => 'مدير',
+            'is_active' => true, 'created_at' => $now, 'updated_at' => $now,
+        ]);
+        $receptionId = DB::table('roles')->insertGetId([
+            'name' => 'reception', 'guard_name' => 'web', 'alias_name' => 'استقبال',
+            'is_active' => true, 'created_at' => $now, 'updated_at' => $now,
+        ]);
+        $this->assertSame('مدير', DB::table('roles')->where('id', $managerId)->value('alias_name'));
+        $this->assertSame('استقبال', DB::table('roles')->where('id', $receptionId)->value('alias_name'));
+        $permissions = collect();
+        foreach (IdentityPermissions::CATALOGUE as $name => $alias) {
+            $id = DB::table('permissions')->insertGetId([
+                'name' => $name, 'guard_name' => 'web', 'alias_name' => $alias,
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+            $permissions->push(Permission::query()->findOrFail($id));
+        }
+        $this->assertEquals(IdentityPermissions::CATALOGUE, DB::table('permissions')->pluck('alias_name', 'name')->all());
+        Role::findById($managerId, 'web')->syncPermissions($permissions);
         $user = User::factory()->create(['username' => 'Existing.Staff', 'phone' => '00012345678']);
         $user->syncRoles([Role::findByName('manager', 'web')]);
         $before = $user->fresh();
         $hash = hash('sha256', $before->password);
         $roles = $before->roles()->pluck('roles.id')->all();
-        $this->assertSame(0, Artisan::call('migrate', ['--force' => true]), Artisan::output());
+        $directory = 'Modules/Identity/database/migrations/';
+        $forward = array_map(fn ($file) => $directory.$file, [
+            '2026_11_25_000004_add_auth_version_to_users.php',
+            '2026_11_25_000005_create_sessions_table.php',
+            '2026_11_25_000006_create_identity_login_throttles_table.php',
+            '2026_11_25_000007_add_avatar_key_to_users.php',
+        ]);
+        $this->assertSame(0, Artisan::call('migrate', ['--path' => $forward, '--force' => true]), Artisan::output());
+        $this->assertTrue(Schema::hasColumn('roles', 'alias_name'));
+        $this->assertTrue(Schema::hasColumn('users', 'avatar_key'));
+        $this->assertTrue(Schema::hasTable('sessions'));
+        $this->assertTrue(Schema::hasTable('identity_login_throttles'));
         $after = $user->fresh();
         $this->assertSame($before->id, $after->id);
         $this->assertSame($before->username, $after->username);

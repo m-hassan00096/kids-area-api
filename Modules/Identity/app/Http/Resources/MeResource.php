@@ -15,7 +15,6 @@ final class MeResource extends JsonResource
             'role' => [
                 'id' => $this->resource['role']['id'],
                 'name' => $this->resource['role']['name'],
-                'aliasName' => $this->resource['role']['aliasName'],
             ],
             'permissions' => $this->resource['permissions'],
         ];

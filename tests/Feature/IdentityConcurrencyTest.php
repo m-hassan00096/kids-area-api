@@ -86,8 +86,8 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $founder->syncRoles([$manager]);
         $manager->revokePermissionTo(Permission::where('name', 'identity.users.view')->sole());
 
-        $roleA = Role::create(['name' => 'custom-a', 'alias_name' => 'Custom A', 'guard_name' => 'web']);
-        $roleB = Role::create(['name' => 'custom-b', 'alias_name' => 'Custom B', 'guard_name' => 'web']);
+        $roleA = Role::create(['name' => 'custom-a', 'guard_name' => 'web']);
+        $roleB = Role::create(['name' => 'custom-b', 'guard_name' => 'web']);
         $permissions = Permission::whereIn('name', IdentityPermissions::ESSENTIAL)->get();
         $roleA->syncPermissions($permissions);
         $roleB->syncPermissions($permissions);
@@ -97,7 +97,7 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $b->syncRoles([$roleB]);
 
         // A separately authorized operator stays able to attempt both mutations but is not viable.
-        $operatorRole = Role::create(['name' => 'operator', 'alias_name' => 'Operator', 'guard_name' => 'web']);
+        $operatorRole = Role::create(['name' => 'operator', 'guard_name' => 'web']);
         $operatorRole->syncPermissions(Permission::whereIn('name', ['identity.roles.update', 'identity.users.update'])->get());
         $operator = User::factory()->create();
         $operator->syncRoles([$operatorRole]);

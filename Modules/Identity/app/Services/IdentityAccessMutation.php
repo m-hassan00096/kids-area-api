@@ -165,7 +165,115 @@ final class IdentityAccessMutation
         return $result;
     }
 
+    /** Role writes share the existing manager mutex and current staff check. */
+    public function executeRoles(
+        #[SensitiveParameter] Request $request,
+        string $permission,
+        Closure $prepare,
+        Closure $mutation,
+    ): mixed {
+        $this->mutex->ensureOuterTransactionAvailable();
+        if (! in_array($permission, ['identity.roles.store', 'identity.roles.update', 'identity.roles.delete'], true)) {
+            throw new LogicException('Unsupported Roles mutation capability.');
+        }
+
+        $connection = DB::connection();
+        $originalWait = null;
+        $pdo = null;
+        $commitAttempted = false;
+        $failure = null;
+        $state = 'rolled_back';
+        try {
+            $pdo = $connection->getPdo();
+            $originalWait = (int) $connection->selectOne('SELECT @@SESSION.innodb_lock_wait_timeout AS value', [], false)->value;
+            $connection->statement('SET SESSION innodb_lock_wait_timeout = 5');
+            $state = 'unknown';
+            $result = $connection->transaction(function () use ($request, $permission, $prepare, $mutation, &$commitAttempted): mixed {
+                $manager = $this->mutex->lock();
+                [$actor, $prepared] = $this->currentStaff->lockPrepared($request, $permission, function () use ($prepare, $manager): mixed {
+                    // Lock the existing viability rows before any session row.
+                    // Do not require preexisting viability: the write may repair it.
+                    $this->access->currentHasAll(IdentityPermissions::ESSENTIAL);
+                    $this->assertPermanentRoles((int) $manager->id);
+
+                    return $prepare();
+                });
+                $result = $mutation($actor, $prepared);
+                $this->assertPostcondition((int) $manager->id);
+                $commitAttempted = true;
+
+                return $result;
+            }, 1);
+            $state = 'committed';
+        } catch (Throwable $exception) {
+            $failure = $exception;
+            if ($state === 'unknown' && ! $commitAttempted && ! $this->isConnectionFailure($exception)) {
+                try {
+                    if ($connection->transactionLevel() === 0 && $connection->getRawPdo() === $pdo
+                        && $pdo !== null && ! $pdo->inTransaction()) {
+                        $state = 'rolled_back';
+                    }
+                } catch (Throwable) {
+                    // Keep ambiguous outcomes unknown.
+                }
+            }
+        } finally {
+            try {
+                if ($state === 'unknown' || ($pdo !== null && $connection->getRawPdo() !== $pdo)) {
+                    $connection->disconnect();
+                } elseif ($originalWait !== null) {
+                    $connection->statement('SET SESSION innodb_lock_wait_timeout = '.$originalWait);
+                }
+            } catch (Throwable $restoreFailure) {
+                $connection->disconnect();
+                $this->warn('Roles lock timeout restoration failed.', $restoreFailure);
+                if ($failure === null && $state !== 'committed') {
+                    $failure = $restoreFailure;
+                }
+            }
+
+            try {
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
+            } catch (Throwable $cacheFailure) {
+                $this->warn('Roles permission cache invalidation failed.', $cacheFailure);
+                if ($failure === null && $state !== 'committed') {
+                    $failure = $cacheFailure;
+                }
+            }
+        }
+
+        $request->attributes->set('identity_roles_outcome', $state);
+        if ($failure !== null) {
+            if ($failure instanceof AuthenticationException && $state === 'rolled_back') {
+                try {
+                    $this->currentStaff->retireInvalid($request);
+                } catch (Throwable $retireFailure) {
+                    $this->warn('Invalid Roles session retirement failed.', $retireFailure);
+                }
+            }
+            if ($state === 'unknown' || $this->isConnectionFailure($failure)
+                || ($failure instanceof PDOException && in_array((int) ($failure->errorInfo[1] ?? 0), [1205, 1213], true))) {
+                throw new BusinessException(ApiResponse::text('api.errors.unavailable'), 503);
+            }
+            if ($state === 'rolled_back' && $failure instanceof QueryException) {
+                throw app(RoleConstraintErrors::class)->translate($failure);
+            }
+
+            throw $failure;
+        }
+
+        return $result;
+    }
+
     private function assertPostcondition(int $managerId): void
+    {
+        $this->assertPermanentRoles($managerId);
+        if (! $this->access->currentHasAll(IdentityPermissions::ESSENTIAL)) {
+            throw new BusinessException(__('identity.last_admin'), errorCode: 'IDENTITY_LAST_ADMIN');
+        }
+    }
+
+    private function assertPermanentRoles(int $managerId): void
     {
         $currentManager = $this->mutex->lock();
         $reception = DB::table('roles')->where('name', 'reception')->where('guard_name', 'web')
@@ -175,9 +283,6 @@ final class IdentityAccessMutation
             || $reception === null || $reception->name !== 'reception'
             || $reception->guard_name !== 'web' || ! (bool) $reception->is_active) {
             throw new BusinessException(__('identity.permanent_roles'), errorCode: 'IDENTITY_PERMANENT_ROLES');
-        }
-        if (! $this->access->currentHasAll(IdentityPermissions::ESSENTIAL)) {
-            throw new BusinessException(__('identity.last_admin'), errorCode: 'IDENTITY_LAST_ADMIN');
         }
     }
 

@@ -1,6 +1,6 @@
 # Identity Module — Module Reference
 
-> **Status:** F01/F02 merged (PR #6/#8); F03 documentation merged (PR #9), implementation authorized on dedicated branch. Requirements unchanged; execution status in [tasks.md](../../specs/identity/users-management/tasks.md).
+> **Status:** F01/F02/F03 merged (PR #6/#8/#10); F04 Roles implementation/test evidence verified on PR #12 source 1ad5649 / CI 45839858158, awaiting final documentation-head review gate and explicit merge approval. Requirements unchanged; execution evidence in [Roles tasks](../../specs/identity/roles-management/tasks.md) and live PR #12. F05 Audit remains deferred.
 > **Path:** `docs/03-modules/identity.md`
 > **Scope:** One Kids Area location; Laravel 12 API-first modular monolith, MySQL 8 / InnoDB.
 > **Owning module:** `Modules/Identity`.
@@ -132,7 +132,7 @@ Deactivation remains the alternative for any otherwise nondeletable account. **A
 
 ## 5. Roles and permission catalogue
 
-**Approved naming correction (2026-11-26, Feature 04):** Role `name` is the single stored and displayed role name; remove `roles.alias_name` through a reviewed forward migration. Permission `name` stays a stable technical key and `permissions.alias_name` stays the stored display label. Permanent `manager` and `reception` names, IDs, active-state/deletion protections and mutex identity remain unchanged; authorized custom roles use unique Arabic/English names and can be renamed without changing their ID, assignments or permissions. Role resources omit `aliasName`; role Select labels use `roles.name`. The old F01–F03 implementation and historical test evidence still describe the pre-change schema until Feature 04 is implemented and verified.
+**Approved naming correction (2026-11-26, Feature 04):** Role `name` is the single stored and displayed role name; remove `roles.alias_name` through a reviewed forward migration. Permission `name` stays a stable technical key and `permissions.alias_name` stays the stored display label. Permanent `manager` and `reception` names, IDs, active-state/deletion protections and mutex identity remain unchanged; authorized custom roles use unique Arabic/English names and can be renamed without changing their ID, assignments or permissions. Role resources omit `aliasName`; role Select labels use `roles.name`. The historical F01–F03 checkpoints describe the pre-change schema; F04 implementation on PR #12 has verified the approved name-only schema and Resource/Select compatibility on isolated CI. Develop remains unchanged until explicit merge.
 
 ### 5.1 Role lifecycle
 
@@ -214,7 +214,7 @@ Authorized filters may include actor, target, event type and date range. Never r
 
 ## 8. Select Registry and authorization
 
-Use the **approved central** `GET /api/v1/selects?selects=...` contract, not an Identity-specific dropdown endpoint or a different envelope. Feature 03 first implements the registry and only `roles` (Users create OR update; active assignment options) and `userFilterRoles` (Users view; active/inactive filter options). The `permissions` provider is deferred to Feature 04:
+Use the **approved central** `GET /api/v1/selects?selects=...` contract, not an Identity-specific dropdown endpoint or a different envelope. Feature 03 first implements the registry and only `roles` (Users create OR update; active assignment options) and `userFilterRoles` (Users view; active/inactive filter options). Feature 04 adds the `permissions` provider (verified on PR #12), independently authorized by roles.store OR roles.update, and a maximum of three requested keys with the existing per-provider 200-option cap:
 
 - The requested `roles` options for **assignment** contain only active eligible roles; the administrator's full role list can show inactive roles.
 - Role option `value` is the role ID and `label` comes directly from stored `roles.name` after Feature 04; no role alias or translation lookup.
@@ -254,7 +254,7 @@ The feature specs and plans must concretize migrations, payloads, role/permissio
 16. Select Registry request with unknown key returns `422`, forbidden key returns all-or-nothing `403`, and legitimate role options use stored names and permission options use stored aliases.
 17. API envelopes, Arabic safe errors, `camelCase` serialization, target authorization and DB foreign-key restrictions are consistent with shared standards.
 
-**Verification gate:** PHPUnit (Feature/Integration), real MySQL 8 for locking/uniqueness/cache races, Laravel Pint, and GitHub Actions checks when configured. This document **does not assert that Identity implementation or its tests have been run**.
+**Verification gate:** PHPUnit (Feature/Integration), real MySQL 8 for locking/uniqueness/cache races, Laravel Pint, and GitHub Actions checks when configured. This reference owns requirements, not standalone execution proof; exact implementation/test evidence is tracked in each Feature's tasks.md and live PR checks.
 
 ## 11. Planned feature decomposition and approval gates
 

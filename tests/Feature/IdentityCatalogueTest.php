@@ -25,8 +25,10 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
 
         $manager = Role::findByName('manager', 'web');
         $reception = Role::findByName('reception', 'web');
-        $this->assertSame('مدير', $manager->alias_name);
-        $this->assertSame('استقبال', $reception->alias_name);
+        $this->assertSame('manager', $manager->name);
+        $this->assertSame('reception', $reception->name);
+        $this->assertArrayNotHasKey('alias_name', $manager->getAttributes());
+        $this->assertArrayNotHasKey('alias_name', $reception->getAttributes());
         $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), $manager->permissions()->pluck('name')->all());
         $this->assertSame(0, $reception->permissions()->count());
         $this->assertSame(0, User::count());
@@ -39,9 +41,13 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
         $action->execute();
         $manager = Role::findByName('manager', 'web');
         $permission = Permission::where('name', 'identity.users.view')->sole();
-        $manager->update(['alias_name' => 'Custom alias']);
+        $custom = Role::create(['name' => 'دور تجريبي مخصص', 'guard_name' => 'web', 'is_active' => false]);
+        $custom->givePermissionTo($permission);
+        $beforeCustom = $custom->fresh()->getRawOriginal();
+        $beforeCustomGrants = $custom->permissions()->pluck('permissions.id')->all();
         $permission->update(['alias_name' => 'Custom permission']);
         $manager->revokePermissionTo($permission);
+        $beforeManager = $manager->fresh()->getRawOriginal();
         $missing = Permission::where('name', 'identity.audit.view')->sole();
         $missing->delete();
         $user = User::factory()->create(['is_active' => false]);
@@ -54,8 +60,10 @@ class IdentityCatalogueTest extends IdentityDatabaseTestCase
         $action->execute();
 
         $this->assertSame(10, Permission::count());
-        $this->assertSame(2, Role::count());
-        $this->assertSame('Custom alias', $manager->fresh()->alias_name);
+        $this->assertSame(3, Role::count());
+        $this->assertSame($beforeManager, $manager->fresh()->getRawOriginal());
+        $this->assertSame($beforeCustom, $custom->fresh()->getRawOriginal());
+        $this->assertSame($beforeCustomGrants, $custom->permissions()->pluck('permissions.id')->all());
         $this->assertSame('Custom permission', $permission->fresh()->alias_name);
         $this->assertSame($beforeGrants, $manager->permissions()->orderBy('permissions.id')->pluck('permissions.id')->all());
         $this->assertSame($beforeUser, hash('sha256', json_encode($user->fresh()->getRawOriginal(), JSON_THROW_ON_ERROR)));

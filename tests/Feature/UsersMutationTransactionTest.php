@@ -116,7 +116,7 @@ class UsersMutationTransactionTest extends AuthenticationHttpTestCase
     public function test_current_permission_loss_does_not_retire_still_valid_session(): void
     {
         $this->user('Fixture.Founder');
-        $role = Role::create(['name' => 'fixture-editor', 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+        $role = Role::create(['name' => 'fixture-editor', 'guard_name' => 'web']);
         $role->givePermissionTo(Permission::findByName('identity.users.update', 'web'));
         $actor = $this->user('Fixture.Editor', $role->name);
         $target = $this->user('Fixture.Target', 'reception');

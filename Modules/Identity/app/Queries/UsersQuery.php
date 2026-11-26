@@ -111,7 +111,7 @@ final class UsersQuery
             ->leftJoin('roles as r', 'r.id', '=', 'mr.role_id')
             ->whereIn('mr.model_id', $ids)
             ->where('mr.model_type', $morph)->whereRaw('BINARY mr.model_type = ?', [$morph])
-            ->get(['mr.model_id', 'r.id', 'r.name', 'r.alias_name', 'r.guard_name', 'r.is_active'])
+            ->get(['mr.model_id', 'r.id', 'r.name', 'r.guard_name', 'r.is_active'])
             ->groupBy('model_id');
     }
 

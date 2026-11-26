@@ -22,7 +22,7 @@ class UsersManagementReadTest extends AuthenticationHttpTestCase
         DB::table('users')->where('id', $staff->id)->update(['avatar_key' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png']);
         $missing = User::factory()->create(['username' => 'Fixture.NoRole']);
         $wrong = User::factory()->create(['username' => 'Fixture.WrongGuard']);
-        $wrongRole = Role::create(['name' => 'fixture-other', 'guard_name' => 'other', 'alias_name' => 'Other']);
+        $wrongRole = Role::create(['name' => 'fixture-other', 'guard_name' => 'other']);
         DB::table('model_has_roles')->insert(['role_id' => $wrongRole->id, 'model_type' => $wrong->getMorphClass(), 'model_id' => $wrong->id]);
         $reception = Role::findByName('reception', 'web');
         $reception->update(['is_active' => false]);
@@ -37,7 +37,7 @@ class UsersManagementReadTest extends AuthenticationHttpTestCase
         $this->assertSame([
             'userId' => $staff->id, 'avatarUrl' => '/api/v1/users/'.$staff->id.'/avatar', 'name' => 'موظف تجريبي',
             'username' => 'Exact.Staff', 'phone' => '00012345678', 'isActive' => false,
-            'role' => ['id' => $reception->id, 'name' => 'reception', 'aliasName' => $reception->alias_name, 'isActive' => false],
+            'role' => ['id' => $reception->id, 'name' => 'reception', 'isActive' => false],
         ], $row);
         $this->assertSame('1', $response->header('X-Test-Users-Count-Reads'));
         $this->assertSame('1', $response->header('X-Test-Users-Page-Reads'));

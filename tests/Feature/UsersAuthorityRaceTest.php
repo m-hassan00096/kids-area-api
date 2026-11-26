@@ -16,7 +16,7 @@ class UsersAuthorityRaceTest extends AuthenticationHttpTestCase
     public function test_two_admins_cannot_remove_last_viable_path_and_stale_actor_loses_authority(): void
     {
         $founder = $this->user('Fixture.Founder', 'reception');
-        $role = Role::create(['name' => 'fixture-viable', 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+        $role = Role::create(['name' => 'fixture-viable', 'guard_name' => 'web']);
         $role->syncPermissions([...IdentityPermissions::ESSENTIAL, 'identity.users.delete']);
         $one = $this->user('Fixture.One', $role->name);
         $two = $this->user('Fixture.Two', $role->name);
@@ -84,7 +84,7 @@ class UsersAuthorityRaceTest extends AuthenticationHttpTestCase
         $this->user('Fixture.Founder', 'reception');
         $one = $this->user('Fixture.One');
         $two = $this->user('Fixture.Two');
-        $role = Role::create(['name' => 'fixture-delete-only', 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+        $role = Role::create(['name' => 'fixture-delete-only', 'guard_name' => 'web']);
         $role->givePermissionTo('identity.users.delete');
         $deleter = $this->user('Fixture.Deleter', $role->name);
         $a = $this->browser($this->server());

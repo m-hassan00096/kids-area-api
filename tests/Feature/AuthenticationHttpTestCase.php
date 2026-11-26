@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
@@ -39,6 +40,10 @@ abstract class AuthenticationHttpTestCase extends IdentityDatabaseTestCase
                     unlink($file);
                 }
                 rmdir($avatars);
+            }
+            $permissionCache = $this->barrierDir.DIRECTORY_SEPARATOR.'permission-cache';
+            if (is_dir($permissionCache) && ! is_link($permissionCache)) {
+                $this->assertTrue(File::deleteDirectory($permissionCache));
             }
             foreach (glob($this->barrierDir.DIRECTORY_SEPARATOR.'*') ?: [] as $file) {
                 unlink($file);

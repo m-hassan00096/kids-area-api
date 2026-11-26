@@ -19,7 +19,7 @@ class UsersHttpIntegrationTest extends AuthenticationHttpTestCase
         $target = $this->user('Fixture.Target', 'reception');
         $server = $this->server();
         foreach (['create', 'update', 'delete'] as $capability) {
-            $role = Role::create(['name' => 'fixture-'.$capability, 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+            $role = Role::create(['name' => 'fixture-'.$capability, 'guard_name' => 'web']);
             $role->givePermissionTo(Permission::findByName('identity.users.'.$capability, 'web'));
             $staff = $this->user('Fixture.'.$capability, $role->name);
             $browser = $this->browser($server);
@@ -159,7 +159,7 @@ class UsersHttpIntegrationTest extends AuthenticationHttpTestCase
     public function test_founder_avatar_and_custom_last_admin_invariant_on_actual_actions(): void
     {
         $founder = $this->user('Fixture.Founder');
-        $role = Role::create(['name' => 'fixture-viable', 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+        $role = Role::create(['name' => 'fixture-viable', 'guard_name' => 'web']);
         $role->syncPermissions(IdentityPermissions::ESSENTIAL);
         $backup = $this->user('Fixture.Backup', $role->name);
         $server = $this->server();
@@ -213,9 +213,9 @@ class UsersHttpIntegrationTest extends AuthenticationHttpTestCase
     {
         $founder = $this->user('Fixture.Founder');
         $target = User::factory()->create(['username' => 'Fixture.WrongGuard']);
-        $wrongRole = Role::create(['name' => 'fixture-wrong', 'guard_name' => 'other', 'alias_name' => 'Wrong']);
+        $wrongRole = Role::create(['name' => 'fixture-wrong', 'guard_name' => 'other']);
         DB::table('model_has_roles')->insert(['role_id' => $wrongRole->id, 'model_type' => $target->getMorphClass(), 'model_id' => $target->id]);
-        $inactive = Role::create(['name' => 'fixture-inactive', 'guard_name' => 'web', 'alias_name' => 'Inactive', 'is_active' => false]);
+        $inactive = Role::create(['name' => 'fixture-inactive', 'guard_name' => 'web', 'is_active' => false]);
         $browser = $this->browser($this->server());
         $this->assertSame(200, $browser->login($founder->username)->status);
         $path = '/api/v1/users/'.$target->id;

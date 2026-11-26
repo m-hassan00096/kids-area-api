@@ -21,7 +21,7 @@ final class SelectRegistry
     public function resolve(mixed $requested, array $permissions): array
     {
         $keys = is_string($requested) ? explode(',', $requested) : [];
-        if ($keys === [] || count($keys) > 2 || count(array_unique($keys)) !== count($keys)
+        if ($keys === [] || count($keys) > 3 || count(array_unique($keys)) !== count($keys)
             || array_diff($keys, array_keys($this->providers)) !== []) {
             throw ValidationException::withMessages(['selects' => ApiResponse::text('api.errors.validation')]);
         }

@@ -116,7 +116,7 @@ final class ApiErrors
                 'exception_class' => $exception::class,
                 'status' => $status,
             ];
-            $outcome = request()->attributes->get('identity_users_outcome');
+            $outcome = request()->attributes->get('identity_users_outcome') ?? request()->attributes->get('identity_roles_outcome');
             if (in_array($outcome, ['committed', 'rolled_back', 'unknown'], true)) {
                 $context['mutation_outcome'] = $outcome;
             }
