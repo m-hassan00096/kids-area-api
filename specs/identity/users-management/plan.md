@@ -3,7 +3,7 @@
 > **Status:** APPROVED — preliminary gates resolved; implementation authorized with separate dependency and protected-operation gates.
 > **Approved contract:** [spec.md](spec.md), user explicitly approved the entire spec, Avatar/search/API defaults and 19 acceptance scenarios on 2026-11-25.
 > **Baseline:** verified develop `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merged), docs PR #9 `docs/feature03-users-management-spec` from that commit. Latest actual pre-merge F02 CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files. Historical evidence only; Feature 03 runtime and all new checks Not Run.
-> **Delivery gate:** PR #9 merged, active draft PR #10; T01–T25 task-level verified (25/49), tasks.md §§16–21.4. Latest standard CI retry pending; recurring AuthenticationConcurrencyTest observation instability must be reviewed before merge. All 19 full acceptance scenarios Not Run; separate production/merge authorization.
+> **Delivery gate:** PR #9 merged; active draft PR #10; T01–T29 verified (29/49), tasks.md §§16–22.1; standard CI 45798695716 success. All 19 full acceptance scenarios Not Run; separate production/merge authorization.
 
 ## 1. Current source and compatibility verification
 
@@ -178,4 +178,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** Check latest standard CI retry and review recurring AuthenticationConcurrencyTest observation failure. T26–T27 request validation/constraint mapping and T28–T29 mutation boundary are next implementation slice when authorized. T21–T25 verified at task level; no business writes or merge.
+**Next:** T30 reusable credential/session revocation; T31–T33 actual create/update/delete Actions after user authorization. T26–T29 verified; standard and focused CI passed. Guarded callback tests are not production CRUD; no merge.
