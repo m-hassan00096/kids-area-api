@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Modules\Identity\Actions\DeleteUserAction;
@@ -190,6 +191,9 @@ if (in_array($mode, ['hold-avatar-before-read', 'hold-avatar-after-read', 'fault
             return $image;
         }
     });
+}
+if ($mode === 'fault-users-hash') {
+    Hash::shouldReceive('make')->once()->andThrow(new RuntimeException('Synthetic hash failure.'));
 }
 if (in_array($mode, ['fault-avatar-write', 'fault-avatar-close'], true)) {
     require __DIR__.'/avatar-io-faults.php';
