@@ -200,7 +200,7 @@ try {
         'model_has_roles' => ['role_id', 'model_type', 'model_id'],
         'model_has_permissions' => ['permission_id', 'model_type', 'model_id'],
         'role_has_permissions' => ['role_id', 'permission_id'],
-            ];
+    ];
     // Derive the throttle table ordering from its actual primary index; no assumption about column names.
     $orders['identity_login_throttles'] = collect($indexes['identity_login_throttles'])
         ->where('name', 'PRIMARY')->pluck('column')->all();
@@ -253,8 +253,10 @@ try {
     $appliedBefore = DB::table('migrations')->orderBy('id')->pluck('migration')->all();
     requireRolesPreflight(count($appliedBefore) === 7, 'Unexpected historical migration inventory.');
     // The separately authorized forward DDL; no new reset or down procedure.
-    requireRolesPreflight(Artisan::call('migrate', ['--force' => true,
-        '--path' => ['Modules/Identity/database/migrations/'.$expectedMigration.'.php']]) === 0,
+    requireRolesPreflight(Artisan::call('migrate', [
+        '--force' => true,
+        '--path' => ['Modules/Identity/database/migrations/'.$expectedMigration.'.php'],
+    ]) === 0,
         'Forward Role alias migration failed.');
     requireRolesPreflight(DB::table('migrations')->orderBy('id')->pluck('migration')->all() === [...$appliedBefore, $expectedMigration],
         'Unexpected forward migration inventory.');
