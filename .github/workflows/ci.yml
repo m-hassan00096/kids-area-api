@@ -165,3 +165,60 @@ jobs:
           test ! -e database/migrations/0001_01_01_000002_create_jobs_table.php
           test ! -e package.json
           test ! -e vite.config.js
+
+  activity-preflight:
+    name: Activity Catalogue guarded MySQL preflight
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: kids_area_test
+          MYSQL_USER: kids_area_ci
+          MYSQL_PASSWORD: isolated_ci_only
+          MYSQL_ROOT_PASSWORD: isolated_root_ci_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_URL: ''
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: kids_area_test
+      DB_USERNAME: kids_area_ci
+      DB_PASSWORD: isolated_ci_only
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      ACTIVITY_PREFLIGHT_ISOLATED_JOB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, dom, simplexml, pdo_mysql, intl, bcmath, curl, zip, fileinfo, gd
+          coverage: none
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Set up isolated application key
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Verify real MySQL collation and approved DDL fixture
+        run: |
+          set -o pipefail
+          php tests/Support/activity-catalogue-preflight.php | tee "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_ENV {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_BASELINE {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_DDL {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_COLLATION ' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_LITERAL_SEARCH ' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_CONSTRAINTS {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_RESULT {' "$RUNNER_TEMP/activity-preflight.log"
