@@ -211,6 +211,10 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate --force
+      - name: Inventory actual RBAC, migrations, route and test consumers
+        run: |
+          git grep -n -E 'IdentityPermissions::|PermissionCatalogue::|assertSame\(10,|assertCount\(10,|assertSame\(19,|assertCount\(19,|fixtureMigrationPaths|IdentityScopeTest|migrate:fresh|module:list|SHOW TABLES|TABLE_NAME.*\)|role_has_permissions' -- Modules app routes database tests .github/workflows/ci.yml
+          git ls-files 'Modules/*/module.json' 'Modules/*/composer.json' 'Modules/*/database/migrations/*' 'tests/Feature/*Test.php' 'tests/Support/*'
       - name: Verify real MySQL collation and approved DDL fixture
         run: |
           set -o pipefail
@@ -220,5 +224,6 @@ jobs:
           grep -q '^ACTIVITY_PREFLIGHT_DDL {' "$RUNNER_TEMP/activity-preflight.log"
           grep -q '^ACTIVITY_PREFLIGHT_COLLATION ' "$RUNNER_TEMP/activity-preflight.log"
           grep -q '^ACTIVITY_PREFLIGHT_LITERAL_SEARCH ' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_PRICE_GRAMMAR {' "$RUNNER_TEMP/activity-preflight.log"
           grep -q '^ACTIVITY_PREFLIGHT_CONSTRAINTS {' "$RUNNER_TEMP/activity-preflight.log"
           grep -q '^ACTIVITY_PREFLIGHT_RESULT {' "$RUNNER_TEMP/activity-preflight.log"

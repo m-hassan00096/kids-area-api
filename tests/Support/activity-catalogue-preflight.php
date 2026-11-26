@@ -138,28 +138,30 @@ $defaults = ['supports_hourly' => 1, 'supports_subscription' => 0, 'hourly_rate'
 $insert = static fn (string $name, array $fields = []) => DB::table($fixture)->insertGetId(array_replace(['name' => $name], $defaults, $fields));
 $rows = [];
 $expectedMismatch = [];
+// User-approved measured equality AND native LIKE matrix. A future engine
+// change must fail this gate, not silently inherit broader equivalences.
 $observations = [
-    ['english-case', 'Swimming', 'swimming', true, false],
-    ['trimmed-edges', Str::trim(' Swimming '), 'Swimming', true, false],
-    ['arabic-identical', 'ألعاب الأطفال', 'ألعاب الأطفال', true, false],
+    ['english-case', 'Swimming', 'swimming', true, true],
+    ['trimmed-edges', Str::trim(' Swimming '), 'Swimming', true, true],
+    ['arabic-identical', 'ألعاب الأطفال', 'ألعاب الأطفال', true, true],
     ['english-accent', 'Cafe', 'Café', false, false],
     ['arabic-diacritic', 'الرسم', 'الرَسم', false, false],
     ['internal-spaces', 'كرة قدم', 'كرة  قدم', false, false],
-    ['alef-hamza', 'ا', 'أ', null, true],
-    ['alef-hamza-below', 'ا', 'إ', null, true],
-    ['alef-madda', 'ا', 'آ', null, true],
-    ['yeh-maqsura', 'ي', 'ى', null, true],
-    ['heh-teh-marbuta', 'ه', 'ة', null, true],
-    ['tatweel', 'الرسم', 'الـرسم', null, true],
-    ['canonical-accent', 'Café', "Cafe\u{0301}", null, false],
-    ['mixed-script', 'سباحة Swim', 'سباحة SWIM', true, false],
-    ['supplementary', '🎨', '🎭', null, true],
-    ['nbsp-internal', 'كرة قدم', "كرة\u{00A0}قدم", null, true],
+    ['alef-hamza', 'ا', 'أ', false, false],
+    ['alef-hamza-below', 'ا', 'إ', false, false],
+    ['alef-madda', 'ا', 'آ', false, false],
+    ['yeh-maqsura', 'ي', 'ى', false, false],
+    ['heh-teh-marbuta', 'ه', 'ة', false, false],
+    ['tatweel', 'الرسم', 'الـرسم', true, false],
+    ['canonical-accent', 'Café', "Cafe\u{0301}", true, false],
+    ['mixed-script', 'سباحة Swim', 'سباحة SWIM', true, true],
+    ['supplementary', '🎨', '🎭', false, false],
+    ['nbsp-internal', 'كرة قدم', "كرة\u{00A0}قدم", true, true],
     ['trailing-space-db-only', 'Swimming', 'Swimming ', false, false],
-    ['unicode-trim', Str::trim("\u{00A0}Swimming\u{2003}"), 'Swimming', true, false],
+    ['unicode-trim', Str::trim("\u{00A0}Swimming\u{2003}"), 'Swimming', true, true],
 ];
-$review = [];
-foreach ($observations as [$label, $left, $right, $expected, $flagEqual]) {
+$likeMismatches = [];
+foreach ($observations as [$label, $left, $right, $expected, $expectedLike]) {
     $equal = $db->selectOne('SELECT CONVERT(? USING utf8mb4) COLLATE utf8mb4_0900_as_ci = CONVERT(? USING utf8mb4) COLLATE utf8mb4_0900_as_ci AS eq', [$left, $right]);
     $like = $db->selectOne('SELECT CONVERT(? USING utf8mb4) COLLATE utf8mb4_0900_as_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_0900_as_ci AS matches_name', [$left, $right]);
     $isEqual = (bool) $equal->eq;
@@ -179,12 +181,12 @@ foreach ($observations as [$label, $left, $right, $expected, $flagEqual]) {
     } finally {
         $db->rollBack();
     }
-    $rows[] = ['case' => $label, 'left' => $left, 'right' => $right, 'equal' => $isEqual, 'like' => (bool) $like->matches_name, 'uniqueConflict' => $duplicate, 'expected' => $expected];
-    if ($expected !== null && $expected !== $isEqual) {
+    $rows[] = ['case' => $label, 'left' => $left, 'right' => $right, 'equal' => $isEqual, 'like' => (bool) $like->matches_name, 'uniqueConflict' => $duplicate, 'expected' => $expected, 'expectedLike' => $expectedLike];
+    if ($expected !== $isEqual) {
         $expectedMismatch[] = $label;
     }
-    if ($flagEqual && $isEqual) {
-        $review[] = $label;
+    if ($expectedLike !== (bool) $like->matches_name) {
+        $likeMismatches[] = $label;
     }
 }
 emitActivityPreflight('ACTIVITY_PREFLIGHT_COLLATION', $rows);
@@ -199,6 +201,45 @@ foreach (['%', '_', '!', '\\', 'a,b', 'سباحة'] as $needle) {
     $literal[] = ['needle' => $needle, 'matchedLiteral' => true, 'unrelatedRejected' => true];
 }
 emitActivityPreflight('ACTIVITY_PREFLIGHT_LITERAL_SEARCH', $literal);
+
+// Verify the approved lexical grammar in the actual CI PHP runtime. This
+// intentionally probes the contract, not the future Form Request or Action.
+$normalize = static function (mixed $price): ?string {
+    if (! is_string($price) || preg_match('/\A(?:0|[1-9][0-9]{0,9})(?:\.[0-9]{1,2})?\z/', $price) !== 1) {
+        return null;
+    }
+
+    [$integer, $fraction] = array_pad(explode('.', $price, 2), 2, '');
+    $fraction = str_pad($fraction, 2, '0');
+    if ($integer === '0' && $fraction === '00') {
+        return null;
+    }
+
+    return $integer.'.'.$fraction;
+};
+$validPrices = [
+    ['60', '60.00'], ['60.5', '60.50'], ['60.50', '60.50'],
+    ['0.01', '0.01'], ['0.1', '0.10'], ['1.99', '1.99'],
+    ['9999999999.99', '9999999999.99'],
+];
+$invalidPrices = [
+    '0', '0.0', '0.00', '-0.01', '+60', '0060', '00.01',
+    ' 60 ', "60\n", '1.001', '1.', '.5', '1e2', '1,00',
+    '10000000000', '10000000000.00', '', '٦٠', '60٫5',
+    60, 60.5, true, false, null, ['60'], (object) ['price' => '60'],
+];
+foreach ($validPrices as [$price, $canonical]) {
+    requireActivityPreflight($normalize($price) === $canonical, 'Valid exact price normalization failed.');
+}
+foreach ($invalidPrices as $price) {
+    requireActivityPreflight($normalize($price) === null, 'Invalid exact price accepted.');
+}
+emitActivityPreflight('ACTIVITY_PREFLIGHT_PRICE_GRAMMAR', [
+    'php' => PHP_VERSION,
+    'valid' => count($validPrices),
+    'invalid' => count($invalidPrices),
+    'scope' => 'lexical contract only; Form Request verification pending',
+]);
 
 $db->beginTransaction();
 try {
@@ -256,11 +297,11 @@ foreach ($baselineTables as $table) {
 
 emitActivityPreflight('ACTIVITY_PREFLIGHT_RESULT', [
     'explicitExpectationMismatches' => $expectedMismatch,
-    'unapprovedEquivalencesForReview' => $review,
+    'literalLikeMismatches' => $likeMismatches,
     'collationPairs' => count($rows),
     'literalSearchCases' => count($literal),
     'fixtureRowsAfterRollback' => 0,
     'baselineCountsUnchanged' => true,
     'scope' => 'test fixture only; no production schema, API or feature acceptance evidence',
 ]);
-requireActivityPreflight($expectedMismatch === [] && $review === [], 'Collation observations require review before affected implementation.');
+requireActivityPreflight($expectedMismatch === [] && $likeMismatches === [], 'Approved collation or LIKE behavior changed; review before affected implementation.');
