@@ -1,6 +1,6 @@
 # Activities Feature 01 — Activity Catalogue: Tasks
 
-> **Status:** TP01–TP13 approved; task breakdown prepared for review, **19/42 tasks verified (T01–T19)**, all 15 feature ACs Not Run. This document does not authorize code, merge or production operations. PR #14 exact documentation head a4fb5aa passed CI 45897637775 (206/16562); merged b604d51893b89312096703d31fe3065ebb049227, exact tree verified. User authorized starting preparatory tests; feature branch feature/activities-catalogue from that exact develop. Existing tests are baseline only; T01–T06 preparation verified (see dated checkpoints and actual CI 45902040692/45902251603); approved collation gate passed. T07–T10 verified exact 3c50963 CI 45902251603 full 210/16776, Pint 193, 19 routes. T11 verified exact a75abbac CI 45902480998 full 212/16839, Pint 196, 19 routes. T12–T19 verified exact 33c1d694 CI 45903633768 full 231/17289, Pint 202; T20–T25 and T27–T30 application source staged together to avoid publishing stub routes, actual tests and remaining gates pending. All feature ACs remain Not Run until complete implementation.
+> **Status:** **40/42 tasks verified (T01–T40)** and **15/15 acceptance criteria verified for the implemented catalogue scope** on exact code/test source `cde1c7f8673d564dfac66fbc3816854306ed397c`, CI 45909789792 completed success (249 tests / 20062 assertions, Pint 223, 24 routes). PR #14 docs merged at b604d51893b89312096703d31fe3065ebb049227; implementation PR #15 remains unmerged. T41 final review requires green CI on the documentation-only closure head and explicit user merge approval; T42 requires actual merge and verified tree. No production authorization. Historical checkpoints below record their then-current state, not unresolved current failures.
 > **Sources:** [spec.md](spec.md), [plan.md](plan.md). Txx dependencies are mandatory; ACxx references correspond exactly to spec §8. Every unchecked task requires recorded actual verification; authored code/tests alone are insufficient. No task checkbox is closed merely because a previous baseline passed.
 > **Gate:** PR #14 docs-only review, exact-head CI, explicit merge approval, then reviewed task list and implementation authorization. Guarded synthetic MySQL only; no real DB/reset/down/deploy or future feature. Reopen any affected decision if actual MySQL behavior conflicts with approved collation expectations.
 
@@ -124,13 +124,13 @@ After explicit user approval of the measured collation, staged T07–T10 source 
 
 ## Phase D — Transport, strict validation and reads (T20–T26)
 
-- [ ] **T20 — Five protected routes and independent capability** (T07,T12,T19; AC07, AC11, AC15). Integrate existing stateful/auth/staff middleware; validate ID range after capability; target disclosure only after authorization, no bearer fallback. Evidence: five route inventory, CSRF/auth/capability/probe/native session tests.
-- [ ] **T21 — Mutation request validation** (T10,T11,T20; AC02, AC03, AC05). Raw native JSON object, strict fields/flags/prices, Unicode trim, canonical decimals, POST default and full PUT; scoped middleware exemptions only. Reject malformed/unknown/wrong types, overflow, padding/whitespace, price null/mode conflicts. Evidence: comprehensive boundary matrix including 400 vs 422 and exact field keys.
-- [ ] **T22 — Index query validation and filter builder** (T04,T10,T20; AC08, AC09). Exact scalar allowlist, literal bound ESCAPE search, two 0/1 filters, one sort, positive bounded pagination; no unapproved include/fields or SQL. Evidence: Arabic/English/wildcards/commas/arrays, invalid values, safe page bounds and no overflow.
-- [ ] **T23 — List query and snapshot** (T22; AC07–AC09, AC15). Primary repeatable-read count + bounded page, stable sort, out-of-range no offset/fetch, no N+1, correct total/lastPage. Evidence: data/envelope, two domain SELECTs or one empty, actual concurrent snapshot test.
-- [ ] **T24 — Detail read and target handling** (T20,T10; AC06, AC07, AC11). Re-resolve authorized numeric target on primary, exact seven-field resource; missing 404, no private fields. Evidence: existing/missing/raced deletion, exact response.
-- [ ] **T25 — Two Select providers** (T07,T12,T20; AC10, AC11). Register all/active keys in existing registry; name ASC,id ASC; 200 cap + one, exact options, no unauthorized reads, no third provider. Evidence: 0/200/201, mixed authorization, unknown/duplicates/max keys, existing three Identity providers still pass.
-- [ ] **T26 — Read/transport checkpoint** (T20–T25; AC07–AC11, AC15). Native HTTP tests all list/detail/filter/Select shapes, no catalogue mutation by reads, session-touch semantics preserved; run focused suites. Evidence: actual execution logs and query count assertions.
+- [x] **T20 — Five protected routes and independent capability** (T07,T12,T19; AC07, AC11, AC15). Integrate existing stateful/auth/staff middleware; validate ID range after capability; target disclosure only after authorization, no bearer fallback. Evidence: five route inventory, CSRF/auth/capability/probe/native session tests.
+- [x] **T21 — Mutation request validation** (T10,T11,T20; AC02, AC03, AC05). Raw native JSON object, strict fields/flags/prices, Unicode trim, canonical decimals, POST default and full PUT; scoped middleware exemptions only. Reject malformed/unknown/wrong types, overflow, padding/whitespace, price null/mode conflicts. Evidence: comprehensive boundary matrix including 400 vs 422 and exact field keys.
+- [x] **T22 — Index query validation and filter builder** (T04,T10,T20; AC08, AC09). Exact scalar allowlist, literal bound ESCAPE search, two 0/1 filters, one sort, positive bounded pagination; no unapproved include/fields or SQL. Evidence: Arabic/English/wildcards/commas/arrays, invalid values, safe page bounds and no overflow.
+- [x] **T23 — List query and snapshot** (T22; AC07–AC09, AC15). Primary repeatable-read count + bounded page, stable sort, out-of-range no offset/fetch, no N+1, correct total/lastPage. Evidence: data/envelope, two domain SELECTs or one empty, actual concurrent snapshot test.
+- [x] **T24 — Detail read and target handling** (T20,T10; AC06, AC07, AC11). Re-resolve authorized numeric target on primary, exact seven-field resource; missing 404, no private fields. Evidence: existing/missing/raced deletion, exact response.
+- [x] **T25 — Two Select providers** (T07,T12,T20; AC10, AC11). Register all/active keys in existing registry; name ASC,id ASC; 200 cap + one, exact options, no unauthorized reads, no third provider. Evidence: 0/200/201, mixed authorization, unknown/duplicates/max keys, existing three Identity providers still pass.
+- [x] **T26 — Read/transport checkpoint** (T20–T25; AC07–AC11, AC15). Native HTTP tests all list/detail/filter/Select shapes, no catalogue mutation by reads, session-touch semantics preserved; run focused suites. Evidence: actual execution logs and query count assertions.
 
 ### API verification source checkpoint
 
@@ -138,14 +138,14 @@ Authored native HTTP read/transport, permission matrix, all filters/sorts/query 
 
 ## Phase E — Write Actions and atomicity (T27–T34)
 
-- [ ] **T27 — Catalogue write transaction boundary** (T19–T21; AC11, AC14). Reuse IdentityMutex and CurrentStaffMutation original binding and capability, short outer transaction, consistent locks, 5s wait and restoration/disconnect, rollback/commit outcome classification. No broad refactor or ordinary CRUD idempotency. Evidence: actual transaction/session security and wait/fault tests.
-- [ ] **T28 — CreateActivityAction** (T08,T21,T27; AC02–AC04). All three mode combinations, explicit persistence/normalization, unique name arbitration and recognized duplicate 409, 201 data:[]; no implicit invalid coercion. Evidence: HTTP+DB snapshots including inactive duplicate and no duplicate row.
-- [ ] **T29 — UpdateActivityAction** (T08,T21,T27; AC03–AC05). Recheck locked target, full replacement, clear disabled rate, require new enabled price, same-record/case rename, preserve on rejection. Evidence: HTTP success/422/409/404, active list/select state, exact DB values.
-- [ ] **T30 — DeleteActivityAction** (T08,T20,T27; AC06). Recheck authorized locked target, unused hard delete, no fake dependency, no soft delete or cascade, second delete 404. Evidence: row removed, list/detail/select gone; later real FK obligations recorded.
-- [ ] **T31 — Actual concurrent duplicate and rename races** (T28,T29; AC04, AC14). Distinct committed MySQL connections and HTTP workers, same/equivalent names, create vs rename, competing renames; exactly one succeeds when conflict, recognized unique path exercised. Evidence: observed overlap, final rows, HTTP outcomes/native code.
-- [ ] **T32 — Concurrent update/delete and access revocation** (T27,T29,T30; AC05, AC06, AC11, AC14). Both serial orders update/delete, update/update and delete/delete; stale capability/role/session revoked before lock vs write before revoke; no unauthorized committed write, no stale session restoration. Evidence: real barriers, final DB/session state and native responses.
-- [ ] **T33 — Actual fault and uncertain outcome matrix** (T27–T32; AC04, AC14). Real 1205/1213, known/unknown constraint faults, rollback after write, lost acknowledgement and postcommit session failure, timeout restoration/disconnect; distinguish acknowledged commit/rollback/unknown, no blind replay or leaked SQL. Evidence: actual DB and test-only PDO/barrier outcomes, snapshots, safe responses/logs.
-- [ ] **T34 — Write checkpoint** (T28–T33; AC02–AC06, AC11, AC14). Run focused create/update/delete, validation/authority/fault/concurrency suites; no partial writes; future dependent protection not misreported as tested. Evidence: exact head test logs and outstanding gaps.
+- [x] **T27 — Catalogue write transaction boundary** (T19–T21; AC11, AC14). Reuse IdentityMutex and CurrentStaffMutation original binding and capability, short outer transaction, consistent locks, 5s wait and restoration/disconnect, rollback/commit outcome classification. No broad refactor or ordinary CRUD idempotency. Evidence: actual transaction/session security and wait/fault tests.
+- [x] **T28 — CreateActivityAction** (T08,T21,T27; AC02–AC04). All three mode combinations, explicit persistence/normalization, unique name arbitration and recognized duplicate 409, 201 data:[]; no implicit invalid coercion. Evidence: HTTP+DB snapshots including inactive duplicate and no duplicate row.
+- [x] **T29 — UpdateActivityAction** (T08,T21,T27; AC03–AC05). Recheck locked target, full replacement, clear disabled rate, require new enabled price, same-record/case rename, preserve on rejection. Evidence: HTTP success/422/409/404, active list/select state, exact DB values.
+- [x] **T30 — DeleteActivityAction** (T08,T20,T27; AC06). Recheck authorized locked target, unused hard delete, no fake dependency, no soft delete or cascade, second delete 404. Evidence: row removed, list/detail/select gone; later real FK obligations recorded.
+- [x] **T31 — Actual concurrent duplicate and rename races** (T28,T29; AC04, AC14). Distinct committed MySQL connections and HTTP workers, same/equivalent names, create vs rename, competing renames; exactly one succeeds when conflict, recognized unique path exercised. Evidence: observed overlap, final rows, HTTP outcomes/native code.
+- [x] **T32 — Concurrent update/delete and access revocation** (T27,T29,T30; AC05, AC06, AC11, AC14). Both serial orders update/delete, update/update and delete/delete; stale capability/role/session revoked before lock vs write before revoke; no unauthorized committed write, no stale session restoration. Evidence: real barriers, final DB/session state and native responses.
+- [x] **T33 — Actual fault and uncertain outcome matrix** (T27–T32; AC04, AC14). Real 1205/1213, known/unknown constraint faults, rollback after write, lost acknowledgement and postcommit session failure, timeout restoration/disconnect; distinguish acknowledged commit/rollback/unknown, no blind replay or leaked SQL. Evidence: actual DB and test-only PDO/barrier outcomes, snapshots, safe responses/logs.
+- [x] **T34 — Write checkpoint** (T28–T33; AC02–AC06, AC11, AC14). Run focused create/update/delete, validation/authority/fault/concurrency suites; no partial writes; future dependent protection not misreported as tested. Evidence: exact head test logs and outstanding gaps.
 
 ### Write race/fault source checkpoint
 
@@ -157,12 +157,12 @@ T31–T33 tests authored with guarded independent HTTP/MySQL connections: duplic
 
 ## Phase F — End-to-end verification and release review (T35–T42)
 
-- [ ] **T35 — Independent RBAC and security matrix** (T18,T26,T34; AC10–AC14). Five separate permissions incl Manager/Reception defaults/custom subsets, forbidden target enumeration, disabled/revoked session, CSRF and forged grants, existing no direct grants/last-admin/founder constraints. Evidence: actual browser requests, data/session/grant snapshots.
-- [ ] **T36 — Performance and query plans** (T26,T34; AC08–AC10, AC14, AC15). 200 and 2,000 guarded synthetic records; actual SQL/EXPLAIN/ANALYZE, row counts, query count, median/max time, memory, lock wait/hold/commit, concurrent RBAC effects. Assert bounded domain SELECT/materialization; measure total request separately. Evidence: environment/fixtures/plans/results; no fabricated SLA.
-- [ ] **T37 — Index and locking review** (T36; AC01, AC15). Assess PK/unique sufficiency and broad Identity lock scope; propose additional index/strategy only if evidence warrants, request review for plan change. Evidence: measured decision and limitations, no speculative change.
-- [ ] **T38 — Fresh/upgrade/migration and scope verification** (T05,T08,T09,T18,T34; AC01, AC12, AC13, AC15). Real guarded historical upgrade and fresh schema, preservation of previous roles/users/aliases/grants/session/migrations, exact two new tables, exact 15 permissions, 5 new routes, no other modules or packages. Evidence: schema/data diffs and migration markers; no production or unapproved reset/down.
-- [ ] **T39 — CI exact-head regression** (T19,T26,T34–T38; AC01–AC15). Update CI exact module/route inventory, add Activities discovery/focused suite without skipping prior suites; retain Composer/audit/Pint, full PHPUnit, route cache and previous forward migration guards. Evidence: full actual job logs, counts, failures fixed and exact final head rerun green.
-- [ ] **T40 — Acceptance reconciliation and documentation** (T39; AC01–AC15). Map every criterion to actual verified case/run/commit and limits; no checkmark on unexecuted tests. Update task status and single handoff; preserve module rules, record future real FK/snapshot tests and deferred audit/host risks. Evidence: completed matrix and docs diff.
+- [x] **T35 — Independent RBAC and security matrix** (T18,T26,T34; AC10–AC14). Five separate permissions incl Manager/Reception defaults/custom subsets, forbidden target enumeration, disabled/revoked session, CSRF and forged grants, existing no direct grants/last-admin/founder constraints. Evidence: actual browser requests, data/session/grant snapshots.
+- [x] **T36 — Performance and query plans** (T26,T34; AC08–AC10, AC14, AC15). 200 and 2,000 guarded synthetic records; actual SQL/EXPLAIN/ANALYZE, row counts, query count, median/max time, memory, lock wait/hold/commit, concurrent RBAC effects. Assert bounded domain SELECT/materialization; measure total request separately. Evidence: environment/fixtures/plans/results; no fabricated SLA.
+- [x] **T37 — Index and locking review** (T36; AC01, AC15). Assess PK/unique sufficiency and broad Identity lock scope; propose additional index/strategy only if evidence warrants, request review for plan change. Evidence: measured decision and limitations, no speculative change.
+- [x] **T38 — Fresh/upgrade/migration and scope verification** (T05,T08,T09,T18,T34; AC01, AC12, AC13, AC15). Real guarded historical upgrade and fresh schema, preservation of previous roles/users/aliases/grants/session/migrations, exact two new tables, exact 15 permissions, 5 new routes, no other modules or packages. Evidence: schema/data diffs and migration markers; no production or unapproved reset/down.
+- [x] **T39 — CI exact-head regression** (T19,T26,T34–T38; AC01–AC15). Update CI exact module/route inventory, add Activities discovery/focused suite without skipping prior suites; retain Composer/audit/Pint, full PHPUnit, route cache and previous forward migration guards. Evidence: full actual job logs, counts, failures fixed and exact final head rerun green.
+- [x] **T40 — Acceptance reconciliation and documentation** (T39; AC01–AC15). Map every criterion to actual verified case/run/commit and limits; no checkmark on unexecuted tests. Update task status and single handoff; preserve module rules, record future real FK/snapshot tests and deferred audit/host risks. Evidence: completed matrix and docs diff.
 - [ ] **T41 — Implementation PR review gate** (T40; AC01–AC15). Open/review feature PR against develop; exact allowed files, CI on current head, no unrelated changes; review release/rollback, provisioning marker/cache and host gates. Request explicit merge authorization; no automatic merge/deploy. Evidence: PR link, SHA, CI, reviewer approval.
 - [ ] **T42 — Authorized final merge and tree verification** (T41; AC15). Only after explicit user approval merge reviewed head to develop and verify exact merged tree, update single handoff/PR evidence without recursive status-only commits. No production migration/provisioning/deploy. Evidence: merge SHA, matching tree, next-feature boundary.
 
@@ -170,25 +170,157 @@ T31–T33 tests authored with guarded independent HTTP/MySQL connections: duplic
 
 T36 guarded synthetic performance test authored: 200 and 2,000 activities with Arabic/English/accent/literal names, skewed active state and all mode combinations; 15/100 and deep/out-of-range pages, both sort directions and filters, detail and both bounded Select providers. Captures actual executed domain SQL and MySQL EXPLAIN/EXPLAIN ANALYZE, estimated and actual row counts in plans, three repeated native HTTP timings (median/max), request query counts and PHP peak memory. Existing native PDO timing harness extended only in guarded test router for three real updates per size and observed contention with another Activity write and Role edit. Earlier provisioning races remain verified; 0/200/201 selector boundaries covered by focused API tests. No extra index or production timing claim; measurements pending CI. T20–T42 remain unchecked until dependency/evidence reconciliation.
 
-## Acceptance traceability — all Not Run
+## Acceptance traceability — verified implementation scope
 
-| AC | Evidence-producing tasks | Status |
-|---|---|---|
-| AC01 schema/scope | T03–T09, T37–T39 | Not Run |
-| AC02 create modes | T10,T21,T28,T34,T39 | Not Run |
-| AC03 exact input | T04,T10,T11,T21,T28,T29,T34,T39 | Not Run |
-| AC04 unique/race | T04,T08,T11,T28,T29,T31,T33,T39 | Not Run |
-| AC05 full update | T21,T29,T32,T34,T39 | Not Run |
-| AC06 unused delete | T24,T30,T32,T34,T39; real dependent checks deferred | Not Run |
-| AC07 reads | T10,T20,T23,T24,T26,T39 | Not Run |
-| AC08 filters/order | T04,T22,T23,T26,T36,T39 | Not Run |
-| AC09 pagination | T22,T23,T26,T36,T39 | Not Run |
-| AC10 Select | T25,T26,T35,T36,T39 | Not Run |
-| AC11 authorization | T18,T20,T25–T27,T32,T35,T39 | Not Run |
-| AC12 catalogue | T02,T12–T15,T19,T35,T38,T39 | Not Run |
-| AC13 provisioning | T09,T14–T19,T35,T38,T39 | Not Run |
-| AC14 concurrency/faults | T17,T18,T27,T31–T33,T35,T36,T39 | Not Run |
-| AC15 regression/performance | T19,T26,T34,T36–T42 | Not Run |
+Evidence for every row is the actual [CI 45909789792](https://github.com/m-hassan00096/kids-area-api/actions/runs/45909789792), exact tested implementation `cde1c7f8673d564dfac66fbc3816854306ed397c`, Foundation job [140215099533](https://github.com/m-hassan00096/kids-area-api/actions/runs/45909789792/job/140215099533), preflight job [140215099734](https://github.com/m-hassan00096/kids-area-api/actions/runs/45909789792/job/140215099734), not a previous baseline. Both focused and full tests ran; criteria requiring later owners are excluded only as explicitly approved in the spec, never represented as tested. T41/T42 remain delivery gates.
+
+| AC | Evidence-producing tasks | Status | Actual verified cases / scope |
+|---|---|---|---|
+| AC01 schema/scope | T03–T09, T37–T39 | Verified on cde1c7f8 | ActivitySchemaTest (exact nine columns, five checks, two indexes, roundtrip and technical marker), IdentityScopeTest exact tables/15 permissions/route inventory; guarded historical and additive forward snapshot, both new tables initially empty. |
+| AC02 create modes | T10,T21,T28,T34,T39 | Verified on cde1c7f8 | ActivityWriteHttpTest::test_native_create_modes_and_exact_update_clear_reenable_delete_contract; strict native input test, ActivitySchema real invalid inserts. Exact 201/data:[] and three modes. |
+| AC03 exact input | T04,T10,T11,T21,T28,T29,T34,T39 | Verified on cde1c7f8 | ActivityWriteHttpTest::test_strict_native_json_types_prices_names_and_full_put_without_mutation_on_error; schema roundtrip; guarded 7 valid/26 invalid lexical cases; native HTTP 400 vs 422, Unicode trim, 255 characters, min/max and nulls. |
+| AC04 unique/race | T04,T08,T11,T28,T29,T31,T33,T39 | Verified on cde1c7f8 | ActivityConstraintErrorsTest real 1062 named constraint and unrelated error; ActivityWriteHttpTest same-row case rename and inactive duplicates; ActivityRaceHttpTest::test_equivalent_name_creates_and_competing_renames_arbitrate_in_mysql; 18 real equality/LIKE pairs. |
+| AC05 full update | T21,T29,T32,T34,T39 | Verified on cde1c7f8 | ActivityWriteHttpTest full update/clear/re-enable with supplied price, reject incomplete/duplicate and preserve snapshot; ActivityRaceHttpTest::test_serial_update_delete_and_full_update_orders; read/Select tests verify active-state semantics. Future obligation/rate snapshots deferred. |
+| AC06 unused delete | T24,T30,T32,T34,T39; real dependent checks deferred | Verified on cde1c7f8 | ActivityWriteHttpTest standalone hard delete, repeat delete/detail 404 and selector removal; ActivityRaceHttpTest serial update/delete/delete/delete and detail deletion race in ActivityReadHttpTest. Actual future linked FK/ACTIVITY_IN_USE protection remains an owner-feature gate. |
+| AC07 reads | T10,T20,T23,T24,T26,T39 | Verified on cde1c7f8 | ActivityReadHttpTest exact seven-field list/detail/empty envelopes, independent permission and snapshot race, no catalogue DML; ActivitySchema resource casts. |
+| AC08 filters/order | T04,T22,T23,T26,T36,T39 | Verified on cde1c7f8 | ActivityReadHttpTest::test_exact_resources_all_filters_sorts_paging_and_query_bounds and transport/invalid queries; approved literal search preflight and ActivityPerformanceTest actual SQL/plans. |
+| AC09 pagination | T22,T23,T26,T36,T39 | Verified on cde1c7f8 | ActivityReadHttpTest default/clamp/out-of-range/PHP_INT_MAX, actual count-page snapshot and bounded query counters; ActivityPerformanceTest 15/100/deep pages at both sizes. |
+| AC10 Select | T25,T26,T35,T36,T39 | Verified on cde1c7f8 | ActivitySelectHttpTest two methods: exact options/order/mixed authority, 0/200/201 and independent active overflow; SelectRegistry legacy suites, performance provider LIMIT 201. |
+| AC11 authorization | T18,T20,T25–T27,T32,T35,T39 | Verified on cde1c7f8 | ActivityReadHttpTest independent five-capability matrix and no target probes, first-party origin/host/bearer/override; ActivityWriteHttpTest Reception/CSRF, ActivityRaceHttpTest revoke/disable and live authorization; shared AuthenticationBrowserTest/RolesSecurityTest forged binding/direct grants and old security invariants. No blanket penetration-test claim. |
+| AC12 catalogue | T02,T12–T15,T19,T35,T38,T39 | Verified on cde1c7f8 | ActivityProvisioningTest::test_existing_native_browser_sessions_and_role_endpoints_use_current_activity_grants, IdentityCatalogueTest, IdentityScopeTest, IdentityBootstrapTest, existing role/permission/select and authentication suites; exact 15, six essentials, exact keys/aliases and no direct grants. |
+| AC13 provisioning | T09,T14–T19,T35,T38,T39 | Verified on cde1c7f8 | ActivityProvisioningTest seven methods including prerequisite data sets, IdentityCatalogueTest fresh/reseed/rollback, IdentityConcurrencyTest provision/provision, provision/seed, revoke orders and shared cache both outcomes; actual old aliases/assignments preserved, fresh marker, no-regrant and uncertain commit reconciliation. |
+| AC14 concurrency/faults | T17,T18,T27,T31–T33,T35,T36,T39 | Verified on cde1c7f8 | ActivityRaceHttpTest four methods and ActivityFaultHttpTest four methods; actual independent DB/HTTP barriers, native 1062/1205/1213, rollback after DML, lost ack/postcommit session failure; ActivityProvisioningTest/IdentityConcurrencyTest native marker/cache outcomes; no fabricated future FK. |
+| AC15 regression/performance | T19,T26,T34,T36–T42 | Verified on cde1c7f8 | Both jobs success, full 249/20062, 223 Pint files, 24 routes before/after cache, existing suites and forward snapshot, locked Composer/audit, actual focused and full 200/2000 metrics below. Release approval/merge and real host validation remain separate. |
+
+### Final implementation evidence (2026-11-27 Africa/Cairo)
+
+- [CI 45909789792](https://github.com/m-hassan00096/kids-area-api/actions/runs/45909789792), exact tested implementation `cde1c7f8673d564dfac66fbc3816854306ed397c`, Foundation job [140215099533](https://github.com/m-hassan00096/kids-area-api/actions/runs/45909789792/job/140215099533), preflight job [140215099734](https://github.com/m-hassan00096/kids-area-api/actions/runs/45909789792/job/140215099734): both jobs completed success. Actual focused counts: Activity schema/constraint/provisioning 19/491, API 16/1484, performance 2/1211, Authentication 41/1585, Identity 62/1190, Users/Avatar/Select 75/7139, Roles 35/7056. Full PHPUnit 249/20062. Pint 223 files; both route lists 24; locked Composer/audit, module inventory and no generated out-of-scope artifacts passed. Counts from focused groups overlap and must not be summed. Prior exact transport fix 13f515fe CI 45909678685 also green, full 247/18658, Pint 222, routes 24. No waived tests; earlier discovery/transport/fixture failures corrected and rerun.
+- Actual preflight: MySQL 8.0.46, PHP 8.2.36, InnoDB, strict/UTC, approved utf8mb4_0900_as_ci NO PAD, 18 equality/LIKE pairs, 6 literal searches, 7 valid/26 invalid price cases, zero mismatches, zero synthetic rows after rollback, unchanged baseline counts. Real forward migration log preserved all eight old migration records and eight old schemas/row sets (users 4, roles 4, permissions 10, memberships 4, role grants 11, direct grants 0, sessions 2, throttles 3), backup roundtrip, two new empty tables. Actual fresh schema and IdentityScope exact inventory passed. Diff versus develop b604d51893b89312096703d31fe3065ebb049227: 72 changed paths before this closure update, no deleted files, no existing migration modification, only approved two new migrations, unchanged root composer.json and composer.lock, no additional modules or packages.
+- T20–T35: actual native API/fault/read/Select/role/auth tests above establish five independent capabilities, transport guard before dispatch, exact contracts, no partial writes or unsafe replay, stable primary count/page read snapshot and bounded options, real conflicts/serialized races and previously approved Identity guard behavior. T36–T37: measured results below. T38–T39: actual forward/fresh/complete exact source regression above. T40: AC map, documentation and handoff reconciled. This closure commit changes only documentation; the new exact PR head needs its own final CI for T41, and no further source change may inherit these results without a new run.
+
+### T36 — actual performance evidence
+
+All units below are milliseconds unless noted. Native HTTP via guarded localhost CI, MySQL 8.0.46/PHP 8.2.36, one staff account/two roles for the baseline; separate contention scenario with editable third role. Fixtures 200 then 2,000 activities with approved mixed modes, inactive skew, literal/Arabic/English/accent search. Three HTTP samples per case, repeated in both focused and full execution; 82 actual ACTIVITY_* metric records (41 in each run), not simulated or a host SLA. PHP peak allocation 2–4 MiB, not worker RSS. Values in timing pairs are median / maximum, not p95 or throughput. Full logged SQL/EXPLAIN/ANALYZE available in the Foundation job; below preserves actual observed plan and timing summaries. Sequential write changes last fixture row between sizes, explaining active 1601 at stress scale.
+
+| Index case | Focused 200 | Focused 2,000 | Full 200 | Full 2,000 | Domain SELECTs 200/2000 | Returned 200/2000 |
+|---|---:|---:|---:|---:|---:|---:|
+| first15 | 25.937 / 42.572 | 17.913 / 18.005 | 22.861 / 38.736 | 17.877 / 18.301 | 2/2 | 15/15 |
+| first100 | 20.205 / 32.814 | 20.704 / 24.811 | 20.791 / 30.144 | 19.512 / 19.677 | 2/2 | 100/100 |
+| deep15 | 18.789 / 24.098 | 17.569 / 17.576 | 19.897 / 20.817 | 18.592 / 18.899 | 2/2 | 5/5 |
+| name-asc | 19.084 / 19.665 | 21.067 / 46.791 | 23.064 / 25.067 | 19.915 / 20.342 | 2/2 | 100/100 |
+| name-desc | 18.177 / 18.790 | 18.484 / 18.523 | 19.591 / 22.465 | 19.058 / 19.398 | 2/2 | 15/15 |
+| active | 18.921 / 30.228 | 17.952 / 18.156 | 18.221 / 18.363 | 18.348 / 18.373 | 2/2 | 15/15 |
+| inactive | 16.794 / 16.935 | 18.671 / 35.993 | 18.807 / 18.820 | 18.502 / 18.807 | 2/2 | 15/15 |
+| hourly | 19.028 / 19.360 | 19.304 / 19.830 | 20.089 / 20.858 | 23.648 / 32.181 | 2/2 | 100/100 |
+| subscription | 19.052 / 30.477 | 19.285 / 52.535 | 20.259 / 20.377 | 20.072 / 20.517 | 2/2 | 100/100 |
+| arabic-literal | 17.828 / 18.130 | 21.760 / 25.789 | 18.040 / 18.349 | 20.036 / 20.037 | 2/2 | 15/15 |
+| english-case | 17.238 / 17.766 | 18.954 / 163.036 | 17.853 / 18.422 | 19.619 / 19.820 | 2/2 | 15/15 |
+| accent | 17.367 / 23.333 | 17.931 / 18.136 | 17.930 / 18.330 | 19.340 / 19.390 | 2/2 | 15/15 |
+| combined | 19.322 / 28.783 | 20.133 / 114.391 | 18.512 / 18.760 | 22.216 / 54.528 | 2/2 | 15/15 |
+| empty | 15.946 / 19.298 | 16.966 / 17.619 | 17.192 / 17.465 | 17.904 / 17.980 | 1/1 | 0/0 |
+| out-of-range | 16.360 / 33.971 | 16.241 / 16.248 | 17.169 / 18.185 | 17.431 / 18.189 | 1/1 | 0/0 |
+
+Normal index: 2 domain SELECTs and 10 total HTTP queries; empty/out-of-range 1 and 9. Detail 1 projected SELECT plus 1 target admission, total 9. Select 1 per provider, success total 8, overflow total 7. Three samples preserve bounded materialization: at most 100 rows per page and 201 options examined/materialized by provider result (underlying SQL scan may examine more); 200 and 160 options at normal size, both providers 409 with 201 fetched at stress size. Focused read max median range 15.946–25.937 at 200 and 16.241–21.760 at 2,000. Largest single focused HTTP sample 42.572/163.036 (English search at 2,000), combined filters 114.391; full maximum 38.736/54.528. Full per-statement Laravel SQL max 0.51/1.45; focused 0.47/1.39. Full MySQL root plan time max 0.14/1.10; focused 0.153/1.05. Do not infer that growing data improves latency from noisy samples.
+
+| Size | Detail/Select | Materialized | HTTP | Total queries | Focused HTTP med/max | Key | Actual leaf rows |
+|---:|---|---:|---:|---:|---:|---|---:|
+| 200 | detail | 1 | 200 | 9 | 15.961 / 16.834 | PRIMARY | 1 |
+| 200 | activities | 200 | 200 | 8 | 15.587 / 15.718 | uq_activities_name | 200 |
+| 200 | activeActivities | 160 | 200 | 8 | 15.358 / 15.488 | uq_activities_name | 200 |
+| 2000 | detail | 1 | 200 | 9 | 16.410 / 34.127 | PRIMARY | 1 |
+| 2000 | activities | 201 | 409 | 7 | 15.480 / 19.049 | uq_activities_name | 201 |
+| 2000 | activeActivities | 201 | 409 | 7 | 14.906 / 15.299 | uq_activities_name | 251 |
+
+Focused read plans: estimated rows are classic EXPLAIN estimates, actual leaf rows are EXPLAIN ANALYZE iterator output (all shown loops=1), not physical I/O or exact rows examined for the optimized COUNT aggregate. For count-only special iterator, actual output 1 is aggregate result, not scan size. Root iterator time excludes framework/network, Laravel query ms includes driver overhead. Every plan is from actual application domain SQL captured by the test; no user SQL interpolated.
+
+| Size | Case/query | Access/key | Estimated rows | Actual leaf rows | Laravel SQL ms | Root actual end ms |
+|---:|---|---|---:|---:|---:|---:|
+| 200 | first15/count | index/uq_activities_name | 200 | 1 (aggregate output) | 0.340 | 0.022 |
+| 200 | first15/page | index/PRIMARY | 15 | 15 | 0.300 | 0.014 |
+| 200 | first100/count | index/uq_activities_name | 200 | 1 (aggregate output) | 0.300 | 0.043 |
+| 200 | first100/page | index/PRIMARY | 100 | 100 | 0.370 | 0.045 |
+| 200 | deep15/count | index/uq_activities_name | 200 | 1 (aggregate output) | 0.300 | 0.022 |
+| 200 | deep15/page | index/PRIMARY | 200 | 200 | 0.300 | 0.065 |
+| 200 | name-asc/count | index/uq_activities_name | 200 | 1 (aggregate output) | 0.300 | 0.022 |
+| 200 | name-asc/page | index/uq_activities_name | 100 | 100 | 0.420 | 0.088 |
+| 200 | name-desc/count | index/uq_activities_name | 200 | 1 (aggregate output) | 0.340 | 0.022 |
+| 200 | name-desc/page | ALL/none | 200 | 200 | 0.390 | 0.110 |
+| 200 | active/count | ALL/none | 200 | 200 | 0.370 | 0.057 |
+| 200 | active/page | index/PRIMARY | 15 | 19 | 0.310 | 0.015 |
+| 200 | inactive/count | ALL/none | 200 | 200 | 0.340 | 0.054 |
+| 200 | inactive/page | index/uq_activities_name | 15 | 75 | 0.370 | 0.067 |
+| 200 | hourly/count | ALL/none | 200 | 200 | 0.350 | 0.050 |
+| 200 | hourly/page | index/PRIMARY | 100 | 150 | 0.390 | 0.052 |
+| 200 | subscription/count | ALL/none | 200 | 200 | 0.350 | 0.050 |
+| 200 | subscription/page | index/PRIMARY | 100 | 149 | 0.410 | 0.070 |
+| 200 | arabic-literal/count | index/uq_activities_name | 200 | 200 | 0.370 | 0.059 |
+| 200 | arabic-literal/page | index/uq_activities_name | 15 | 165 | 0.470 | 0.121 |
+| 200 | english-case/count | index/uq_activities_name | 200 | 200 | 0.390 | 0.069 |
+| 200 | english-case/page | ALL/none | 200 | 200 | 0.450 | 0.103 |
+| 200 | accent/count | index/uq_activities_name | 200 | 200 | 0.440 | 0.074 |
+| 200 | accent/page | index/PRIMARY | 15 | 58 | 0.380 | 0.031 |
+| 200 | combined/count | ALL/none | 200 | 200 | 0.440 | 0.065 |
+| 200 | combined/page | index/uq_activities_name | 15 | 177 | 0.450 | 0.153 |
+| 200 | empty/count | index/uq_activities_name | 200 | 200 | 0.350 | 0.053 |
+| 200 | out-of-range/count | index/uq_activities_name | 200 | 1 (aggregate output) | 0.370 | 0.022 |
+| 2000 | first15/count | index/uq_activities_name | 2000 | 1 (aggregate output) | 0.480 | 0.161 |
+| 2000 | first15/page | index/PRIMARY | 15 | 15 | 0.280 | 0.014 |
+| 2000 | first100/count | index/uq_activities_name | 2000 | 1 (aggregate output) | 0.460 | 0.176 |
+| 2000 | first100/page | index/PRIMARY | 100 | 100 | 0.380 | 0.044 |
+| 2000 | deep15/count | index/uq_activities_name | 2000 | 1 (aggregate output) | 0.450 | 0.196 |
+| 2000 | deep15/page | index/PRIMARY | 2000 | 2000 | 0.680 | 0.471 |
+| 2000 | name-asc/count | index/uq_activities_name | 2000 | 1 (aggregate output) | 0.490 | 0.170 |
+| 2000 | name-asc/page | index/uq_activities_name | 100 | 100 | 0.430 | 0.080 |
+| 2000 | name-desc/count | index/uq_activities_name | 2000 | 1 (aggregate output) | 0.460 | 0.172 |
+| 2000 | name-desc/page | ALL/none | 2000 | 2000 | 0.980 | 0.782 |
+| 2000 | active/count | ALL/none | 2000 | 2000 | 0.580 | 0.403 |
+| 2000 | active/page | index/PRIMARY | 15 | 19 | 0.290 | 0.024 |
+| 2000 | inactive/count | ALL/none | 2000 | 2000 | 0.650 | 0.370 |
+| 2000 | inactive/page | index/uq_activities_name | 15 | 75 | 0.380 | 0.063 |
+| 2000 | hourly/count | ALL/none | 2000 | 2000 | 0.600 | 0.387 |
+| 2000 | hourly/page | index/PRIMARY | 100 | 150 | 0.460 | 0.064 |
+| 2000 | subscription/count | ALL/none | 2000 | 2000 | 0.670 | 0.395 |
+| 2000 | subscription/page | index/PRIMARY | 100 | 149 | 0.420 | 0.070 |
+| 2000 | arabic-literal/count | index/uq_activities_name | 2000 | 2000 | 0.680 | 0.446 |
+| 2000 | arabic-literal/page | index/uq_activities_name | 15 | 1516 | 1.390 | 1.050 |
+| 2000 | english-case/count | index/uq_activities_name | 2000 | 2000 | 0.650 | 0.418 |
+| 2000 | english-case/page | ALL/none | 2000 | 2000 | 0.960 | 0.724 |
+| 2000 | accent/count | index/uq_activities_name | 2000 | 2000 | 0.680 | 0.441 |
+| 2000 | accent/page | index/PRIMARY | 15 | 58 | 0.340 | 0.033 |
+| 2000 | combined/count | ALL/none | 2000 | 2000 | 0.830 | 0.514 |
+| 2000 | combined/page | index/uq_activities_name | 15 | 1528 | 1.390 | 1.020 |
+| 2000 | empty/count | index/uq_activities_name | 2000 | 2000 | 0.680 | 0.418 |
+| 2000 | out-of-range/count | index/uq_activities_name | 2000 | 1 (aggregate output) | 0.440 | 0.160 |
+
+Native committed PUT timing: mutex SQL acquisition time is the measured wait proxy (execution includes query overhead), lock span is from SQL acknowledgement to COMMIT acknowledgement (not engine-internal lock hold precisely). No lock retry. Samples at both sizes 22 total queries and 2–4 MiB PHP peak.
+
+| Execution | Size | HTTP med/max | Manager wait med/max | Manager span med/max | COMMIT med/max | Total queries |
+|---|---:|---:|---:|---:|---:|---:|
+| focused | 200 | 24.812 / 53.798 | 0.173 / 0.183 | 6.237 / 30.883 | 0.788 / 18.998 | 22 |
+| focused | 2000 | 24.170 / 101.667 | 0.156 / 0.159 | 5.586 / 5.977 | 0.666 / 0.693 | 22 |
+| full | 200 | 26.008 / 40.935 | 0.154 / 0.191 | 6.135 / 14.765 | 0.854 / 0.995 | 22 |
+| full | 2000 | 24.761 / 25.535 | 0.185 / 0.188 | 5.733 / 6.142 | 0.781 / 0.847 | 22 |
+
+Actual independent committed Activity/Activity and Activity/Role contention with deliberately held barrier at 200 rows. Not organic latency. Both commit correctly; provision vs seed/role/grant/replay concurrency separately verified by IdentityConcurrencyTest, not a measured simultaneous Activity/provision benchmark.
+
+| Execution | Contender | First span | Second wait | Second span | Second COMMIT | Second queries |
+|---|---|---:|---:|---:|---:|---:|
+| focused | activity | 95.745 | 35.731 | 16.763 | 0.696 | 22 |
+| focused | role | 67.723 | 3.688 | 35.106 | 0.796 | 45 |
+| full | activity | 97.337 | 34.604 | 17.913 | 0.737 | 22 |
+| full | role | 88.511 | 25.314 | 33.979 | 0.542 | 45 |
+
+### T37 — reviewed index/lock decision
+
+Retain PRIMARY and uq_activities_name, no added index or change to approved sort/search contract. ID first page uses PRIMARY (15/100 actual rows), name ASC uses uq_activities_name (100), detail is const PK, all-selector covering index stops at 201. Active selector stress scans 251 to return 201. Deep offset scans 2,000 to return 5 (expected under offset contract); never fetch page when out-of-range. Name DESC with id ASC tie-break can use ALL + filesort (2,000 actual rows, focused root 0.782ms); literal Arabic substring page scans 1,516 to return 15, combined scans 1,528 to return 15 (count scans 2,000). Boolean-filter count scans entire fixture; name LIKE leading wildcard is not a B-tree range search. Low measured statement latency and small approved catalogue do not warrant adding (is_active,name), separate flag indexes, FULLTEXT, or changing pagination/sort semantics now. Revisit only with real representative workload, actual cardinality/selectivity, sustained latency and reviewed plan change. No claim all queries are O(1) or all scans are bounded by page size.
+
+Retain current manager mutex for infrequent configuration writes and reviewed authority/session serialization. IdentityAccess::currentHasAll locks all role and user rows before filtering the actor, then relevant pivots, definitions and grants. Catalogue growth alone did not raise query counts; staff/role cardinality and concurrent writes can raise lock cost. Measured short uncontended spans but sample count small, no multi-staff scale or production capacity certification; deliberate contention examples show real waiting. Before frequent attendance/timer/cashier paths, independently measure representative staff/role cardinality and review narrower concurrency design if warranted. Do not reuse this coarse catalogue lock by default for high-frequency future features. Existing 5s InnoDB lock wait is per lock, not guaranteed end-to-end latency. No additional index, package, cache service or lock redesign authorized by this evidence.
+
+### T38–T41 — release and rollback review
+
+Repository source reviewed within approved scope. Production is not authorized. Before actual rollout separately verify target MySQL patch/strict/UTC/collation compatibility, daily automatic backup and tested restore, preserve marker and exact role/alias/pivot snapshot, quiesce staff traffic, run approved additive migrations, review definition-only seeding, approve exact initial grant diff, then execute fixed `identity:provision-activity-catalogue --confirm-reviewed-upgrade` only with separate operator approval. For fresh install seed grants and marker atomically; routine reseed never restores revoked grants. Flag is acknowledgement, not maintenance enforcement. Uncertain outcomes require reconnect/reconciliation, no blind replay, no marker deletion. Never use automatic destructive down; use reviewed backup/forward recovery. Verify current sessions/cache and host controls before resuming traffic. Shared audit persistence deferred; keep controlled rollout evidence and acknowledge gap. Future actual dependencies must add restrictive FKs and concurrency gates plus price snapshots/disabled-mode admission protection in owning features. No fake dependency claims.
+
+The current review closes T01–T40 at code/test source above. T41 remains open for exact closure-head CI and explicit review/merge authorization; T42 awaits authorized merge and tree verification. Do not start the next feature or deploy before its separate gate. Do not make recursive documentation-only status commits after the final CI merely to change its own SHA; record final review/merge evidence in the live PR body after verifying the exact tree.
 
 ## Evidence and release restrictions
 
