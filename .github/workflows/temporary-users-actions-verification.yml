@@ -65,3 +65,18 @@ jobs:
       - name: Check project formatting
         if: always()
         run: vendor/bin/pint --test -v
+      - name: Verify approved route cache and module scope
+        run: |
+          php artisan module:list --no-ansi
+          php artisan route:list --no-ansi
+          php artisan route:cache
+          php artisan route:list --no-ansi
+          php artisan route:clear
+          test -d Modules/Identity
+          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' -print -quit)"
+          test -z "$(git ls-files .env)"
+          test ! -e app/Models/User.php
+          test ! -e database/migrations/0001_01_01_000000_create_users_table.php
+          test ! -e database/migrations/0001_01_01_000002_create_jobs_table.php
+          test ! -e package.json
+          test ! -e vite.config.js
