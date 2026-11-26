@@ -390,7 +390,7 @@ This is **one read-only Core registry/aggregator**, not a separate business modu
 **Contract details:**
 
 - `data` is an **array**, in requested-key order, of objects with `label` (the stable English **select key**) and `options` (an array of `{value, label}` objects).
-- `options[].label` is the user-visible display value from its owning source: stored user-entered names as-is, the database `alias_name` for role/permission labels, or localized fixed system labels. It is **not necessarily Arabic** if a stored name was entered in another language. `value` is a numeric record ID or an approved stable technical string (for example, a permission name); the owning provider/feature spec defines which type is used.
+- `options[].label` is the user-visible display value from its owning source: stored user-entered names as-is, stored `roles.name` for role labels and `permissions.alias_name` for permission labels, or localized fixed system labels. It is **not necessarily Arabic** if a stored name was entered in another language. `value` is a numeric record ID or an approved stable technical string (for example, a permission name); the owning provider/feature spec defines which type is used.
 - Empty eligible sets return `"options": []` for the requested key; they do not silently disappear.
 - Successful lookup responses always return `"message": ""`.
 - Provider read permissions apply even when the caller can open a general create/edit form. The registry must not become an authorization bypass.

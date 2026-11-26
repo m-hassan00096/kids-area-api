@@ -90,7 +90,7 @@ Implement the approved feature and the smallest necessary technical improvements
 
 - Respect the eleven module boundaries; each business write has a defined owning module. Cross-module interactions must follow the approved architecture.
 - Follow Laravel 12 conventions: thin Controllers, **Form Requests** for validation, **Policies/Gates** for authorization, **Resources** for API serialization, focused **Actions** for every create/update/delete and state transition. Add Services/contracts/DTOs only when justified.
-- Conform to `/api/v1` response and error standards, safe Arabic system messages and stored `alias_name` display metadata for roles/permissions; never authorize on display text.
+- Conform to `/api/v1` response and error standards, safe Arabic system messages and stored role names and permission `alias_name` display metadata; never authorize on display text.
 - Persist money as **DECIMAL(12,2)** with exact arithmetic; no authoritative float math. Preserve canonical append-only posted financial movements, historical evidence, atomic writes, required uniqueness, idempotency and row locking.
 - Do not add runtime dependencies on **Redis, queues/Jobs, cron, Laravel Scheduler, WebSockets or long-running workers** in V1.
 - Do not use a feature as a pretext to redesign another module, add a generic workflow engine or expand approved scope.

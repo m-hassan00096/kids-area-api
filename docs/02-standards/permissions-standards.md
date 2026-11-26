@@ -16,7 +16,7 @@ This document governs **how staff access is defined, stored, assigned, validated
 - Staff authentication/authorization separation; Sanctum and one Spatie `web` permission guard.
 - Single-role assignment with no user-level direct permissions.
 - Permission-controlled Manager; no unconditional administrator shortcut.
-- Role/permission technical keys and stored display aliases (`alias_name`).
+- Unique Role names and stable technical Permission keys with stored permission display aliases (`alias_name`).
 - Role creation, role activation/deactivation, account access checks, last-manager protection and race safety.
 - Module-owned permission definitions with Identity-controlled idempotent seeding.
 - Permission-cache coherence, synchronous RBAC audits, appropriate security logs and test requirements.
@@ -112,13 +112,14 @@ final class SessionPermissions
 
 ## 5. Database: Spatie Tables, Aliases and Constraints
 
+**Approved naming correction (2026-11-26, Feature 04):** Role `name` is the single stored and displayed role name; remove `roles.alias_name` through a reviewed forward migration. Permission `name` stays a stable technical key and `permissions.alias_name` stays the stored display label. Permanent `manager` and `reception` names, IDs, active-state/deletion protections and mutex identity remain unchanged; authorized custom roles use unique Arabic/English names and can be renamed without changing their ID, assignments or permissions. Role resources omit `aliasName`; role Select labels use `roles.name`. The old F01–F03 implementation and historical test evidence still describe the pre-change schema until Feature 04 is implemented and verified.
+
 Use Spatie's native tables, pivot relationships and permission-check semantics. Extend **only what is required**, using application migrations reviewed against the installed Spatie version.
 
 | Table / column | Purpose |
 |---|---|
 | `roles.id` | Primary identifier |
-| `roles.name` | Stable technical role name (e.g., `manager`) |
-| `roles.alias_name` | Persisted human-readable role display name; returned unchanged |
+| `roles.name` | Unique stored and displayed role name; permanent names `manager`/`reception` immutable, custom names editable under authorization |
 | `roles.guard_name` | Always `web` in V1 |
 | `roles.is_active` | Boolean activation flag; enforced by the application |
 | `permissions.id` | Primary identifier |
@@ -131,13 +132,13 @@ Use Spatie's native tables, pivot relationships and permission-check semantics. 
 
 **Schema rules**
 
-1. Add `alias_name` to the actual `roles` and `permissions` tables, and `is_active` to `roles`. Do **not** call this field `alias`; that is a different printing-reference convention.
+1. Maintain `alias_name` only on the actual `permissions` table and `is_active` on `roles`. Feature 04 removes the historical `roles.alias_name` column via a reviewed forward migration; do not edit already-applied migrations. Do **not** call the permission field `alias`.
 2. Keep the package's approved uniqueness for names within guard, matching the deployed Spatie/Teams settings; do not duplicate or conflict with package primary/unique keys.
-3. New system-defined role/permission rows require a meaningful **nonempty** Arabic `alias_name`, while custom role aliases remain **as entered** (subject to validation). Store display text in MySQL, not Laravel translation files.
-4. Missing `alias_name` is a **data quality/integrity** issue, not a missing translation key; never authorize by alias or use technical `name` as the intended display alias.
+3. New system-defined permission rows require a meaningful **nonempty** Arabic `alias_name`. Custom role names may be Arabic or English, returned as stored subject to validation; permanent roles use their exact reserved names. No automatic translation.
+4. Missing permission `alias_name` is a **data quality/integrity** issue, not a missing translation key; never authorize by display text. Roles intentionally use their `name` directly.
 5. Do not introduce role/permission translations tables, per-language aliases, JSON locale maps, custom authorization join tables or copied permission lists.
-6. Preserve identifiers, pivots and historical audit evidence when migrating. Do not alter an already-applied vendor migration in production: use reviewed application migrations and safe backfill phases if data exists.
-7. Avoid mass-assigning or exposing `guard_name` / `name` changes through ordinary edit endpoints.
+6. Preserve identifiers, pivots and historical audit evidence when migrating. Review and back up existing role display data before removing the legacy alias column. Do not alter an already-applied vendor migration in production: use reviewed application migrations and safe backfill phases if data exists.
+7. Never accept client changes to `guard_name`, permission technical names or the two permanent role names. Validate custom role renames via authorized Role Actions and the actual database uniqueness constraint.
 
 ### 5.1 Database-level single-role invariant
 
@@ -176,8 +177,8 @@ UNIQUE (model_type, model_id)
 | Operation | Approved behavior |
 |---|---|
 | Create custom Role | Allowed to actor with appropriate role-management permission and scope |
-| Set `alias_name` | Allowed as role display metadata; never drives auth |
-| Change Role technical `name` | **Not supported** by normal edit workflows after creation |
+| Set Role `alias_name` | Not supported after Feature 04; one stored role name only |
+| Change Role `name` | Authorized custom-role rename only; permanent names immutable |
 | Assign permissions to Role | Allowed from **fixed seeded permission catalog**, with sensitive-role policies |
 | Assign/change a User's Role | One role only via authorized `syncRoles()` in an Action and transaction |
 | Assign role marked inactive | **Rejected** |
@@ -192,13 +193,13 @@ UNIQUE (model_type, model_id)
 
 - **Users:** `identity.users.view`, `identity.users.create`, `identity.users.update`, and independent `identity.users.delete`. `identity.users.update` covers user data, role, activation and password reset for **another** account through the same `PUT /users/{user}`. Password remains unchanged if omitted/empty. Self password changes always use Profile with current password.
 - **Roles:** independent `identity.roles.index`, `identity.roles.store`, `identity.roles.show`, `identity.roles.update`, `identity.roles.delete`; `identity.roles.update` includes all predefined Role Permission grants/revocations and custom-role activation.
-- **Grants are intentionally broad:** the holder of `identity.roles.update` may grant/revoke **any existing technical catalogue Permission**, including one they do not personally possess. There is **no additional per-permission dominance restriction**, but no unapproved implicit manager bypass either.
+- **Grants are intentionally broad:** the holder of `identity.roles.update` may grant/revoke **any existing approved web catalogue Permission**, including one they do not personally possess. **Approved F04 D01 (2026-11-26):** the holder of `identity.roles.store` may grant any such Permission on creation of a custom Role; this does not automatically assign the Role or change the creator's grants. There is no per-permission dominance restriction or implicit manager bypass. Treat these as sensitive delegation capabilities.
 - **Account targets are intentionally broad:** the holder of `identity.users.update` may edit another Manager just like other Users, **except User ID 1**. No generic higher-role target restriction is added. Changing a User's own password through Users PUT remains prohibited.
 - **User ID 1:** nobody else may update it, regardless of permissions or Role; nobody may deactivate or delete it (including itself). The owner may perform otherwise authorized ordinary updates and can change its password only through Profile/current password. Last Manager Protection still applies to self role changes.
 - **Last viable admin protection remains mandatory** for every affected role/User/grant mutation; no permission authorizes deleting/stranding the final viable access-management path.
 - Validate real target/state conditions in Policies and Actions, use safe audit, and treat these high-impact capabilities as powerful permissions to assign deliberately.
 - Role `name` uniqueness/valid syntax must be validated, including the `web` guard; reject reserved names and collisions as specified by the Identity feature spec.
-- Validate new aliases for acceptable length, nonempty content and safe display; do not automatically translate them.
+- Validate custom role names for acceptable length, nonempty content, uniqueness and safe display; do not automatically translate them. Permission aliases remain catalogue metadata, not Role form fields.
 
 ## 7. Active User and Active Role: Every Protected Request
 
@@ -220,7 +221,7 @@ Spatie does **not** enforce a custom `roles.is_active` flag by default. A disabl
 - An authenticated request without an active Role returns **`403`**; a genuinely unauthenticated request returns **`401`**. Keep the shared JSON failure envelope.
 - Revocation/deactivation is effective for the **next newly authorized request** once the change is committed and permission state coherently refreshed; in-flight requests cannot be retroactively canceled. Business-critical Actions still re-check their own authority/state at their trusted execution boundary where appropriate.
 - Never assign an inactive role to a new user. Existing User-role links are **preserved** when the role becomes inactive; **do not automatically reassign** users.
-- Reactivating a role restores only that role's **currently granted permissions**, not any implicit managerial bypass.
+- **Approved F04 D08 (2026-11-26):** on active-to-inactive Role transition, atomically increment every assigned User's credential generation once and invalidate authoritative sessions, including inactive Users. Preserve User activation and role assignment; repeat disable/re-enable does not increment versions again. Reactivating a role restores only its currently granted permissions, never prior sessions or an implicit managerial bypass.
 - Active/inactive roles remain visible to properly authorized administration/audit views; ordinary assignment selectors should return only eligible active roles.
 - Register the custom active-staff-role middleware once in the Laravel 12 middleware configuration. Its public alias may be `staff.active` or a documented equivalent; test middleware ordering against installed Spatie middleware.
 
@@ -336,7 +337,7 @@ Route::middleware([
 }
 ```
 
-The outer `label` is the **technical Select key**. For role options, `value` may be the authorized role ID and `label` comes from stored `alias_name`. If a future permitted alias is written in English, return it unchanged; it is not automatically translated. For permission options, the owner may use technical `name` as `value` and stored `alias_name` as `label` per the agreed Select contract.
+The outer `label` is the **technical Select key**. For role options, `value` is the authorized role ID and `label` comes from stored `roles.name`. Return stored names unchanged; do not automatically translate them. For permission options, the owner may use technical `name` as `value` and stored `alias_name` as `label` per the agreed Select contract.
 
 ## 10. Permission Changes, Cache Coherence and No Realtime Sync
 
@@ -363,7 +364,7 @@ The outer `label` is the **technical Select key**. For role options, `value` may
 
 1. Collect the approved technical permission catalog from the owning modules.
 2. Create the missing permissions with `guard_name=web` and a meaningful `alias_name`.
-3. Create the seeded `manager` and `reception` roles with `guard_name=web`, `alias_name` and `is_active=true`.
+3. Create the seeded `manager` and `reception` roles with `guard_name=web` and `is_active=true`; Feature 04 seeders no longer write role aliases.
 4. Apply an **explicitly approved** initial role-to-permission mapping for a fresh installation: `manager` receives all approved at-install technical permissions, while `reception` receives only the approved day-to-day operational set. Do not imply automatic future grants.
 5. Provision the initial administrative User through its independently secured bootstrap flow. Do not seed plaintext/demo credentials into production.
 
@@ -371,7 +372,7 @@ The outer `label` is the **technical Select key**. For role options, `value` may
 
 - **Only add missing** technical permission definitions and missing required seeded Role records; do not duplicate existing rows.
 - Use `firstOrCreate()` or another repeatable insert-if-missing strategy keyed by technical `name + guard_name`, with database uniqueness.
-- **Do not overwrite any existing `alias_name`**, custom Role metadata, active status, or user-modified role-to-permission mappings through routine seed runs.
+- **Do not overwrite any existing permission `alias_name`**, custom Role names/metadata, active status, or user-modified role-to-permission mappings through routine seed runs.
 - Do **not** automatically attach every new permission to `manager` or `reception` on a running installation. Approve and execute sensitive grant updates explicitly, with authorization, audit and Last Manager Protection.
 - Do not silently turn an inactive seeded role back on at redeploy.
 - Never detach previously selected permissions, delete definitions, rename keys or reset custom roles during ordinary catalog seeding.
@@ -403,10 +404,10 @@ This shows a **single definition**, not an approved automatic assignment to `man
 - Seeded `manager` and `reception` are **always active** and cannot be deleted or deactivated, even when no Users are currently assigned.
 - Custom roles may be deactivated/reactivated by an authorized actor using `identity.roles.update`, subject to Last Manager Protection. A deactivated role cannot be newly assigned and its currently assigned Users lose protected access on subsequent requests; **do not auto-reassign them**.
 - Hard deletion through `identity.roles.delete` is permitted **only** for a custom role with **no assigned Users at all**, including inactive accounts. A linked role fails with `409 Conflict`. Use FK/lock-safe enforcement so creation/assignment cannot race the delete. Deleting a role may clear its role-permission pivots but **must not delete underlying Permission definitions**.
-- Custom-role reactivation restores only the currently granted permissions, not historical or implicit grants. `roles.is_active` and stable technical name remain guarded by the owning Action.
+- Custom-role reactivation restores only the currently granted permissions, not historical or implicit grants. `roles.is_active`, permanent role names and unique custom-role renames remain guarded by the owning Action.
 - **User hard deletion** is permitted with `identity.users.delete` only for a non-founding account without important historical/operational links; otherwise disable the account. User ID 1 is never deletable or deactivatable. Preserve financial, attendance, cashier and administrative history; do not use cascading deletes to erase protected business facts.
 - A historical audit event for account creation alone is not an unconditional deletion blocker. Preserve interpretable actor/target event snapshots without retaining credentials. The detailed audit-FK/deletion plan must be tested before implementation.
-- Keep `role.name` technical/stable and `alias_name` editable under authorization. Spatie pivots describe **current** role/permission state, not historical grants; the append-only audit retains before/after evidence.
+- Keep permanent `role.name` stable; authorized custom-role names are editable without changing ID or pivots, and permission aliases are catalogue metadata. Spatie pivots describe **current** role/permission state, not historical grants; the append-only audit retains before/after evidence.
 - A future privacy purge/anonymization procedure is separate from V1 CRUD and cannot silently erase protected records.
 
 ## 13. Complete RBAC Audit and Security Logging — deferred implementation
@@ -417,7 +418,7 @@ This shows a **single definition**, not an approved automatic assignment to `man
 
 **Once the separate Audit feature is implemented, audit every actual successful change** affecting:
 
-- Creation of roles, role display-alias edit, activation/deactivation.
+- Creation of roles, custom-role name edit, activation/deactivation.
 - Addition/removal/replacement of a role's permission assignments.
 - Assignment/replacement of a user's single role.
 - Enable/disable of staff accounts or access-related user state, permitted hard deletion of unused Users or custom Roles, and password changes (event metadata **only**, never values/hashes).
@@ -431,7 +432,7 @@ This shows a **single definition**, not an approved automatic assignment to `man
 | `actor_user_id` | Authenticated operator or explicitly distinguished system/deployment actor |
 | `action` | Stable technical event name, e.g. `permissions.updated` |
 | `target_type` / `target_id` | Affected Role or User |
-| `before` / `after` | Minimal relevant previous/new role IDs, permission names, alias or activation values |
+| `before` / `after` | Minimal relevant previous/new role IDs/names, permission names, permission alias or activation values |
 | `reason` | Approved operator reason when relevant/required |
 | `created_at` | UTC event time |
 | `request_id` | Safe linkage to `X-Request-ID` when available |
@@ -498,8 +499,8 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 
 - Error envelope remains `success=false`, Arabic `message`, and `errors` without `data`; optional stable business code belongs in `errors.code` only.
 - Every successful GET and successful login/logout uses `"message": ""`; do not fill with default translated text.
-- Public field names use `camelCase`; the database's `alias_name` is serialized as `aliasName` when included.
-- User-entered custom aliases and other stored names are returned **as recorded**, without auto-translation.
+- Public field names use `camelCase`; the permission database `alias_name` is serialized as `aliasName` when included. Role Resources omit `aliasName` after Feature 04.
+- User-entered custom role names and stored permission aliases are returned **as recorded**, without auto-translation.
 - Role/permission queries, audit lists and Select Providers require scope-aware authorization and explicit Resources.
 - The backend never trusts a client-supplied role, permission list or "is manager" flag as proof of access.
 - Always apply Select Registry's `403` all-or-nothing rule for a forbidden requested select and `422` for an unknown key.
@@ -526,7 +527,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Record scoping | Unauthorized sensitive record `404` as specified; feature permission `403` |
 | Select Registry | Unknown key `422`; any forbidden key `403` with **no partial options** |
 | Role management | Only authorized actor can manage each eligible Role/permission set |
-| Administrative grants | `identity.roles.update` may grant any predefined Permission (including not personally held); `identity.users.update` may manage other Managers except User ID 1; test Last Manager safeguards |
+| Administrative grants | `identity.roles.update` may grant/revoke and `identity.roles.store` may grant any existing approved web catalogue Permission (including not personally held); `identity.users.update` may manage other Managers except User ID 1; test Last Manager safeguards |
 | Last viable administrator | Any active single-Role User (including custom Roles) with all six essential effective permissions counts; no concurrent mutation may leave zero viable paths |
 | True concurrency | Two independently overlapping MySQL transactions cannot remove two final Managers |
 | Admin-grant race | Concurrent role permission removals honor the same serialization invariant |
@@ -534,7 +535,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Cache/commit overlap | No known stale grant persists due to pre-commit invalidation and a racing reader |
 | Seeder re-run | Repeated runs yield no duplicates; existing aliases, role grants and active state unchanged |
 | New deployment permission | Added to catalog but not implicitly granted to current roles |
-| Alias display | `name` remains technical; `alias_name` returned unchanged as `aliasName` and Select label |
+| Display | Role `name` returned directly and used as Role Select label; permission `name` remains technical and `alias_name` returned as `aliasName` / Permission Select label |
 | Audit write (deferred feature) | After Audit is implemented, RBAC changes log actor, target and minimal before/after; **not built in Feature 01** |
 | Audit atomicity (deferred feature) | After Audit is implemented, failed mandatory audit write rolls back the sensitive change |
 | Audit read (deferred feature) | Separate permission required when endpoint is implemented; seeded `identity.audit.view` does not expose an endpoint in Feature 01 |
@@ -558,7 +559,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 - [ ] Identity owns the one canonical User model; Staff User and HR Employee remain separate.
 - [ ] Use `auth:sanctum` with approved stateful Sanctum Cookie/Session transport, CSRF and 12-hour idle expiry; configure actual frontend origins in Auth plan.
 - [ ] Keep all Role/Permission `guard_name` values `web`.
-- [ ] Extend native `roles`/`permissions` with `alias_name` and `roles.is_active`, preserving existing relationships.
+- [ ] Maintain native `permissions.alias_name` and `roles.is_active`; remove legacy role alias in Feature 04 using reviewed forward migration, preserving existing relationships.
 - [ ] Verify and add compatible single-role database uniqueness; no Teams in V1.
 - [ ] Protect user-role updates with a transaction, lock and `syncRoles()`.
 - [ ] Never grant User-direct permissions, and detect legacy `model_has_permissions` anomalies.
@@ -603,7 +604,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | [API Standards](api-standards.md) | HTTP routes/conventions, `camelCase`, response envelopes, Select contract |
 | [Database Standards](database-standards.md) | General MySQL uniqueness, transactions, history, migration discipline |
 | [Error Handling Standards](error-handling-standards.md) | 401/403/404/409/422/500/503 behavior, safe logs, request IDs |
-| [Localization Standards](localization-standards.md) | Stored `alias_name` display, translation boundaries and frontend labels |
+| [Localization Standards](localization-standards.md) | Stored role names and permission `alias_name`, translation boundaries and frontend labels |
 | **This document** | Cross-module identity permissions, guards, roles, cache, audit, seeders, tests |
 | Identity/RBAC feature spec | Concrete role/permission assignments, selected target-state/Policy details, endpoints, bootstrap/manual recovery |
 | Owning module feature specs | Individual permissions, record constraints and regression tests |
