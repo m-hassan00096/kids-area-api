@@ -105,6 +105,8 @@ jobs:
           PHP
       - name: Run reviewed migrations in disposable test database
         run: php artisan migrate --force
+      - name: Inspect legacy Roles schema and verify synthetic pre-drop fixture backup
+        run: php tests/Support/roles-migration-preflight.php
       - name: Run focused Authentication tests
         run: php artisan test --filter=Authentication
       - name: Run focused Identity tests

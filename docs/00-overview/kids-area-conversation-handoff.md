@@ -2,7 +2,7 @@
 
 > Snapshot: 2026-11-26 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: F03 merged at develop 41b5eeca; final pre-merge CI 45811979133 green (174/9101, Pint 159). F04 spec/plan/tasks and D01–D08 approved on 2026-11-26; isolated CI-only forward-drop test authorized; 3/44 preparation tasks complete, 12 acceptance criteria Not Run. Documentation PR #11 awaiting exact head CI and explicit merge/implementation approval. No F04 code/migration/deployment.
+> Status: F03 merged; F04 docs PR #11 merged at develop 92f8845a5cb15526965448eab93735902936d612, exact CI 45818002441 green (174/9042, Pint 159). User authorized implementation. Feature branch feature/identity-roles-management; 4/44 preparation tasks complete; T05/T06 pre-drop CI probe/fixture authored, verification pending; 12 acceptance criteria Not Run. No F04 drop, application changes or deployment.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -11,7 +11,7 @@
 
 - Repository: https://github.com/m-hassan00096/kids-area-api
 - Working development branch: `develop`
-- Verified `develop` HEAD: `41b5eeca7e9b04eb7b064f93464b290754fea16a` (PR #10 merged; tree identical to verified head 03101ebafbbaa89ca4240345a85a97f2fc5afbd2).
+- Verified `develop` HEAD: `92f8845a5cb15526965448eab93735902936d612` (PR #11 merged; exact tree equals approved docs head 772d084d8becccb52dc4166f42b7e69b29d4f6ae).
 - Approved Identity docs merged via PR #3: https://github.com/m-hassan00096/kids-area-api/pull/3
 - Living GitHub Handoff and AI entry instructions merged via PR #4: https://github.com/m-hassan00096/kids-area-api/pull/4
 - Root `AGENTS.md`, `README.md` and AI Workflow Rules now direct new chats to this single handoff before relevant canonical sources.
@@ -312,3 +312,8 @@ User requested completion of the documentation review now. [spec.md](../../specs
 ### Feature 04 approval gate recorded (2026-11-26)
 
 User authorized the presented specification, technical plan and task breakdown, including D01–D08, plus the explicitly requested forward removal test for roles.alias_name limited to isolated GitHub Actions MySQL8 kids_area_test. Approved creation grants match role update delegation; canonical Identity and Permissions updated to align. Approved disable revocation includes inactive assigned Users and one generation increment at transition. Keep names/IDs and backup/review real legacy aliases before any actual drop. No newly introduced reset/down procedure or real database operation authorized. T01–T03 closed as preparation/approval only; T05–T07 guard/metadata/fixture/data-preservation verification pending. Docs PR #11 remains unmerged; exact head CI and explicit docs merge/implementation authorization are next. No F04 PHP, migration, dependency or runtime test change; all 12 criteria Not Run.
+
+
+### F04 implementation started (2026-11-26)
+
+User authorized PR #11 merge and scoped coding. Exact docs-head CI 45818002441 successful, job 139902613229 logs verified (174/9042 full, 73/6757 focused, 159 Pint); merged 92f8845a5cb15526965448eab93735902936d612, verified identical tree, created feature/identity-roles-management. T04 closed, 4/44. Added CI-only legacy schema/fixture preflight after existing reviewed migrations; actual metadata, index/FK and name collation, synthetic four roles/four Users, real browser sessions, protected runner-temp alias export and non-alias fingerprints/backup round-trip. No forward drop or new reset/down yet, no PHP production code, no real DB. T05/T06 pending exact CI evidence; next verify job logs, then implement one-column forward migration and preserve fixture through it, update seed/auth/users/select compatibility and tests as approved. Prior known audit/hosting and intermittent F02 test observation limitations remain. No implementation merge or deployment without separate approval.
