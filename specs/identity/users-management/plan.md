@@ -3,7 +3,7 @@
 > **Status:** APPROVED — preliminary gates resolved; implementation authorized with separate dependency and protected-operation gates.
 > **Approved contract:** [spec.md](spec.md), user explicitly approved the entire spec, Avatar/search/API defaults and 19 acceptance scenarios on 2026-11-25.
 > **Baseline:** verified develop `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merged), docs PR #9 `docs/feature03-users-management-spec` from that commit. Latest actual pre-merge F02 CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files. Historical evidence only; Feature 03 runtime and all new checks Not Run.
-> **Delivery gate:** PR #9 merged; active draft PR #10; T01–T37 verified (37/49), tasks.md §§16–24.2; standard CI 45804312638 success. All 19 full acceptance scenarios Not Run; separate merge/production authorization.
+> **Delivery gate:** PR #9 merged; active draft PR #10; 42/49 task-level verified T01–T42; T43 open (native 1213 proof and latest full regression pending). See tasks.md §25.1. All 19 full acceptance scenarios Not Run; no merge.
 
 ## 1. Current source and compatibility verification
 
@@ -178,4 +178,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** T38–T43 independent real HTTP/MySQL races and fault matrix when authorized. T34–T37 verified; no merge.
+**Next:** Verify actual PDO 1213 evidence and latest full regression; resolve any failure, then close T43. No T44+ started.
