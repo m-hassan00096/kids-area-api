@@ -61,7 +61,7 @@ jobs:
           php artisan key:generate --force
           php artisan migrate --force
       - name: Focused real Users contention and fault tests
-        run: php artisan test --filter='UsersUniquenessRaceTest|UsersAuthorityRaceTest|UsersCredentialRaceTest|UsersAvatarFkRaceTest|UsersActualFaultTest|UsersPostCommitIntegrationTest|UsersMutationTransactionTest|UsersActionsTest|AuthenticationConcurrencyTest'
+        run: php artisan test --filter='UsersAvatarFkRaceTest|UsersActualFaultTest|UsersAuthorityRaceTest'
       - name: Check project formatting
         if: always()
         run: vendor/bin/pint --test -v

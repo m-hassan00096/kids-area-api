@@ -96,8 +96,7 @@ class UsersAuthorityRaceTest extends AuthenticationHttpTestCase
         foreach ([true, false] as $disableFirst) {
             $disable = $a->prepare('PUT', '/api/v1/users/'.$one->id, $this->fields($one, 'manager', false),
                 $this->raceOptions($disableFirst ? 'hold-users-update' : 'observe', $disableFirst ? 'first' : 'second'));
-            $delete = $b->prepare('DELETE', '/api/v1/users/'.$two->id, options:
-                $this->raceOptions($disableFirst ? 'observe' : 'hold-users-delete-fk', $disableFirst ? 'second' : 'first'));
+            $delete = $b->prepare('DELETE', '/api/v1/users/'.$two->id, options: $this->raceOptions($disableFirst ? 'observe' : 'hold-users-delete-fk', $disableFirst ? 'second' : 'first'));
             [$first, $second] = $disableFirst ? $this->race($disable, $delete, 'manager') : $this->race($delete, $disable, 'manager');
             $this->assertSame(200, $first->status);
             $this->assertSame(409, $second->status);
