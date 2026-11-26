@@ -27,7 +27,6 @@ final class UserManagementResource extends JsonResource
             'role' => $role === null ? null : [
                 'id' => (int) $role->id,
                 'name' => $role->name,
-                'aliasName' => $role->alias_name,
                 'isActive' => (bool) $role->is_active,
             ],
         ];

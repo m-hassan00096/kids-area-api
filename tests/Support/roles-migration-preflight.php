@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -15,9 +16,17 @@ require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
+// Laravel's console exception renderer alone need not set the process exit status.
+// Never let an incomplete standalone verification appear as a passing CI step.
+set_exception_handler(static function (Throwable $failure): void {
+    fwrite(STDERR, 'Roles migration verification aborted: '.$failure::class.' at '.basename($failure->getFile()).':'.$failure->getLine().PHP_EOL);
+    exit(1);
+});
+
 function requireRolesPreflight(bool $condition, string $reason): void
 {
     if (! $condition) {
+        fwrite(STDERR, $reason.PHP_EOL);
         throw new RuntimeException($reason);
     }
 }
@@ -160,61 +169,156 @@ echo 'ROLES_NAME_EQUIVALENCE '.json_encode([
 ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE).PHP_EOL;
 
 // Use actual native browser/database sessions, not fabricated authority rows.
-$barrierDir = $runnerTemp.DIRECTORY_SEPARATOR.'roles-preflight-'.bin2hex(random_bytes(8));
+// Match the existing guarded test router's exact temporary-directory contract.
+$barrierDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'kids-auth-'.bin2hex(random_bytes(10));
 requireRolesPreflight(mkdir($barrierDir, 0700), 'Unable to create isolated HTTP fixture directory.');
 $http = new AuthenticationHttpServer($barrierDir);
 try {
+    $browsers = [];
+    $meBefore = [];
     foreach (['Fixture.RoleFounder', 'Fixture.RoleStaff'] as $username) {
         $browser = new AuthenticationBrowser($http);
-        requireRolesPreflight($browser->handshake()->status === 204, 'Synthetic role fixture handshake failed.');
-        requireRolesPreflight($browser->login($username)->status === 200, 'Synthetic role fixture login failed.');
-        requireRolesPreflight($browser->me()->status === 200, 'Synthetic role fixture Me failed.');
+        $handshake = $browser->handshake();
+        requireRolesPreflight($handshake->status === 204, 'Synthetic role fixture handshake failed: HTTP '.$handshake->status.'. '.$http->diagnostic());
+        $login = $browser->login($username);
+        requireRolesPreflight($login->status === 200, 'Synthetic role fixture login failed: HTTP '.$login->status.'. '.$http->diagnostic());
+        $response = $browser->me();
+        requireRolesPreflight($response->status === 200, 'Synthetic role fixture Me failed.');
+        $browsers[$username] = $browser;
+        $meBefore[$username] = $response->json()['data'];
+        $roleName = $username === 'Fixture.RoleFounder' ? 'manager' : 'مشرف الأنشطة';
+        requireRolesPreflight($meBefore[$username]['role'] === [
+            'id' => (int) $roles[$roleName], 'name' => $roleName,
+        ], 'Unexpected single-name role projection.');
     }
+    requireRolesPreflight(DB::table('sessions')->whereNotNull('auth_user_id')->count() === 2, 'Expected two native authoritative fixture sessions.');
+
+    $legacyAliases = DB::table('roles')->orderBy('id')->get(['id', 'name', 'alias_name'])->all();
+    $roleProjection = array_values(array_filter(Schema::getColumnListing('roles'), fn (string $column) => $column !== 'alias_name'));
+    $orders = [
+        'roles' => ['id'], 'permissions' => ['id'], 'users' => ['id'], 'sessions' => ['id'],
+        'model_has_roles' => ['role_id', 'model_type', 'model_id'],
+        'model_has_permissions' => ['permission_id', 'model_type', 'model_id'],
+        'role_has_permissions' => ['role_id', 'permission_id'],
+            ];
+    // Derive the throttle table ordering from its actual primary index; no assumption about column names.
+    $orders['identity_login_throttles'] = collect($indexes['identity_login_throttles'])
+        ->where('name', 'PRIMARY')->pluck('column')->all();
+    requireRolesPreflight($orders['identity_login_throttles'] !== [], 'Missing throttle primary key.');
+    $snapshot = static function () use ($orders, $roleProjection): array {
+        $fingerprints = [];
+        $counts = [];
+        foreach ($orders as $table => $order) {
+            $query = DB::table($table);
+            foreach ($order as $column) {
+                $query->orderBy($column);
+            }
+            $rows = $query->get($table === 'roles' ? $roleProjection : ['*'])->all();
+            $counts[$table] = count($rows);
+            $fingerprints[$table] = hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR));
+        }
+
+        return ['counts' => $counts, 'fingerprints' => $fingerprints];
+    };
+    $before = $snapshot();
+    $backup = json_encode([
+        'legacyRoleAliases' => $legacyAliases,
+        'roleProjection' => $roleProjection,
+        'counts' => $before['counts'],
+        'fingerprints' => $before['fingerprints'],
+        'metadata' => ['columns' => $columns->all(), 'indexes' => $indexes, 'foreignKeys' => $foreignKeys],
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    $backupPath = $runnerTemp.DIRECTORY_SEPARATOR.'roles-legacy-fixture.json';
+    $handle = fopen($backupPath, 'xb');
+    requireRolesPreflight(is_resource($handle), 'Unable to create exclusive synthetic backup.');
+    try {
+        requireRolesPreflight(chmod($backupPath, 0600), 'Unable to restrict synthetic backup.');
+        requireRolesPreflight(fwrite($handle, $backup) === strlen($backup) && fflush($handle), 'Unable to persist synthetic backup.');
+    } finally {
+        fclose($handle);
+    }
+    requireRolesPreflight(file_get_contents($backupPath) === $backup, 'Synthetic backup did not round-trip.');
+    $saved = json_decode((string) file_get_contents($backupPath), true, 512, JSON_THROW_ON_ERROR);
+    requireRolesPreflight(count($saved['legacyRoleAliases']) === 4 && $saved['fingerprints'] === $before['fingerprints'],
+        'Synthetic backup could not be read back.');
+    echo 'ROLES_LEGACY_FIXTURE '.json_encode([
+        'counts' => $before['counts'], 'aliasesExported' => count($legacyAliases),
+        'nativeAuthoritativeSessions' => 2, 'backupRoundTrip' => true,
+        'roleAliasStillPresent' => Schema::hasColumn('roles', 'alias_name'),
+    ], JSON_THROW_ON_ERROR).PHP_EOL;
+
+    $expectedMigration = '2026_11_26_000008_remove_alias_name_from_roles';
+    requireRolesPreflight(! DB::table('migrations')->where('migration', $expectedMigration)->exists()
+        && Schema::hasColumn('roles', 'alias_name'), 'Expected the pre-drop legacy state.');
+    $appliedBefore = DB::table('migrations')->orderBy('id')->pluck('migration')->all();
+    requireRolesPreflight(count($appliedBefore) === 7, 'Unexpected historical migration inventory.');
+    // The separately authorized forward DDL; no new reset or down procedure.
+    requireRolesPreflight(Artisan::call('migrate', ['--force' => true,
+        '--path' => ['Modules/Identity/database/migrations/'.$expectedMigration.'.php']]) === 0,
+        'Forward Role alias migration failed.');
+    requireRolesPreflight(DB::table('migrations')->orderBy('id')->pluck('migration')->all() === [...$appliedBefore, $expectedMigration],
+        'Unexpected forward migration inventory.');
+    requireRolesPreflight(Schema::getColumnListing('roles') === $roleProjection
+        && ! Schema::hasColumn('roles', 'alias_name') && Schema::hasColumn('permissions', 'alias_name'),
+        'Unexpected target role/permission schema.');
+    $after = $snapshot();
+    requireRolesPreflight($after === $before, 'Forward migration changed non-alias data.');
+    $afterColumns = DB::table('information_schema.COLUMNS')->whereRaw('TABLE_SCHEMA = DATABASE()')
+        ->whereIn('TABLE_NAME', $tables)->orderBy('TABLE_NAME')->orderBy('ORDINAL_POSITION')
+        ->get(['TABLE_NAME as table_name', 'COLUMN_NAME as column_name', 'COLUMN_TYPE as column_type',
+            'IS_NULLABLE as is_nullable', 'COLLATION_NAME as collation_name', 'COLUMN_DEFAULT as default_value']);
+    requireRolesPreflight($afterColumns->all() == $columns->reject(fn ($column) => $column->table_name === 'roles'
+        && $column->column_name === 'alias_name')->values()->all(), 'Unexpected column definition change.');
+    foreach ($tables as $table) {
+        $afterIndexes = collect(DB::select('SHOW INDEX FROM '.$table))
+            ->map(fn ($row) => array_change_key_case((array) $row))
+            ->sortBy([['key_name', 'asc'], ['seq_in_index', 'asc']])->values()
+            ->map(fn (array $row) => [
+                'name' => $row['key_name'], 'column' => $row['column_name'],
+                'sequence' => (int) $row['seq_in_index'], 'nonUnique' => (int) $row['non_unique'],
+                'prefix' => $row['sub_part'],
+            ])->all();
+        requireRolesPreflight($afterIndexes === $indexes[$table], 'Unexpected index definition change.');
+    }
+    $afterForeignKeys = DB::select(
+        'SELECT k.TABLE_NAME AS table_name, k.COLUMN_NAME AS column_name, k.CONSTRAINT_NAME AS constraint_name, '
+        .'k.REFERENCED_TABLE_NAME AS referenced_table, k.REFERENCED_COLUMN_NAME AS referenced_column, r.DELETE_RULE AS delete_rule '
+        .'FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r '
+        .'ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME AND r.TABLE_NAME = k.TABLE_NAME '
+        .'WHERE k.TABLE_SCHEMA = DATABASE() AND k.REFERENCED_TABLE_NAME IS NOT NULL '
+        .'ORDER BY k.TABLE_NAME, k.CONSTRAINT_NAME, k.ORDINAL_POSITION'
+    );
+    requireRolesPreflight($afterForeignKeys == $foreignKeys, 'Unexpected foreign key definition change.');
+
+    // The raw fingerprints were compared before new HTTP requests can touch sessions.
+    foreach ($browsers as $username => $browser) {
+        $response = $browser->me();
+        requireRolesPreflight($response->status === 200 && $response->json()['data'] === $meBefore[$username],
+            'Existing authoritative browser session or role contract changed.');
+    }
+    $response = $browsers['Fixture.RoleFounder']->request('GET', '/api/v1/selects?selects=roles,userFilterRoles');
+    requireRolesPreflight($response->status === 200, 'Role Selects failed after migration.');
+    $selects = $response->json()['data'];
+    $expected = static fn (bool $active): array => DB::table('roles')->whereRaw('BINARY guard_name = ?', ['web'])
+        ->when($active, fn ($query) => $query->where('is_active', true))->orderBy('id')->get(['id', 'name'])
+        ->map(fn ($row) => ['value' => (int) $row->id, 'label' => $row->name])->all();
+    requireRolesPreflight($selects === [
+        ['label' => 'roles', 'options' => $expected(true)],
+        ['label' => 'userFilterRoles', 'options' => $expected(false)],
+    ], 'Role Select names or eligibility changed.');
+    requireRolesPreflight(DB::table('permissions')->where('name', 'identity.users.view')->value('alias_name') === 'عرض تجريبي مخصص',
+        'Permission alias was not preserved.');
+    echo 'ROLES_FORWARD_MIGRATION '.json_encode([
+        'migration' => $expectedMigration, 'preservedTables' => array_keys($after['fingerprints']),
+        'counts' => $after['counts'], 'roleAliasRemoved' => true, 'permissionAliasPreserved' => true,
+        'schemaIndexesForeignKeysPreserved' => true, 'existingBrowserSessionsVerified' => count($browsers),
+        'roleSelectNamesVerified' => true, 'backupRoundTrip' => true,
+    ], JSON_THROW_ON_ERROR).PHP_EOL;
 } finally {
     $http->stop();
-}
-requireRolesPreflight(DB::table('sessions')->whereNotNull('auth_user_id')->count() === 2, 'Expected two native authoritative fixture sessions.');
-
-$legacyAliases = DB::table('roles')->orderBy('id')->get(['id', 'name', 'alias_name'])->all();
-$roleProjection = array_values(array_filter(Schema::getColumnListing('roles'), fn (string $column) => $column !== 'alias_name'));
-$fingerprints = [];
-$counts = [];
-$orders = [
-    'roles' => ['id'], 'permissions' => ['id'], 'users' => ['id'], 'sessions' => ['id'],
-    'model_has_roles' => ['role_id', 'model_type', 'model_id'],
-    'model_has_permissions' => ['permission_id', 'model_type', 'model_id'],
-    'role_has_permissions' => ['role_id', 'permission_id'],
-];
-foreach ($orders as $table => $order) {
-    $query = DB::table($table);
-    foreach ($order as $column) {
-        $query->orderBy($column);
+    if (is_dir($barrierDir) && ! is_link($barrierDir)) {
+        rmdir($barrierDir);
     }
-    $rows = $query->get($table === 'roles' ? $roleProjection : ['*'])->all();
-    $counts[$table] = count($rows);
-    $fingerprints[$table] = hash('sha256', json_encode($rows, JSON_THROW_ON_ERROR));
 }
-$backup = json_encode([
-    'legacyRoleAliases' => $legacyAliases,
-    'roleProjection' => $roleProjection,
-    'counts' => $counts,
-    'fingerprints' => $fingerprints,
-    'metadata' => ['columns' => $columns->all(), 'indexes' => $indexes, 'foreignKeys' => $foreignKeys],
-], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-$backupPath = $runnerTemp.DIRECTORY_SEPARATOR.'roles-legacy-fixture.json';
-$handle = fopen($backupPath, 'xb');
-requireRolesPreflight(is_resource($handle), 'Unable to create exclusive synthetic backup.');
-try {
-    requireRolesPreflight(chmod($backupPath, 0600), 'Unable to restrict synthetic backup.');
-    requireRolesPreflight(fwrite($handle, $backup) === strlen($backup) && fflush($handle), 'Unable to persist synthetic backup.');
-} finally {
-    fclose($handle);
-}
-requireRolesPreflight(file_get_contents($backupPath) === $backup, 'Synthetic backup did not round-trip.');
-echo 'ROLES_LEGACY_FIXTURE '.json_encode([
-    'counts' => $counts, 'aliasesExported' => count($legacyAliases),
-    'nativeAuthoritativeSessions' => 2, 'backupRoundTrip' => true,
-    'roleAliasStillPresent' => Schema::hasColumn('roles', 'alias_name'),
-], JSON_THROW_ON_ERROR).PHP_EOL;
 // The existing approved isolated regression harness resets its own fixtures.
-// No new destructive reset, schema rollback or forward drop in this checkpoint.
+// No newly introduced destructive reset or schema rollback.

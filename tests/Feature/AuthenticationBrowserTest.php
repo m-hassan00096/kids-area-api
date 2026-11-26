@@ -43,7 +43,7 @@ class AuthenticationBrowserTest extends AuthenticationHttpTestCase
             'data' => [
                 'name' => $user->name,
                 'username' => 'Case.Admin',
-                'role' => ['id' => Role::findByName('manager', 'web')->id, 'name' => 'manager', 'aliasName' => 'مدير'],
+                'role' => ['id' => Role::findByName('manager', 'web')->id, 'name' => 'manager'],
                 'permissions' => $keys,
             ],
         ], $browser->me()->json());
@@ -60,13 +60,13 @@ class AuthenticationBrowserTest extends AuthenticationHttpTestCase
         $this->user('Active.User');
         $this->user('Inactive.User', attributes: ['is_active' => false]);
         User::factory()->create(['username' => 'Roleless.User']);
-        $bad = Role::create(['name' => 'disabled-role', 'guard_name' => 'web', 'alias_name' => 'Disabled', 'is_active' => false]);
+        $bad = Role::create(['name' => 'disabled-role', 'guard_name' => 'web', 'is_active' => false]);
         $staff = User::factory()->create(['username' => 'Disabled.Role']);
         $staff->syncRoles([$bad]);
         $direct = $this->user('Direct.Grant', 'reception');
         $direct->givePermissionTo(Permission::where('name', 'identity.users.view')->sole());
         $wrong = $this->user('Wrong.Guard');
-        $otherGuard = Role::create(['name' => 'other-role', 'guard_name' => 'other', 'alias_name' => 'Other']);
+        $otherGuard = Role::create(['name' => 'other-role', 'guard_name' => 'other']);
         DB::table('model_has_roles')->where('model_id', $wrong->id)->update(['role_id' => $otherGuard->id]);
         $server = $this->server();
         $browser = $this->browser($server);
@@ -111,7 +111,7 @@ class AuthenticationBrowserTest extends AuthenticationHttpTestCase
             });
         }
 
-        $role = Role::create(['name' => 'custom-role', 'guard_name' => 'web', 'alias_name' => 'Custom']);
+        $role = Role::create(['name' => 'custom-role', 'guard_name' => 'web']);
         $this->user('Custom.User', 'custom-role');
         $roleBrowser = $this->browser($server);
         $this->assertSame(200, $roleBrowser->login('Custom.User')->status);

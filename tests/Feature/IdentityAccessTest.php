@@ -61,7 +61,7 @@ class IdentityAccessTest extends IdentityDatabaseTestCase
         $manager->revokePermissionTo(Permission::where('name', 'identity.users.view')->sole());
         $this->assertFalse($this->viable());
 
-        $custom = Role::create(['name' => 'custom-admin', 'guard_name' => 'web', 'alias_name' => 'Custom admin']);
+        $custom = Role::create(['name' => 'custom-admin', 'guard_name' => 'web']);
         $custom->syncPermissions(Permission::whereIn('name', IdentityPermissions::ESSENTIAL)->get());
         $staff = User::factory()->create();
         $staff->syncRoles([$custom]);

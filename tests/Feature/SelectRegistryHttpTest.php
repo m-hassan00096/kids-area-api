@@ -14,11 +14,11 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
     public function test_independent_capabilities_and_all_or_nothing_dispatch(): void
     {
         $server = $this->server();
-        $inactive = Role::create(['name' => 'fixture-inactive', 'guard_name' => 'web', 'alias_name' => 'دور غير نشط', 'is_active' => false]);
-        Role::create(['name' => 'fixture-other', 'guard_name' => 'other', 'alias_name' => 'Other']);
+        $inactive = Role::create(['name' => 'دور غير نشط', 'guard_name' => 'web', 'is_active' => false]);
+        Role::create(['name' => 'fixture-other', 'guard_name' => 'other']);
         foreach (['create', 'update', 'view', 'delete'] as $capability) {
             $name = 'fixture-select-'.$capability;
-            $role = Role::create(['name' => $name, 'guard_name' => 'web', 'alias_name' => 'Synthetic '.$capability]);
+            $role = Role::create(['name' => $name, 'guard_name' => 'web']);
             $role->givePermissionTo(Permission::findByName('identity.users.'.$capability, 'web'));
             $actor = $this->user('Fixture.Select.'.$capability, $name);
             $browser = $this->browser($server);
@@ -84,7 +84,7 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
         $this->assertSame(200, $browser->login($actor->username)->status);
         $rows = [];
         for ($i = 1; $i <= 198; $i++) {
-            $rows[] = ['name' => 'fixture-cap-'.$i, 'guard_name' => 'web', 'alias_name' => 'Role '.$i, 'is_active' => true];
+            $rows[] = ['name' => 'fixture-cap-'.$i, 'guard_name' => 'web', 'is_active' => true];
         }
         DB::table('roles')->insert($rows);
         $response = $this->select($browser, 'roles,userFilterRoles');
@@ -93,7 +93,7 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
         $this->assertCount(200, $response->json()['data'][1]['options']);
         $this->assertSame('2', $response->header('X-Test-Select-Reads'));
         $this->assertSame('201', $response->header('X-Test-Select-Limit'));
-        $overflow = Role::create(['name' => 'fixture-cap-overflow', 'guard_name' => 'web', 'alias_name' => 'Overflow', 'is_active' => false]);
+        $overflow = Role::create(['name' => 'fixture-cap-overflow', 'guard_name' => 'web', 'is_active' => false]);
         $this->assertSame(200, $this->select($browser, 'roles')->status);
         $response = $this->select($browser, 'roles,userFilterRoles');
         $this->assertSame(409, $response->status);
@@ -112,7 +112,7 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
     {
         return DB::table('roles')->whereRaw('BINARY guard_name = ?', ['web'])
             ->when($active, fn ($query) => $query->where('is_active', true))
-            ->orderBy('id')->get(['id', 'alias_name'])->map(fn ($role) => ['value' => (int) $role->id, 'label' => $role->alias_name])->all();
+            ->orderBy('id')->get(['id', 'name'])->map(fn ($role) => ['value' => (int) $role->id, 'label' => $role->name])->all();
     }
 
     private function select(AuthenticationBrowser $browser, string $keys): AuthenticationHttpResponse

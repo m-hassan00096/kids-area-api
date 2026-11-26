@@ -1,6 +1,6 @@
 # Feature 04 — Roles & Permissions Management: Technical Plan
 
-> **Status:** APPROVED technical plan (2026-11-26), including D01–D08 and the limited forward-drop CI test authorization recorded in spec.md. Documentation merge and scoped implementation authorized; T05/T06 pre-drop test infrastructure authored. No F04 runtime verification claimed.
+> **Status:** APPROVED technical plan (2026-11-26), including D01–D08 and the limited forward-drop CI test authorization recorded in spec.md. Documentation merge and scoped implementation authorized. T05 actual MySQL metadata verified; T06 preflight fixture corrected, T07–T11 authored, new runtime verification pending.
 > **Baseline:** develop `41b5eeca7e9b04eb7b064f93464b290754fea16a`, PR #10 merged, exact pre-merge CI 45811979133: 174 tests / 9101 assertions, Pint 159. Documentation PR #11 owns this review.
 > **Related:** [spec.md](spec.md), [tasks.md](tasks.md), [Identity module](../../../docs/03-modules/identity.md), [API standards](../../../docs/02-standards/api-standards.md), [Permissions standards](../../../docs/02-standards/permissions-standards.md), [Database standards](../../../docs/02-standards/database-standards.md), [Error handling](../../../docs/02-standards/error-handling-standards.md), [Workflow](../../../docs/02-standards/ai-workflow-rules.md).
 
@@ -80,3 +80,8 @@ CI: guard before destructive migration; approved isolated schema upgrade proof w
 ## 8. Approval and delivery gates
 
 D01–D08, specification, technical plan and task scope approved on 2026-11-26. User also authorized the specific isolated CI forward-drop test described in section 2. Do not extend that approval to new destructive reset/down procedures or any real database. Documentation PR #11 passed exact CI 45818002441, merged on explicit user approval at 92f8845a; verified matching tree and created feature/identity-roles-management. Execute approved tasks in order; T05/T06 preflight authored, actual evidence pending. No new destructive operation beyond approved isolated forward drop; no application merge or deployment; no application merge or deployment without separate approval. Prior deployment gates and deferred Audit gap remain. Any required new index, changed uniqueness/architecture, additional dependency, protected data rewrite or environment operation needs separate review.
+
+
+### Actual metadata and CI correction (2026-11-26)
+
+See tasks.md T05 evidence. MySQL 8.0.46, utf8mb4_unicode_ci actual Role name equivalence includes uppercase/accent/trailing-space manager variants; existing role leading and session indexes verified. Initial preflight workflow was green but missing fixture backup marker due to rejected HTTP harness directory and standalone console exit behavior. Use the exact guarded sys_get_temp_dir()/kids-auth-* directory, fail nonzero on exceptions and require both backup and forward-preservation markers. Next workflow uses fresh service and explicit seven historical migrations, backup/fingerprint before one forward drop, existing sessions afterward, then ordinary regression; no new reset/down. All acceptance criteria remain Not Run until evidence is reconciled.

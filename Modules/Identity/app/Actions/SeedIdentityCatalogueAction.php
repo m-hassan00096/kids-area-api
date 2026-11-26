@@ -22,7 +22,7 @@ final class SeedIdentityCatalogueAction
                 // The native unique key makes createOrFirst safe even on a first-install race.
                 $candidate = Role::query()->createOrFirst(
                     ['name' => 'manager', 'guard_name' => 'web'],
-                    ['alias_name' => 'مدير', 'is_active' => true],
+                    ['is_active' => true],
                 );
 
                 $manager = $this->mutex->lock();
@@ -30,7 +30,7 @@ final class SeedIdentityCatalogueAction
 
                 Role::query()->createOrFirst(
                     ['name' => 'reception', 'guard_name' => 'web'],
-                    ['alias_name' => 'استقبال', 'is_active' => true],
+                    ['is_active' => true],
                 );
 
                 $permissions = collect();

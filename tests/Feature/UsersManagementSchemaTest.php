@@ -7,8 +7,10 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Modules\Identity\Actions\BootstrapManagerAction;
-use Modules\Identity\Actions\SeedIdentityCatalogueAction;
+use Modules\Identity\Models\Permission;
+use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
+use Modules\Identity\Support\IdentityPermissions;
 use Spatie\Permission\PermissionRegistrar;
 
 class UsersManagementSchemaTest extends AuthenticationHttpTestCase
@@ -68,7 +70,15 @@ class UsersManagementSchemaTest extends AuthenticationHttpTestCase
         $this->assertSame(0, Artisan::call('migrate:fresh', ['--path' => $baseline, '--force' => true]), Artisan::output());
         $this->assertFalse(Schema::hasColumn('users', 'avatar_key'));
         app(PermissionRegistrar::class)->forgetCachedPermissions();
-        app(SeedIdentityCatalogueAction::class)->execute();
+        // This is the exact historical F02 schema, where Role aliases are still required.
+        // Use a test-only legacy fixture; current production seeders target F04.
+        $manager = Role::create(['name' => 'manager', 'guard_name' => 'web', 'alias_name' => 'مدير', 'is_active' => true]);
+        Role::create(['name' => 'reception', 'guard_name' => 'web', 'alias_name' => 'استقبال', 'is_active' => true]);
+        $permissions = collect();
+        foreach (IdentityPermissions::CATALOGUE as $name => $alias) {
+            $permissions->push(Permission::create(['name' => $name, 'guard_name' => 'web', 'alias_name' => $alias]));
+        }
+        $manager->syncPermissions($permissions);
 
         $founder = app(BootstrapManagerAction::class)->execute([
             'name' => 'Synthetic Founder',
@@ -93,7 +103,8 @@ class UsersManagementSchemaTest extends AuthenticationHttpTestCase
         $sessions = $this->fingerprint('sessions', ['id']);
         $this->assertSame(2, DB::table('sessions')->whereNotNull('auth_user_id')->count());
 
-        $this->assertSame(0, Artisan::call('migrate', ['--force' => true]), Artisan::output());
+        $this->assertSame(0, Artisan::call('migrate', ['--path' => [$directory.'2026_11_25_000007_add_avatar_key_to_users.php'], '--force' => true]), Artisan::output());
+        $this->assertTrue(Schema::hasColumn('roles', 'alias_name'));
         $this->assertSame([...$userColumns, 'avatar_key'], Schema::getColumnListing('users'));
         $this->assertSame(2, DB::table('users')->whereNull('avatar_key')->count());
         $this->assertSame($before, $this->fingerprint('users', ['id'], $userColumns));

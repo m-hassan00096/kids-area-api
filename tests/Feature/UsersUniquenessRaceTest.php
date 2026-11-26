@@ -89,7 +89,7 @@ class UsersUniquenessRaceTest extends AuthenticationHttpTestCase
         $this->assertSame('Race@Example.test', $target->fresh()->email);
         $this->assertNull($other->fresh()->email);
 
-        $role = Role::create(['name' => 'fixture-last-role', 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+        $role = Role::create(['name' => 'fixture-last-role', 'guard_name' => 'web']);
         $one = array_replace($this->fields($target->fresh(), 'manager'), ['name' => 'First write']);
         $two = array_replace($this->fields($target->fresh(), $role->name), ['name' => 'Second write']);
         [$first, $second] = $this->race(

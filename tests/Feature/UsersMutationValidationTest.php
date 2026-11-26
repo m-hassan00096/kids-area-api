@@ -128,7 +128,7 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
     {
         $founder = $this->user('Fixture.Founder');
         $actor = $this->user('Fixture.Actor');
-        $inactive = Role::create(['name' => 'fixture-inactive', 'guard_name' => 'web', 'alias_name' => 'Fixture', 'is_active' => false]);
+        $inactive = Role::create(['name' => 'fixture-inactive', 'guard_name' => 'web', 'is_active' => false]);
         $target = $this->user('Fixture.Target', $inactive->name);
         $browser = $this->browser($this->server());
         $this->assertSame(200, $browser->login($actor->username)->status);
@@ -144,7 +144,7 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
         $response = $browser->request('PUT', $path, $data);
         $this->assertSame(422, $response->status);
         $this->assertArrayHasKey('roleId', $response->json()['errors']);
-        $otherRole = Role::create(['name' => 'fixture-other-inactive', 'guard_name' => 'web', 'alias_name' => 'Other', 'is_active' => false]);
+        $otherRole = Role::create(['name' => 'fixture-other-inactive', 'guard_name' => 'web', 'is_active' => false]);
         $this->assertSame(422, $browser->request('PUT', $path, array_replace($data, ['roleId' => $otherRole->id, 'isActive' => false]))->status);
         $founderBrowser = $this->browser($this->server());
         $this->assertSame(200, $founderBrowser->login($founder->username)->status);

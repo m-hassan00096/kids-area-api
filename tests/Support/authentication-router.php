@@ -306,7 +306,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     if ($sql === 'set transaction isolation level repeatable read, read only') {
         $usersSnapshot++;
     }
-    if (str_starts_with($sql, 'select') && str_contains($sql, 'from roles') && str_contains($sql, 'alias_name')
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from roles') && preg_match('/\Aselect id, name from roles\b/', $sql) === 1
         && str_contains($sql, 'order by id asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
         $selectReads++;
         $selectLimit = $match[1];

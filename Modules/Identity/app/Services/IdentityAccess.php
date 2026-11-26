@@ -37,7 +37,7 @@ final class IdentityAccess
                 $join->on('p.id', '=', 'rp.permission_id')
                     ->whereRaw('BINARY p.guard_name = ?', ['web']);
             })
-            ->get(['u.name', 'u.username', 'r.id as role_id', 'r.name as role_name', 'r.alias_name', 'p.name as permission_name']);
+            ->get(['u.name', 'u.username', 'r.id as role_id', 'r.name as role_name', 'p.name as permission_name']);
 
         $first = $rows->first();
         if ($first === null) {
@@ -50,7 +50,7 @@ final class IdentityAccess
         return [
             'name' => $first->name,
             'username' => $first->username,
-            'role' => ['id' => (int) $first->role_id, 'name' => $first->role_name, 'aliasName' => $first->alias_name],
+            'role' => ['id' => (int) $first->role_id, 'name' => $first->role_name],
             'permissions' => $permissions,
         ];
     }

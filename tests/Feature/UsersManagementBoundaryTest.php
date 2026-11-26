@@ -26,7 +26,7 @@ class UsersManagementBoundaryTest extends AuthenticationHttpTestCase
         ];
         foreach (['view', 'create', 'update', 'delete'] as $capability) {
             $name = 'fixture-'.$capability;
-            $role = Role::create(['name' => $name, 'guard_name' => 'web', 'alias_name' => 'Fixture']);
+            $role = Role::create(['name' => $name, 'guard_name' => 'web']);
             $role->givePermissionTo(Permission::findByName('identity.users.'.$capability, 'web'));
             $staff = $this->user('Fixture.'.$capability, $name);
             $browser = $this->browser($server);
