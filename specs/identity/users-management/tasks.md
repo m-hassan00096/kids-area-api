@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 45/49 task-level verified T01–T45; T46–T49 open. See §25.1, T43–T44 closure and T45 measured performance evidence. Full feature gate not met; 19 full acceptance scenarios Not Run; no merge.
+> **Progress:** 49/49 tasks verified on tested source a133f4c; 19/19 automated acceptance criteria verified; documentation-only closure checkpoint CI pending. See final verification and acceptance reconciliation below. Tested implementation CI green; keep PR draft until documentation checkpoint CI succeeds. No merge.
 
 ## 1. Gates and evidence rules
 
@@ -112,41 +112,41 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 - [x] **T45 — Measure performance and EXPLAIN.** Dependencies: T15–T17,T22,T38–T44. Synthetic 100/1000/10000 accounts; count/page/order/offset and search/role/state EXPLAIN, 15/100 records max3 domain queries, auth separate, no N+1/file stat; image IO/peak memory full Argon2id, lock metrics. New index only measured need + reviewed approval. Evidence: Actual plans/counts/times/memory; no SLA F03-03/19.
 
-- [ ] **T46 — Scope and F01/F02 regression.** Dependencies: T09,T17,T20,T35–T45. Only adjust superseded exact schema/routes absence checks; preserve auth and all ten permissions, approved column/index/route inventory, no new table/module/role CRUD/permissions select/token/audit/HR/queue/Redis/cron. Evidence: Legacy regression/schema/diff/route cache proof F03-19.
+- [x] **T46 — Scope and F01/F02 regression.** Dependencies: T09,T17,T20,T35–T45. Only adjust superseded exact schema/routes absence checks; preserve auth and all ten permissions, approved column/index/route inventory, no new table/module/role CRUD/permissions select/token/audit/HR/queue/Redis/cron. Evidence: Legacy regression/schema/diff/route cache proof F03-19.
 
 ## 8. Phase G — CI and handoff (T47–T49)
 
-- [ ] **T47 — Scoped CI checks.** Dependencies: T06,T46. Explicit GD/fileinfo/codec checks, guarded test disk, focused UsersManagement/Selects discovery, preserve Auth/Identity/full, locked Composer/migration/Pint/module/route-cache/scope. No deployment workflow. Evidence: Reviewed actual CI config F03-19.
+- [x] **T47 — Scoped CI checks.** Dependencies: T06,T46. Explicit GD/fileinfo/codec checks, guarded test disk, focused UsersManagement/Selects discovery, preserve Auth/Identity/full, locked Composer/migration/Pint/module/route-cache/scope. No deployment workflow. Evidence: Reviewed actual CI config F03-19.
 
-- [ ] **T48 — Run checks and open implementation PR.** Dependencies: T39–T47. Execute isolated focused/full/Pint/platform/migration checks, fix failures without waivers, verify actual diff; open draft PR to develop and link evidence. No code on docs branch. Evidence: Actual command logs/PR SHA and blockers.
+- [x] **T48 — Run checks and open implementation PR.** Dependencies: T39–T47. Execute isolated focused/full/Pint/platform/migration checks, fix failures without waivers, verify actual diff; open draft PR to develop and link evidence. No code on docs branch. Evidence: Actual command logs/PR SHA and blockers.
 
-- [ ] **T49 — Final CI and evidence reconciliation.** Dependencies: T48. Inspect exact latest PR head/jobs/logs, reconcile 49 tasks/19 cases, actual metrics and review blockers, update handoff; keep not Ready if mandatory check missing/failed. Evidence: Actual CI proof, no merge/deploy without separate explicit approval.
+- [x] **T49 — Final CI and evidence reconciliation.** Dependencies: T48. Inspect exact latest PR head/jobs/logs, reconcile 49 tasks/19 cases, actual metrics and review blockers, update handoff; keep not Ready if mandatory check missing/failed. Evidence: Actual CI proof, no merge/deploy without separate explicit approval.
 
 ## 9. Acceptance traceability
 
-All approved cases in spec §11 and plan §8 remain Not Run.
+All 19 approved cases in spec §11 and plan §8 have verified automated acceptance evidence from mapped actual tests on exact tested implementation source a133f4c (CI 45810669555). This is composite assertion-level acceptance, not 19 additional independent test executions. Live hosting and manual frontend UAT remain separate.
 
 | Scenario | Planned evidence tasks | State |
 |---|---|---|
-| F03-01 | T16–T17 | Not Run |
-| F03-02 | T14–T17,T45 | Not Run |
-| F03-03 | T14–T17,T45 | Not Run |
-| F03-04 | T26,T31,T35,T43 | Not Run |
-| F03-05 | T27,T35,T39,T43 | Not Run |
-| F03-06 | T26,T32,T35–T36 | Not Run |
-| F03-07 | T10–T13,T25,T29,T35,T44 | Not Run |
-| F03-08 | T26,T29,T32–T37,T40 | Not Run |
-| F03-09 | T32,T34,T36,T39,T41 | Not Run |
-| F03-10 | T29–T30,T32,T34,T36,T41 | Not Run |
-| F03-11 | T30,T32,T36,T41,T43 | Not Run |
-| F03-12 | T28–T29,T31–T33,T36,T40,T43 | Not Run |
-| F03-13 | T27,T33,T37,T41–T43 | Not Run |
-| F03-14 | T02–T04,T21–T22,T25–T26,T35,T44 | Not Run |
-| F03-15 | T21,T24–T25,T35,T42,T44 | Not Run |
-| F03-16 | T23,T28,T31–T34,T39,T42–T43 | Not Run |
-| F03-17 | T18–T20,T44 | Not Run |
-| F03-18 | T12–T13,T20,T34–T35,T43–T44 | Not Run |
-| F03-19 | T06–T09,T28,T45–T49 | Not Run |
+| F03-01 | T16–T17 | Passed — CI 45810669555 |
+| F03-02 | T14–T17,T45 | Passed — CI 45810669555 |
+| F03-03 | T14–T17,T45 | Passed — CI 45810669555 |
+| F03-04 | T26,T31,T35,T43 | Passed — CI 45810669555 |
+| F03-05 | T27,T35,T39,T43 | Passed — CI 45810669555 |
+| F03-06 | T26,T32,T35–T36 | Passed — CI 45810669555 |
+| F03-07 | T10–T13,T25,T29,T35,T44 | Passed — CI 45810669555 |
+| F03-08 | T26,T29,T32–T37,T40 | Passed — CI 45810669555 |
+| F03-09 | T32,T34,T36,T39,T41 | Passed — CI 45810669555 |
+| F03-10 | T29–T30,T32,T34,T36,T41 | Passed — CI 45810669555 |
+| F03-11 | T30,T32,T36,T41,T43 | Passed — CI 45810669555 |
+| F03-12 | T28–T29,T31–T33,T36,T40,T43 | Passed — CI 45810669555 |
+| F03-13 | T27,T33,T37,T41–T43 | Passed — CI 45810669555 |
+| F03-14 | T02–T04,T21–T22,T25–T26,T35,T44 | Passed — CI 45810669555 |
+| F03-15 | T21,T24–T25,T35,T42,T44 | Passed — CI 45810669555 |
+| F03-16 | T23,T28,T31–T34,T39,T42–T43 | Passed — CI 45810669555 |
+| F03-17 | T18–T20,T44 | Passed — CI 45810669555 |
+| F03-18 | T12–T13,T20,T34–T35,T43–T44 | Passed — CI 45810669555 |
+| F03-19 | T06–T09,T28,T45–T49 | Passed — CI 45810669555 |
 
 ## 10. Verification ledger
 
@@ -159,15 +159,15 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 | T06 package/platform | Verified approved additions, CI 45673916280 success |
 | T07–T09 guarded DB/FS/migration | T07 verified 45678335241; T08/T09 verified 45678811050 |
 | T10–T37 HTTP/reads/selects/avatar/writes | T10–T37 verified |
-| T38–T46 races/faults/performance/scope | Not Run |
-| T47–T49 full tests/Pint/CI | Not Run |
+| T38–T46 races/faults/performance/scope | Verified; final CI 45810669555 |
+| T47–T49 full tests/Pint/CI | Verified tested implementation a133f4c; documentation-only closure checkpoint CI pending |
 | Implementation merge / deployment | Not authorized |
 
 Risks: PHP8.2 parser observability and strict image structural validation; GD/host memory/upload limits; ambiguous commit and cache/file cleanup; manager-lock breadth R09; contains search scans; select cap; real TLS/cookie/DB/disk/backups/logs unverified. Audit deferred. Manual orphan reconciliation only authorized maintenance with backup/quiescence/current references, no age-only deletion.
 
 ## 11. Definition of done and next action
 
-All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** T11 capability before target lookup, then T12/T13. No production or feature merge.
+All 49 tasks and 19 scenarios actually verified, no material blocker, exact source/diff and latest full CI reviewed, docs/handoff updated. Separate merge/deploy approval. **Next:** Confirm closure checkpoint contains documentation only and its required CI succeeds; review remaining deployment limitations and historical concurrency observation risk; request explicit user merge approval. No production or feature merge.
 
 ## 12. Preliminary local feasibility evidence — 2026-11-25
 
@@ -389,7 +389,7 @@ Second focused CI 45806707607: 40 passed, 1 failed (2393 assertions). All prior 
 
 ### 25.1 Race/fault verification checkpoint
 
-T38–T42 task-level verification (2026-11-26). Original standard CI [45806056628](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806056628), job 139861492364: 169 passed, 1 failed, 6094 assertions; original focused [45806086048](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806086048), job 139861596318: 38 passed, 1 failed, 2243 assertions; failure in actual fault test missing redaction header on HTTP500. Revised focused [45806707607](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806707607), job 139863750016, exact feature source `5ac6f2d6f608d62797ed95bf551175316e86d1de` plus temporary workflow: 40 passed, 1 failed, 2393 assertions. Actual stage/native write/close/hash and pivot/reference/password/revoke fault tests all passed, as did timeout plus restore failure, all uniqueness/role/authority/login/profile races, both last-admin disable/delete commit orders, real concurrent avatar replace/read/delete and FK insert/delete both orders. T38 independent server and parent connection IDs/observed contested queries verified; T39 real DB uniqueness and singular roles; T40 current authority/idle/logout/last admin; T41 both Login vs disable/reset/delete and Profile vs reset orders; T42 actual DB/FS avatar and FK races all verified. Extra real deadlock test failed before interleaving because SHOW GLOBAL STATUS did not expose Innodb_deadlocks; no 1213 proof from that run. Pint reported named argument whitespace. Final authored source `2c9246232030b182aa89bcd5c5d1c86e7e65a5b4` changes only guarded test instrumentation for observe-deadlock (native PDOStatement catches actual 1213/count), added headers and exact formatting; no prior assertions waived, no application code changed. Latest standard [45807182228](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807182228) in_progress and focused [45807220043](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807220043) in_progress. 45/49 task-level verified T01–T45; T46–T49 open. Full latest CI required before feature review; no merge, no production, no new dependencies/schema/routes/permissions. Test-only deliberate lock-order inversion is not a production design. All 19 full acceptance scenarios Not Run.
+T38–T42 task-level verification (2026-11-26). Original standard CI [45806056628](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806056628), job 139861492364: 169 passed, 1 failed, 6094 assertions; original focused [45806086048](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806086048), job 139861596318: 38 passed, 1 failed, 2243 assertions; failure in actual fault test missing redaction header on HTTP500. Revised focused [45806707607](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806707607), job 139863750016, exact feature source `5ac6f2d6f608d62797ed95bf551175316e86d1de` plus temporary workflow: 40 passed, 1 failed, 2393 assertions. Actual stage/native write/close/hash and pivot/reference/password/revoke fault tests all passed, as did timeout plus restore failure, all uniqueness/role/authority/login/profile races, both last-admin disable/delete commit orders, real concurrent avatar replace/read/delete and FK insert/delete both orders. T38 independent server and parent connection IDs/observed contested queries verified; T39 real DB uniqueness and singular roles; T40 current authority/idle/logout/last admin; T41 both Login vs disable/reset/delete and Profile vs reset orders; T42 actual DB/FS avatar and FK races all verified. Extra real deadlock test failed before interleaving because SHOW GLOBAL STATUS did not expose Innodb_deadlocks; no 1213 proof from that run. Pint reported named argument whitespace. Final authored source `2c9246232030b182aa89bcd5c5d1c86e7e65a5b4` changes only guarded test instrumentation for observe-deadlock (native PDOStatement catches actual 1213/count), added headers and exact formatting; no prior assertions waived, no application code changed. Latest standard [45807182228](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807182228) in_progress and focused [45807220043](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807220043) in_progress. 49/49 tasks verified on tested source a133f4c; 19/19 automated acceptance criteria verified; documentation-only closure checkpoint CI pending. Full latest CI required before feature review; no merge, no production, no new dependencies/schema/routes/permissions. Test-only deliberate lock-order inversion is not a production design. All 19 full acceptance scenarios Not Run.
 
 
 ### T43–T44 verification and closure (2026-11-26)
@@ -478,3 +478,55 @@ Traceability below identifies actual assertion-level evidence already executed i
 | F03-19 | UsersManagementSchemaTest exact forward migration preserves existing founder/users/roles/grants/sessions; IdentitySchemaTest/IdentityScopeTest/IdentityCatalogueTest/Authentication and Foundation full suite; real race/fault tests. Latest mandatory expanded full/Pint/route cache/module scope and final exact diff remain pending. |
 
 Review found that the earlier tests covered normalized empty password and final credential generation indirectly, but independent actual explicit null/empty retention assertions provide stronger proof of F03-06. Added those and otherwise-valid create field-injection negative cases for F03-04 without changing any production behavior, existing assertion strength, contract, dependency, index or migration. No new full acceptance status claimed before new exact-source CI. Current task-level count remains 45/49 pending T46–T49.
+
+
+### Final verification and acceptance reconciliation — 2026-11-26
+
+Exact implementation source `a133f4c50d91caee18f2bb3fe564d99698e8b5b7`, draft PR #10 targeting unchanged develop `aa931b65fb4799086151e9d32d9a7371773dadb5`. Standard [CI 45810669555](https://github.com/m-hassan00096/kids-area-api/actions/runs/45810669555), job 139877366605, completed **Success**; actual workflow run SHA, all step conclusions and full job logs inspected. Authentication 41 tests / 1457 assertions; Identity 56 / 828; dedicated Users/Avatar/SelectRegistry 73 / 6784; full PHPUnit 174 / 9122; Laravel Pint 159 files, zero failures. Counts are distinct suite runs with overlapping tests, not additive. All Composer strict/locked/platform/audit (no known advisories at execution), GD/fileinfo/PNG/JPEG/WebP, isolated MySQL8/InnoDB guard, approved forward migration, focused discovery, module/list/route-cache (14 test-environment routes before/after), out-of-scope artifact and exact schema/route/permission checks passed. Prior standard [45809861556](https://github.com/m-hassan00096/kids-area-api/actions/runs/45809861556) at d076f9f8 also completed Success: full 174/9013, focused 73/6755, Auth 41/1466, Identity 56/828, Pint 159. The latest source differs from that verified source only in test assertions and two docs, no production changes.
+
+T46 closed: actual full F01/F02/Foundation regression, exact 10 permissions (IdentityPermissions source identical to develop), nine approved DB tables including migrations, approved users indexes (PRIMARY, three contact/username unique indexes, avatar ownership unique), exact routes and module inventory. Reviewed complete diff vs develop: 90 changed files; only one approved new migration adding nullable unique internal avatar_key, no new table/index for search, new permission, token/role CRUD/audit/HR/queue/Redis/cron or unrelated module. T47 closed: actual expanded guarded CI passed all mandatory steps. T48 closed: exact standard CI and full draft PR diff verified; no waiver, no code on docs branch. T49 closed for the tested implementation: checked the exact latest source and job logs, reconciled all 49 tasks and all 19 acceptance criteria against the assertion-level evidence matrix above and this successful exact-source execution. F03-04/F03-06 strengthened actual UsersMutationValidationTest passed in both focused and full suite; the new otherwise-valid input injection rejections and independent absent/null/empty password hash/version/session preservation, new Argon2id reset and target revocation verified. All mapped classes ran; no acceptance criterion is deemed passed merely from an HTTP 500, a test file, or a checkbox. Acceptance is composite automated evidence, not 19 additional distinct scenario executions, not external penetration testing, live hosting certification or user-facing frontend UAT.
+
+Compared Composer locks to develop: two previously approved additions (spatie/laravel-query-builder 6.4.4, spatie/laravel-package-tools 1.93.3), four previously separately approved Symfony security updates (http-foundation, http-kernel, mailer, routing to v7.4.24; §21.3); no removals or other version changes. No newly approved scope/change in this closure.
+
+Final full-run performance sample: 27 list cases, 81 SELECT plans with both EXPLAIN and EXPLAIN ANALYZE, each 3 domain SELECTs + 1 snapshot setup; separate four full Argon2id creates and three actual private image reads. Focused suite measured the same cases again, not extra unique scenarios. Single-run timings, not SLA/p95; previous detailed T45 plan interpretation stands. No speculative index change.
+
+| Accounts | Case | HTTP ms | Direct service ms | SQL ms count/page/roles |
+| ---: | --- | ---: | ---: | --- |
+| 100 | first15 | 35.075 | 4.992 | 0.36 / 0.31 / 0.62 |
+| 100 | first100 | 31.752 | 5.651 | 0.35 / 0.52 / 1.05 |
+| 100 | deep15 | 21.234 | 2.894 | 0.29 / 0.4 / 0.59 |
+| 100 | arabic | 21.004 | 3.12 | 0.38 / 0.35 / 0.58 |
+| 100 | username | 23.361 | 5.671 | 0.43 / 0.5 / 0.95 |
+| 100 | phone | 21.618 | 3.689 | 0.54 / 0.4 / 0.7 |
+| 100 | role | 20.483 | 3.667 | 0.65 / 0.53 / 0.58 |
+| 100 | inactive | 20.65 | 3.687 | 0.41 / 0.43 / 0.71 |
+| 100 | combined | 20.7 | 3.691 | 0.76 / 0.54 / 0.52 |
+| 1000 | first15 | 19.017 | 2.911 | 0.37 / 0.32 / 0.61 |
+| 1000 | first100 | 20.007 | 5.319 | 0.37 / 0.44 / 1.18 |
+| 1000 | deep15 | 17.826 | 2.982 | 0.34 / 0.59 / 0.55 |
+| 1000 | arabic | 17.904 | 3.044 | 0.5 / 0.32 / 0.56 |
+| 1000 | username | 20.27 | 5.845 | 0.66 / 0.45 / 1.17 |
+| 1000 | phone | 18.936 | 3.268 | 0.7 / 0.35 / 0.58 |
+| 1000 | role | 25.229 | 4.079 | 1.21 / 0.58 / 0.53 |
+| 1000 | inactive | 19.921 | 5.535 | 0.45 / 0.48 / 1.23 |
+| 1000 | combined | 20.085 | 4.648 | 1.69 / 0.59 / 0.54 |
+| 10000 | first15 | 18.371 | 3.594 | 1.07 / 0.31 / 0.63 |
+| 10000 | first100 | 20.576 | 6.137 | 1.08 / 0.49 / 1.23 |
+| 10000 | deep15 | 20.022 | 5.79 | 1.03 / 2.83 / 0.51 |
+| 10000 | arabic | 19.759 | 5.107 | 2.45 / 0.34 / 0.57 |
+| 10000 | username | 22.772 | 8.717 | 3.28 / 0.56 / 1.28 |
+| 10000 | phone | 20.813 | 5.98 | 3.43 / 0.33 / 0.58 |
+| 10000 | role | 33.436 | 16.762 | 6.05 / 8.33 / 0.58 |
+| 10000 | inactive | 33.921 | 7.245 | 1.8 / 0.54 / 1.33 |
+| 10000 | combined | 31.894 | 15.438 | 12.03 / 0.75 / 0.58 |
+
+| Format | Create ms | Manager acquire ms | Acquired-to-ack ms | PHP peak bytes | Linux RSS KiB | Read ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| none | 173.833 | 0.223 | 28.597 | 4194304 | 170568 | — |
+| png | 286.453 | 0.192 | 27.537 | 6295552 | 187284 | 18.238 |
+| jpg | 263.448 | 0.201 | 37.459 | 6295552 | 170656 | 20.878 |
+| webp | 266.013 | 0.209 | 26.815 | 6295552 | 191220 | 19.208 |
+
+Remaining review limitations (not hidden by green tests): earlier intermittent F02 contested-query observation failures on 45706014872 attempt 1 and 45794833416 attempt 1; test-only deterministic native session GC change and five successful targeted repeats documented at §23, subsequent standard regressions including the two above passed; plausible contributor, original cause not proven. No assertion weakened; monitor recurrence and investigate if it recurs, disclose before merge. Actual cPanel TLS/cookies/proxy, PHP extensions/codecs/limits and worker RSS/concurrency, private filesystem, database + file backup/restore and operator reconciliation are deployment gates, not certified by CI. Native collapsed multipart duplicates and universal polyglot detection remain explicitly outside approved guarantee; audit persistence/other modules deferred. No production migration or deployment, no merge authorization yet.
+
+This checkpoint changes only the four Markdown evidence/handoff documents; it will have a different commit SHA from the exact tested implementation. Do not attribute the earlier run to that new SHA. Keep PR #10 Draft until automatic required CI for documentation checkpoint succeeds and no new blocker appears; review diff/evidence and user separately approves merge to develop. No further test or code change needed merely to record successful evidence. Do not create an endless sequence of status-only commits after each green check; verify final documentation checkpoint CI directly in GitHub and update PR metadata if necessary.

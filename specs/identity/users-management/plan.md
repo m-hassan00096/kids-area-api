@@ -3,7 +3,7 @@
 > **Status:** APPROVED — preliminary gates resolved; implementation authorized with separate dependency and protected-operation gates.
 > **Approved contract:** [spec.md](spec.md), user explicitly approved the entire spec, Avatar/search/API defaults and 19 acceptance scenarios on 2026-11-25.
 > **Baseline:** verified develop `8174097e93069cc20ae258ba236cf7acd8d37fb3` (PR #8 merged), docs PR #9 `docs/feature03-users-management-spec` from that commit. Latest actual pre-merge F02 CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files. Historical evidence only; Feature 03 runtime and all new checks Not Run.
-> **Delivery gate:** PR #9 merged; active draft PR #10; 45/49 task-level verified T01–T45; T46–T49 open. See tasks.md §25.1. All 19 full acceptance scenarios Not Run; no merge.
+> **Delivery gate:** PR #9 merged; active draft PR #10; 49/49 tasks verified on tested source a133f4c; 19/19 automated acceptance criteria verified; documentation-only closure checkpoint CI pending. See tasks.md final verification and acceptance reconciliation. Exact tested implementation CI 45810669555 passed; no merge.
 
 ## 1. Current source and compatibility verification
 
