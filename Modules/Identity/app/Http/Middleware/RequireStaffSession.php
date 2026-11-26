@@ -33,7 +33,8 @@ final class RequireStaffSession
         $request->attributes->set('staff_binding', $binding);
         $request->attributes->set('staff_context', $context);
         $response = $next($request);
-        if ($response->isSuccessful() && ! $request->is('api/v1/auth/logout', 'api/v1/profile/password')) {
+        if ($response->isSuccessful() && ! $request->attributes->get('staff_self_revoked')
+            && ! $request->is('api/v1/auth/logout', 'api/v1/profile/password')) {
             $this->sessions->touch($request, $binding, $at);
         }
 

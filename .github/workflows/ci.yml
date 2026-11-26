@@ -31,6 +31,7 @@ jobs:
     env:
       APP_ENV: testing
       DB_CONNECTION: mysql
+      DB_URL: ''
       DB_HOST: 127.0.0.1
       DB_PORT: '3306'
       DB_DATABASE: kids_area_test
@@ -45,7 +46,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: mbstring, xml, dom, simplexml, pdo_mysql, intl, bcmath, curl, zip, fileinfo
+          extensions: mbstring, xml, dom, simplexml, pdo_mysql, intl, bcmath, curl, zip, fileinfo, gd
           coverage: none
       - name: Validate dependency lock
         run: |
@@ -62,16 +63,66 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate --force
+      - name: Verify required native extensions and codecs
+        run: |
+          php <<'PHP'
+          <?php
+          if (!extension_loaded('gd') || !extension_loaded('fileinfo')) {
+              exit(1);
+          }
+          $gd = gd_info();
+          foreach (['PNG Support', 'JPEG Support', 'WebP Support'] as $codec) {
+              if (($gd[$codec] ?? false) !== true) {
+                  exit(1);
+              }
+          }
+          foreach (['imagecreatefromstring', 'imagepng', 'imagejpeg', 'imagewebp'] as $function) {
+              if (!function_exists($function)) {
+                  exit(1);
+              }
+          }
+          echo "Native GD, fileinfo and PNG/JPEG/WebP codec checks passed.\n";
+          PHP
+      - name: Verify guarded disposable database before migrations
+        run: |
+          php <<'PHP'
+          <?php
+          require 'vendor/autoload.php';
+          $app = require 'bootstrap/app.php';
+          $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+          $db = $app->make('db')->connection();
+          if (!$app->environment('testing') || $db->getDriverName() !== 'mysql'
+              || $db->getConfig('host') !== '127.0.0.1' || $db->getDatabaseName() !== 'kids_area_test'
+              || $db->getConfig('username') !== 'kids_area_ci' || getenv('DB_URL') !== '') {
+              exit(1);
+          }
+          $server = $db->selectOne('SELECT DATABASE() AS db, CURRENT_USER() AS principal, VERSION() AS version, @@default_storage_engine AS engine');
+          if ($server->db !== 'kids_area_test' || !str_starts_with($server->principal, 'kids_area_ci@')
+              || !str_starts_with($server->version, '8.') || $server->engine !== 'InnoDB') {
+              exit(1);
+          }
+          echo "Disposable MySQL 8/InnoDB guard passed.\n";
+          PHP
       - name: Run reviewed migrations in disposable test database
         run: php artisan migrate --force
       - name: Run focused Authentication tests
         run: php artisan test --filter=Authentication
       - name: Run focused Identity tests
         run: php artisan test --filter=Identity
+      - name: Verify focused Users and Selects test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter='Users|Avatar|SelectRegistry' > "$RUNNER_TEMP/users-tests.txt"
+          for source in tests/Feature/Users*Test.php tests/Feature/Avatar*Test.php tests/Feature/SelectRegistry*Test.php; do
+            class="$(basename "$source" .php)"
+            grep -Fq "Tests\\Feature\\${class}::" "$RUNNER_TEMP/users-tests.txt"
+          done
+          cat "$RUNNER_TEMP/users-tests.txt"
+      - name: Run focused Users Management, Avatar and Select Registry tests
+        run: php artisan test --filter='Users|Avatar|SelectRegistry'
       - name: Run PHPUnit
         run: php artisan test
       - name: Check Laravel Pint
-        run: vendor/bin/pint --test
+        run: vendor/bin/pint --test -v
       - name: Verify modular package CLI and Identity only
         run: |
           php artisan module:list --no-ansi

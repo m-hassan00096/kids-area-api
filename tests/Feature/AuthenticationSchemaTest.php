@@ -14,9 +14,10 @@ class AuthenticationSchemaTest extends IdentityDatabaseTestCase
 {
     public function test_forward_authentication_migrations_preserve_existing_staff_and_roles(): void
     {
-        // Only the guarded disposable MySQL schema is rolled back in this test.
-        $this->assertSame(0, Artisan::call('migrate:rollback', ['--step' => 3, '--force' => true]), Artisan::output());
+        // Only the guarded empty disposable MySQL schema is rolled back: F03 avatar plus the three F02 migrations.
+        $this->assertSame(0, Artisan::call('migrate:rollback', ['--step' => 4, '--force' => true]), Artisan::output());
         $this->assertFalse(Schema::hasColumn('users', 'auth_version'));
+        $this->assertFalse(Schema::hasColumn('users', 'avatar_key'));
         $this->assertFalse(Schema::hasTable('sessions'));
         app(SeedIdentityCatalogueAction::class)->execute();
         $user = User::factory()->create(['username' => 'Existing.Staff', 'phone' => '00012345678']);

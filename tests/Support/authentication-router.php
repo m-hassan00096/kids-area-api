@@ -2,17 +2,28 @@
 
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
+use Illuminate\Hashing\HashManager;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Modules\Identity\Actions\DeleteUserAction;
+use Modules\Identity\Http\Controllers\UsersController;
 use Modules\Identity\Http\Middleware\FinalizeLoginSession;
 use Modules\Identity\Http\Middleware\RequireStaffSession;
 use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
+use Modules\Identity\Services\Avatar\AvatarStorage;
+use Modules\Identity\Services\Avatar\NormalizedAvatar;
 use Modules\Identity\Services\LoginThrottle;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\AuthenticationCommitFault;
+use Tests\Support\UsersBoundaryProbe;
+use Tests\Support\UsersMeasuredCommit;
+use Tests\Support\UsersObservedStatement;
 
 require __DIR__.'/../../vendor/autoload.php';
 
@@ -31,6 +42,9 @@ $app->instance('request', $request);
 $kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 config()->set('identity-browser.throttle_cleanup_lottery', [0, 100]);
+// Random GC may take unrelated session locks before a targeted SQL barrier.
+// Make the synthetic harness deterministic; probe-events explicitly forces GC.
+config()->set('session.lottery', [0, 100]);
 $connection = DB::connection();
 if (! $app->environment('testing') || $connection->getDatabaseName() !== 'kids_area_test'
     || $connection->getDriverName() !== 'mysql' || $connection->getConfig('username') !== 'kids_area_ci'
@@ -50,8 +64,36 @@ if (is_string($time) && ctype_digit($time)) {
 }
 
 $barrierDir = getenv('IDENTITY_TEST_BARRIER_DIR');
+if (is_string($barrierDir) && dirname($barrierDir) === sys_get_temp_dir()
+    && str_starts_with(basename($barrierDir), 'kids-auth-') && is_dir($barrierDir) && ! is_link($barrierDir)) {
+    config()->set('filesystems.disks.identity-avatars.root', $barrierDir.DIRECTORY_SEPARATOR.'avatars');
+} else {
+    http_response_code(503);
+    exit;
+}
 $barrier = $request->headers->get('X-Identity-Test-Barrier');
 $mode = $request->headers->get('X-Identity-Test-Mode');
+if (is_string($mode) && str_starts_with($mode, 'users-probe-') && $request->is('api/v1/users', 'api/v1/users/*')) {
+    // Swap only the controller in the guarded test router for isolated boundary probes. The real route and middleware stack runs unchanged.
+    $app->bind(UsersController::class, fn () => new UsersBoundaryProbe);
+}
+
+// The fixture FK is a reviewed test-only dependency, never a production table.
+if (in_array($mode, ['users-action-protected-fk', 'hold-users-delete-fk'], true)) {
+    $app->when(DeleteUserAction::class)->needs('$protectedUserForeignKeys')->give(['fixture_user_protected_fk']);
+}
+
+// Real Actions are not substituted. Only inject this synthetic postcommit
+// cleanup fault in the guarded test router.
+if ($mode === 'users-action-cleanup') {
+    $app->bind(AvatarStorage::class, static fn () => new class extends AvatarStorage
+    {
+        public function delete(string $key): void
+        {
+            throw new RuntimeException('Synthetic avatar cleanup failure: '.$key);
+        }
+    });
+}
 
 // Isolated test-only route: prove ordinary API query events remain visible
 // while real native session reads, writes and garbage collection are private.
@@ -103,6 +145,82 @@ $pause = static function () use ($prefix): void {
     throw new RuntimeException('Synthetic barrier timed out.');
 };
 
+// A fixture-only FK writer models a future owning module, without adding
+// a real production route or table. This route runs only in this guarded router.
+Route::middleware('api')->post('/api/v1/__fixture-user-link/{user}', static function (int $user) use ($mode, $pause) {
+    try {
+        DB::transaction(function () use ($user, $mode, $pause): void {
+            if ($mode === 'hold-fk-deadlock') {
+                // Test-only inversion: external fixture holds a parent S
+                // lock and many undo entries, then waits for the manager.
+                // Users holds manager and waits for this parent row. InnoDB
+                // chooses the smaller read-only Users transaction as victim.
+                DB::table('fixture_user_links')->insert(array_fill(0, 100, ['user_id' => $user]));
+                $pause();
+                DB::table('roles')->where('name', 'manager')->where('guard_name', 'web')->lockForUpdate()->first();
+
+                return;
+            }
+            DB::table('fixture_user_links')->insert(['user_id' => $user]);
+            if ($mode === 'hold-fk-insert') {
+                $pause();
+            }
+        }, 1);
+    } catch (QueryException $failure) {
+        if ((int) ($failure->errorInfo[1] ?? 0) === 1452) {
+            return response()->json(['fixture' => 'parent_missing'], 409);
+        }
+        throw $failure;
+    }
+
+    return response()->json(['fixture' => 'linked'], 201);
+});
+if (in_array($mode, ['hold-avatar-before-read', 'hold-avatar-after-read', 'fault-avatar-stage'], true)) {
+    $app->bind(AvatarStorage::class, static fn () => new class($mode, $pause) extends AvatarStorage
+    {
+        private bool $held = false;
+
+        public function __construct(private string $mode, private Closure $pause) {}
+
+        public function stage(#[SensitiveParameter] NormalizedAvatar $image): string
+        {
+            if ($this->mode === 'fault-avatar-stage') {
+                throw new RuntimeException('Synthetic storage unavailable.');
+            }
+
+            return parent::stage($image);
+        }
+
+        public function read(string $key): NormalizedAvatar
+        {
+            if (! $this->held && $this->mode === 'hold-avatar-before-read') {
+                $this->held = true;
+                ($this->pause)();
+            }
+            $image = parent::read($key);
+            if (! $this->held && $this->mode === 'hold-avatar-after-read') {
+                $this->held = true;
+                ($this->pause)();
+            }
+
+            return $image;
+        }
+    });
+}
+if ($mode === 'fault-users-hash') {
+    // No mock framework in the cli-server bootstrap. Fail only the
+    // actual hashing call; the other native HashManager methods are intact.
+    Hash::swap(new class($app) extends HashManager
+    {
+        public function make(#[SensitiveParameter] $value, array $options = []): string
+        {
+            throw new RuntimeException('Synthetic hash failure.');
+        }
+    });
+}
+if (in_array($mode, ['fault-avatar-write', 'fault-avatar-close'], true)) {
+    require __DIR__.'/avatar-io-faults.php';
+}
 $diagnostic = null;
 Log::listen(static function (MessageLogged $event) use (&$diagnostic): void {
     if (is_string($event->context['exception_class'] ?? null)) {
@@ -114,7 +232,12 @@ $logs = [];
 $queries = [];
 $secrets = ['synthetic-redaction-sentinel'];
 if ($inspect) {
-    foreach (['password', 'currentPassword', 'passwordConfirmation'] as $field) {
+    $fields = ['password', 'currentPassword', 'passwordConfirmation'];
+    if ($request->is('api/v1/users', 'api/v1/users/*')) {
+        $fields = [...$fields, 'email', 'phone'];
+        $secrets = [...$secrets, UsersBoundaryProbe::KEY, UsersBoundaryProbe::PATH, UsersBoundaryProbe::RAW];
+    }
+    foreach ($fields as $field) {
         $value = $request->input($field);
         if (is_string($value) && strlen($value) >= 8) {
             $secrets[] = $value;
@@ -127,6 +250,9 @@ if ($inspect) {
     }
     foreach (DB::table('users')->pluck('password') as $hash) {
         $secrets[] = $hash;
+    }
+    foreach (DB::table('users')->whereNotNull('avatar_key')->pluck('avatar_key') as $key) {
+        $secrets[] = $key;
     }
     foreach (DB::table('sessions')->get(['id', 'payload']) as $session) {
         $secrets[] = $session->id;
@@ -143,16 +269,62 @@ if ($inspect) {
 
 $count = 0;
 $credentialReads = 0;
+$usersTargetReads = 0;
+$usersSensitiveReads = 0;
+$usersCountReads = 0;
+$usersPageReads = 0;
+$usersRoleReads = 0;
+$usersPageLimit = '';
+$usersSnapshot = 0;
+$selectReads = 0;
+$selectLimit = '';
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$secrets, &$timing, &$restoreStatements, $request): void {
+$staffTouches = 0;
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
+        $usersTargetReads++;
+    }
+    if (str_contains($sql, 'synthetic_users_sensitive_probe')) {
+        $usersSensitiveReads++;
+    }
+    if (str_starts_with($sql, 'select count(*) as aggregate from users')) {
+        $usersCountReads++;
+    }
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'order by users.id desc')) {
+        $usersPageReads++;
+        if (preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+            $usersPageLimit = $match[1];
+        }
+    }
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from model_has_roles as mr') && str_contains($sql, 'mr.model_id in')) {
+        $usersRoleReads++;
+    }
+    if ($sql === 'set transaction isolation level repeatable read, read only') {
+        $usersSnapshot++;
+    }
+    if (str_starts_with($sql, 'select') && str_contains($sql, 'from roles') && str_contains($sql, 'alias_name')
+        && str_contains($sql, 'order by id asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+        $selectReads++;
+        $selectLimit = $match[1];
+    }
     $ns = hrtime(true);
     if (str_starts_with($sql, 'set session innodb_lock_wait_timeout =')) {
         $restoreStatements++;
-        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout'], true)) {
+        if ($restoreStatements === 1 && $mode === 'users-action-duplicate-create') {
+            // Inject a real uniqueness collision AFTER validation and staging,
+            // before BEGIN. Only synthetic fixtures in the guarded database.
+            $statement = $connection->getPdo()->prepare('UPDATE users SET username = ? WHERE username = ?');
+            $statement->execute(['Fixture.New', 'Fixture.Collision']);
+        }
+        if ($restoreStatements === 2 && $mode === 'users-action-cache') {
+            app()->forgetInstance(PermissionRegistrar::class);
+            app()->bind(PermissionRegistrar::class, static fn () => throw new RuntimeException('Synthetic postcommit cache failure.'));
+        }
+        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
     }
@@ -169,6 +341,9 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     if ($credentialRead) {
         $credentialReads++;
     }
+    if (str_starts_with($sql, 'update sessions set auth_last_activity')) {
+        $staffTouches++;
+    }
     if (! $armed) {
         return;
     }
@@ -180,9 +355,22 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     $nativeSave = str_starts_with($sql, 'update sessions set') && str_contains($sql, 'payload');
     $nativeInsert = str_starts_with($sql, 'insert into sessions');
 
+    $userWrite = str_starts_with($sql, 'update users set');
+    $userInsert = str_starts_with($sql, 'insert into users');
+    $userDelete = str_starts_with($sql, 'delete from users');
+    $roleInsert = str_starts_with($sql, 'insert into model_has_roles');
+    if ($mode === 'users-action-final-save' && $request->attributes->get('staff_self_revoked') && ($nativeSave || $nativeInsert)) {
+        $armed = false;
+        throw new RuntimeException('Synthetic postcommit native save failure.');
+    }
     $hit = match ($mode) {
         'hold-credentials', 'fault-report' => $credentialRead,
-        'hold-manager' => $managerLock,
+        'hold-manager', 'hold-manager-expire' => $managerLock,
+        'hold-users-insert' => $userInsert,
+        'hold-users-update' => $userWrite,
+        'hold-users-delete-fk' => $userDelete,
+        'fault-users-pivot' => $roleInsert,
+        'fault-users-reference' => $userWrite && str_contains($sql, 'avatar_key'),
         'hold-marker', 'fault-marker' => $marker,
         'hold-password', 'fault-password' => $passwordWrite,
         'fault-revoke' => $revoke,
@@ -205,6 +393,9 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         app('session')->driver()->setExists(false);
     }
     $pause();
+    if ($mode === 'hold-manager-expire') {
+        Carbon::setTestNow(now()->addSecond());
+    }
 });
 
 if ($mode === 'cleanup') {
@@ -219,21 +410,74 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
+if (in_array($mode, ['observe-deadlock', 'users-performance'], true)) {
+    $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
+}
+if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
+    $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
+}
 $commitFault = null;
-if ($mode === 'fault-commit-ack') {
+if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }
 
+if ($mode === 'users-performance') {
+    memory_reset_peak_usage();
+}
 $response = $kernel->handle($request);
+if ($mode === 'users-performance') {
+    $response->headers->set('X-Test-Php-Peak-Bytes', (string) memory_get_peak_usage(true));
+    $usage = getrusage();
+    if (is_array($usage) && isset($usage['ru_maxrss'])) {
+        $response->headers->set('X-Test-Process-Peak-Rss', (string) $usage['ru_maxrss']);
+    }
+    foreach (['lock_wait_ms' => 'Lock-Wait-Ms', 'lock_span_ms' => 'Lock-Span-Ms'] as $attribute => $header) {
+        $value = $request->attributes->get('_test_users_'.$attribute);
+        if (is_float($value)) {
+            $response->headers->set('X-Test-Users-'.$header, (string) round($value, 3));
+        }
+    }
+}
 if ($commitFault !== null) {
     $response->headers->set('X-Test-Actual-Commit-Count', (string) $commitFault->commits);
 }
 $response->headers->set('X-Test-Query-Count', (string) $count);
+$response->headers->set('X-Test-Users-Deadlock-Count', (string) $request->attributes->get('_test_users_deadlock_count', 0));
+if ($request->attributes->has('_test_users_deadlock_code')) {
+    $response->headers->set('X-Test-Users-Deadlock-Code', (string) $request->attributes->get('_test_users_deadlock_code'));
+}
+$response->headers->set('X-Test-Users-Touches', (string) $staffTouches);
+$response->headers->set('X-Test-Users-Self-Revoked', $request->attributes->get('staff_self_revoked') ? '1' : '0');
+$outcome = $request->attributes->get('identity_users_outcome');
+if (is_string($outcome)) {
+    $response->headers->set('X-Test-Users-Outcome', $outcome);
+}
 if ($diagnostic !== null) {
     $response->headers->set('X-Test-Exception-Class', $diagnostic);
 }
 $response->headers->set('X-Test-Credential-Reads', (string) $credentialReads);
+$response->headers->set('X-Test-Users-Target-Reads', (string) $usersTargetReads);
+$response->headers->set('X-Test-Users-Sensitive-Reads', (string) $usersSensitiveReads);
+$response->headers->set('X-Test-Users-Count-Reads', (string) $usersCountReads);
+$response->headers->set('X-Test-Users-Page-Reads', (string) $usersPageReads);
+$response->headers->set('X-Test-Users-Role-Reads', (string) $usersRoleReads);
+$response->headers->set('X-Test-Users-Page-Limit', $usersPageLimit);
+$response->headers->set('X-Test-Users-Snapshot', (string) $usersSnapshot);
+$response->headers->set('X-Test-Select-Reads', (string) $selectReads);
+$response->headers->set('X-Test-Select-Limit', $selectLimit);
+foreach (['state', 'file_outcome', 'calls', 'wait'] as $field) {
+    $value = $request->attributes->get('_test_mutation_'.$field);
+    if (is_string($value)) {
+        $response->headers->set('X-Test-Mutation-'.str_replace('_', '-', $field), $value);
+    }
+}
+if ($request->attributes->get('_test_avatar_validated')) {
+    $response->headers->set('X-Test-Avatar-Validated', '1');
+}
+if ($request->attributes->has('_test_users_fingerprint')) {
+    $response->headers->set('X-Test-Users-Fingerprint', $request->attributes->get('_test_users_fingerprint'));
+}
 if ($timing['after_throttle_sql'] !== null) {
     $response->headers->set('X-Test-First-Throttle-Sql-Ms', (string) round(($timing['after_throttle_sql'] - $timing['first_throttle_sql']) / 1000000, 2));
 }
@@ -249,14 +493,30 @@ if ($inspect) {
     $nativeVisible = collect($queries)->contains(fn ($query) => str_contains(strtolower($query[0]), 'sessions'))
         || collect($queryLog)->contains(fn ($query) => str_contains(strtolower($query['query']), 'sessions'));
     $response->headers->set('X-Test-Business-Query-Visible', $eventVisible && $logVisible ? '1' : '0');
+    $usersVisible = collect($queries)->contains(fn ($query) => str_contains($query[0], 'synthetic_users_sensitive_probe'))
+        || collect($queryLog)->contains(fn ($query) => str_contains($query['query'], 'synthetic_users_sensitive_probe'));
+    $response->headers->set('X-Test-Users-Sensitive-Query-Visible', $usersVisible ? '1' : '0');
     $response->headers->set('X-Test-Native-Session-Query-Visible', $nativeVisible ? '1' : '0');
     $correlated = collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.' && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID'));
     $response->headers->set('X-Test-Correlated-Report', $correlated ? '1' : '0');
+    $response->headers->set('X-Test-Users-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
+        && is_string($outcome) && ($log[1]['mutation_outcome'] ?? null) === $outcome) ? '1' : '0');
+    $response->headers->set('X-Test-Users-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Users lock timeout restoration failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
+    $response->headers->set('X-Test-Users-Cache-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Users permission cache invalidation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
+    $response->headers->set('X-Test-Avatar-Cleanup-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Avatar lifecycle retained file.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
+        && ($log[1]['outcome'] ?? null) === 'cleanup_failed') ? '1' : '0');
     $response->headers->set('X-Test-Error-Report-Count', (string) collect($logs)->filter(fn ($log) => $log[0] === 'API operation failed.')->count());
     $response->headers->set('X-Test-Restore-Failure', collect($logs)->contains(fn ($log) => $log[0] === 'Login lock timeout restoration failed.') ? '1' : '0');
     $connection->disableQueryLog();
     foreach (DB::table('users')->pluck('password') as $hash) {
         $secrets[] = $hash;
+    }
+    foreach (DB::table('users')->whereNotNull('avatar_key')->pluck('avatar_key') as $key) {
+        $secrets[] = $key;
     }
     foreach (DB::table('sessions')->get(['id', 'payload']) as $session) {
         $secrets[] = $session->id;

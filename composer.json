@@ -6,10 +6,13 @@
     "license": "proprietary",
     "require": {
         "php": "^8.2",
+        "ext-fileinfo": "*",
+        "ext-gd": "*",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.5",
         "nwidart/laravel-modules": "^12.0",
-        "spatie/laravel-permission": "^6.0"
+        "spatie/laravel-permission": "^6.0",
+        "spatie/laravel-query-builder": "^6.4.4"
     },
     "require-dev": {
         "laravel/pint": "^1.24",

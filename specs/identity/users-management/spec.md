@@ -3,7 +3,7 @@
 > **Status:** APPROVED by user (2026-11-25), including all Avatar, search, and API contract review defaults.
 > **Baseline:** `develop` `8174097e93069cc20ae258ba236cf7acd8d37fb3`, PR #8 merged. Foundation, Feature 01 (Identity Core & RBAC) and Feature 02 (Authentication) are implemented. Latest pre-merge CI [45638942711](https://github.com/m-hassan00096/kids-area-api/actions/runs/45638942711): 102 tests / 2289 assertions, Pint 101 files; no Feature 03 execution.
 > **User decisions approved:** six functional decisions from the Users Management discussion, plus subsequent correction: avatar PNG/JPG/WebP max 2 MB; list shows image/name/username/phone/state/role; search includes phone; filter by role/state using Laravel Query Builder; return `userId`; omit `createdAt`. The approved specification supersedes the earlier proposed list shape.
-> **Delivery gate:** technical plan and [tasks.md](tasks.md) explicitly approved on 2026-11-25; approval is documentation only. Authorized isolated target PHP8.2/GD preliminary feasibility recorded in tasks.md §§12–13. T03/T04 preliminary feasibility passed; see tasks.md §14 (run 45652182251); T05 awaits separate approvals. No project dependency installation, migration, PHP implementation, acceptance tests, merge or deployment authorized.
+> **Delivery gate:** PR #9 merged; active draft PR #10; 49/49 tasks verified on tested source a133f4c; 19/19 automated acceptance criteria verified; documentation-only closure checkpoint CI pending. Requirements unchanged; exact tested implementation CI 45810669555 green. See tasks.md final reconciliation. No deployment/merge.
 
 ## 1. Purpose and scope
 
@@ -203,7 +203,7 @@ Reuse existing ApiResponse, centralized Arabic ApiErrors, RequestId, localizatio
 
 Existing schema: users (name, username, nullable unique email/phone, hashed password, is_active, timestamps, auth_version), roles and native Spatie pivots with single-role unique constraint, sessions and login-throttles. Avatar requires narrowly scoped nullable reference/metadata migration; no migration written now. No new tables planned for Users/Select Registry and no extra indexes assumed; verify actual query plans. Preserve existing Login/Me/Profile/Logout contracts, 12h idle and 5/30 throttles, no token storage. Reuse PHP 8.2/Laravel 12/MySQL 8/shared hosting constraints. Plan to resolve Query Builder dependency compatibility/approval, private image processing capabilities, path lifecycle, current actor/session mutation check, permission cache coherence, index/EXPLAIN and test isolation. No package install or code before subsequent approved gates.
 
-## 11. Acceptance scenarios — all Not Run
+## 11. Acceptance scenarios — all 19 verified by mapped automated tests (CI 45810669555)
 
 | ID | Expected scenario |
 |---|---|
@@ -227,4 +227,4 @@ Existing schema: users (name, username, nullable unique email/phone, hashed pass
 | F03-18 | HTTP envelopes Arabic/camelCase/X-Request-ID; no passwords/hashes/session IDs/raw multipart/storage keys/SQL in output or logs; native session protection and unrelated DB events intact. |
 | F03-19 | Real MySQL concurrency, forward avatar migration preserves existing founder/users and baseline RBAC, full Authentication/Identity/Foundation regression, route/permission/module scope, Pint and CI. No audit, Roles CRUD/permissions select, HR or token/queue/Redis/cron implementation. |
 
-All scenarios remain approved requirements, not executed results. User approved the full spec on 2026-11-25. Next: approved parsed-file and stronger structural validation decisions verified in isolated preliminary probes; see [tasks.md](tasks.md) §14. T05 remains a separate approval gate. Separate probe, dependency, documentation merge and implementation authorizations. No code or deployment.
+All scenarios remain approved requirements, not complete executed acceptance results. 49/49 tasks verified on tested source a133f4c; 19/19 automated acceptance criteria verified; documentation-only closure checkpoint CI pending. See tasks.md §25.1.

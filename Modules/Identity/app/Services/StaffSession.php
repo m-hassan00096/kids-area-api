@@ -2,13 +2,16 @@
 
 namespace Modules\Identity\Services;
 
+use App\Http\Middleware\RequestId;
 use App\Support\SensitiveQueryScope;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Modules\Identity\Models\User;
 use SensitiveParameter;
+use Throwable;
 
 final class StaffSession
 {
@@ -79,6 +82,28 @@ final class StaffSession
         Auth::guard('web')->logoutCurrentDevice();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+    }
+
+    public function clearRevokedBrowser(#[SensitiveParameter] Request $request): void
+    {
+        // All authoritative target sessions are already deleted by a known
+        // commit. Do not destroy a row again or touch the replacement ID.
+        $request->attributes->set('staff_self_revoked', true);
+        try {
+            Auth::guard('web')->logoutCurrentDevice();
+            $request->session()->flush();
+            $request->session()->migrate(false);
+            $request->session()->regenerateToken();
+        } catch (Throwable $failure) {
+            try {
+                Log::warning('Revoked browser cleanup failed.', [
+                    'request_id' => RequestId::id($request),
+                    'exception_class' => $failure::class,
+                ]);
+            } catch (Throwable) {
+                // A known commit cannot be rolled back by diagnostics.
+            }
+        }
     }
 
     public function forgetAttempt(Request $request, #[SensitiveParameter] ?string $candidate, ?int $owner, ?int $version): void
