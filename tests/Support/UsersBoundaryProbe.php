@@ -54,6 +54,9 @@ final class UsersBoundaryProbe
         $request = request();
         $mode = $request->headers->get('X-Identity-Test-Mode');
         $body = $request->isJson() ? $request->json()->all() : $request->request->all();
+        if ($mode === 'users-probe-transport') {
+            abort(503);
+        }
         if ($mode === 'users-probe-avatar-validation') {
             $file = $request->files->get('avatar');
             abort_unless($file instanceof UploadedFile, 422);

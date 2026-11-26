@@ -32,7 +32,8 @@ class UsersManagementBoundaryTest extends AuthenticationHttpTestCase
             $browser = $this->browser($server);
             $this->assertSame(200, $browser->login($staff->username)->status);
             foreach ($routes as [$method, $uri, $required, $lookup]) {
-                $options = in_array($method, ['GET', 'HEAD'], true) ? [] : ['raw' => '{}'];
+                // Isolate write capability checks; reads remain real.
+                $options = in_array($method, ['GET', 'HEAD'], true) ? [] : ['raw' => '{}', 'headers' => ['X-Identity-Test-Mode' => 'users-probe-transport']];
                 $response = $browser->request($method, $uri, options: $options);
                 $allowed = $capability === $required;
                 $status = ! $allowed ? 403 : ($method === 'GET' ? (str_ends_with($uri, '/avatar') ? 404 : 200) : 503);

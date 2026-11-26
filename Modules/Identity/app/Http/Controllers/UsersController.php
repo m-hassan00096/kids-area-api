@@ -5,6 +5,8 @@ namespace Modules\Identity\Http\Controllers;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Identity\Http\Requests\CreateUserRequest;
+use Modules\Identity\Http\Requests\UpdateUserRequest;
 use Modules\Identity\Http\Requests\UsersIndexRequest;
 use Modules\Identity\Models\User;
 use Modules\Identity\Queries\UsersQuery;
@@ -33,12 +35,12 @@ final class UsersController
     // Mutations remain fail closed until their
     // respective reviewed implementation tasks.
 
-    public function store(): never
+    public function store(CreateUserRequest $request): never
     {
         abort(503);
     }
 
-    public function update(): never
+    public function update(UpdateUserRequest $request): never
     {
         abort(503);
     }

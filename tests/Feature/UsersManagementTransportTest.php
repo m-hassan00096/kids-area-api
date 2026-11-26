@@ -98,8 +98,8 @@ class UsersManagementTransportTest extends AuthenticationHttpTestCase
             foreach (['missing', 'bad'] as $csrf) {
                 $this->assertSame(419, $browser->request($method, $path, options: ['raw' => '{}', 'csrf' => $csrf])->status);
             }
-            // Authorized transport reaches the fail-closed placeholder; no CRUD exists yet.
-            $this->assertSame(503, $browser->request($method, $path, options: ['raw' => '{}'])->status);
+            // Guarded controller probe isolates transport from the full FormRequest.
+            $this->assertSame(503, $browser->request($method, $path, options: ['raw' => '{}', 'headers' => ['X-Identity-Test-Mode' => 'users-probe-transport']])->status);
         }
 
         $boundary = 'kids-users-transport-test';
@@ -113,12 +113,12 @@ class UsersManagementTransportTest extends AuthenticationHttpTestCase
         unset($image);
         $multipart = [
             'raw' => $parts.$png."\r\n--{$boundary}--\r\n",
-            'headers' => ['Content-Type' => 'multipart/form-data; boundary='.$boundary],
+            'headers' => ['Content-Type' => 'multipart/form-data; boundary='.$boundary, 'X-Identity-Test-Mode' => 'users-probe-transport'],
         ];
         foreach (['missing', 'bad'] as $csrf) {
             $this->assertSame(419, $browser->request('POST', '/api/v1/users/1', options: $multipart + ['csrf' => $csrf])->status);
         }
-        // No separate POST update route exists. A 503 proves native dispatch to PUT.
+        // Guarded controller probe proves native dispatch to PUT, without CRUD.
         $this->assertSame(503, $browser->request('POST', '/api/v1/users/1', options: $multipart)->status);
         $this->assertSame(422, $browser->request('POST', '/api/v1/users', options: $multipart)->status);
         $this->assertSame(422, $browser->request('POST', '/api/v1/users/1', options: array_replace($multipart, [
