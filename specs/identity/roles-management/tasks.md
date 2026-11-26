@@ -1,13 +1,13 @@
 # Feature 04 — Roles & Permissions Management: Tasks
 
-> **Status:** Proposed task breakdown for review. **0/44 completed; all 12 acceptance criteria Not Run.** No F04 implementation, migration or test execution. Prior F03 green CI is baseline only.
+> **Status:** APPROVED task breakdown (2026-11-26). **3/44 preparation tasks completed; all 12 acceptance criteria Not Run.** User approved the documented decisions, plan and limited isolated forward-drop test. No F04 implementation, migration or test execution. Prior F03 green CI is baseline only.
 > **Sources:** [spec.md](spec.md), [plan.md](plan.md). Dependencies are numbered Txx (ranges inclusive); acceptance IDs abbreviated F04-xx. Do not treat review drafts or authored tests as completed tasks.
-> **Gate:** D01-D08, specification/plan/tasks approval, separate guarded disposable destructive-operation authorization, explicit docs merge/implementation approval before any code. Do not execute against a real or unknown DB.
+> **Gate:** D01–D08 and spec/plan/tasks approved; guarded disposable CI forward-drop testing authorized only. New destructive reset/down procedures are not authorized. Exact docs-head CI and explicit docs merge/implementation approval remain required before any code. Do not execute against a real or unknown DB.
 
 ## Phase A — Review and preparation (T01–T06)
-- [ ] **T01 — Review approved baseline and decisions.** Verify develop/PR #10 exact merge, lock, migrations, canonical specs and affected alias call sites; approve D01-D08. No implementation.
-- [ ] **T02 — Approve specification, plan and task scope.** Review docs PR; record explicit user approvals, no speculative scope or new dependencies.
-- [ ] **T03 — Authorize disposable destructive migration verification.** Exact CI host/database/principal/APP_ENV guard, backup/export synthetic legacy aliases; separately authorize DROP and any isolated reset/rollback. No real DB.
+- [x] **T01 — Review approved baseline and decisions.** Verify develop/PR #10 exact merge, lock, migrations, canonical specs and affected alias call sites; approve D01-D08. No implementation.
+- [x] **T02 — Approve specification, plan and task scope.** Review docs PR; record explicit user approvals, no speculative scope or new dependencies.
+- [x] **T03 — Authorize disposable destructive migration verification.** User authorized only the guarded CI forward DROP; record exact environment, required synthetic backup/export and preservation checks. No new reset/down procedures or real DB. Actual guard/fixture verification belongs to T05–T07.
 - [ ] **T04 — Documentation gate and implementation branch.** Merge approved docs only on explicit authorization; verify tree; create feature branch from develop after implementation approval.
 - [ ] **T05 — Inspect actual schema, collation and index metadata.** Read-only MySQL metadata in guarded disposable CI; exact role unique/FK/index names, collation equivalence, permission/morph guard and sessions owner index.
 - [ ] **T06 — Migration safety design and synthetic legacy fixture.** Fixture baseline roles (including differing aliases), grants, active/inactive members, sessions and permission aliases; snapshot values and backup/recovery proof.
@@ -128,4 +128,9 @@
 
 ## Completion rules
 
-Record actual commit, command, CI run/job, pass/fail counts, relevant assertions and limitations. No task marked done merely because its code or a test was written. No unsafe data deletion or scope change; no weaken existing assertions. Final required CI exact head must succeed before Ready for Review; no merge without separate explicit user approval, no production deployment. Keep prior F02 intermittent observation risk, deferred Audit and real-host/backup/restore caveats in final report. Next action: approve proposed specification decisions and plan/tasks, then obtain exact disposable migration/reset authorization before code.
+Record actual commit, command, CI run/job, pass/fail counts, relevant assertions and limitations. No task marked done merely because its code or a test was written. No unsafe data deletion or scope change; no weaken existing assertions. Final required CI exact head must succeed before Ready for Review; no merge without separate explicit user approval, no production deployment. Keep prior F02 intermittent observation risk, deferred Audit and real-host/backup/restore caveats in final report. Next action: verify exact documentation head CI, obtain explicit documentation merge and implementation authorization, then T04. The new migration has not executed.
+
+
+## Approval evidence (2026-11-26)
+
+T01: verified PR #10 merged at develop 41b5eeca7e9b04eb7b064f93464b290754fea16a, reviewed actual pinned dependencies, historical migrations, current Identity services and role-only alias call sites, canonical documents and the eight decision defaults. T02: the user replied affirmatively to the explicit request to approve spec.md, plan.md, tasks.md and proposed decisions. T03: the same reply authorized the specifically requested test of removing roles.alias_name only inside isolated GitHub Actions MySQL 8 test DB. Existing CI guard and guarded IdentityDatabaseTestCase fixture initialization inspected; planned pre-drop export and preservation checks remain T05–T07, not claimed executed. No new destructive reset/down procedures authorized; use fresh CI lifecycle and existing approved fixture setup. No code, real DB, merge or deployment. All 12 acceptance criteria Not Run. T04 requires exact head green CI and explicit documentation merge/implementation approval. Historical F03 test results are not F04 evidence.

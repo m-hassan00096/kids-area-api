@@ -1,6 +1,6 @@
 # Feature 04 — Roles & Permissions Management
 
-> **Status:** Specification review draft; proposed technical plan and tasks authored for review. User approved the 12 business decisions and explicitly corrected naming on 2026-11-26: remove Role alias, retain Permission alias. Other contract details below are proposed unless already required by the canonical sources. No implementation or migration execution.
+> **Status:** APPROVED (2026-11-26). User authorized the full spec/technical plan/task decisions D01–D08 and forward removal of roles.alias_name in the verified disposable GitHub Actions MySQL test database only. Implementation and documentation merge gates remain separate; no F04 implementation or migration execution yet.
 > **Baseline:** develop `41b5eeca7e9b04eb7b064f93464b290754fea16a`, PR #10 merged; [exact final CI 45811979133](https://github.com/m-hassan00096/kids-area-api/actions/runs/45811979133) 174 tests / 9101 assertions, Pint 159. Existing schema and historical F01–F03 evidence are not proof of this change.
 > **Sources:** [Identity](../../../docs/03-modules/identity.md), [Permissions](../../../docs/02-standards/permissions-standards.md), [Localization](../../../docs/02-standards/localization-standards.md), [API](../../../docs/02-standards/api-standards.md), [Workflow](../../../docs/02-standards/ai-workflow-rules.md).
 
@@ -12,7 +12,7 @@ Manage Roles, their active state and grants from the fixed catalogue; five indep
 
 Protected roles remain permanently active, undeletable and unrenamable. Custom role deletion requires no assigned User, including inactive accounts; no implicit reassignments. Editing permissions or renaming a role does not itself log Users out; fresh effective grants next protected request. Approved role disable invalidates all associated authoritative sessions atomically, advances affected credential generations and leaves User is_active and assignments unchanged; re-enable never revives old sessions. Last viable admin (six essential permissions, not a role-name test) must survive every mutation and concurrency ordering.
 
-## 2. Role API proposal (review)
+## 2. Approved Role API
 
 | Method | Path | Permission |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ Protected roles remain permanently active, undeletable and unrenamable. Custom r
 | PUT | /api/v1/roles/{role} | identity.roles.update |
 | DELETE | /api/v1/roles/{role} | identity.roles.delete |
 
-Index: name, assigned User count (all active/inactive), permission count, isActive, computed isProtected, roleId; paginated 15 default / 100 maximum; literal search by the single name, exact isActive filter; deterministic newest ID first proposed. No per-row full permission lists. Detail adds permissions as objects with stable name and stored aliasName. No Role aliasName, timestamps or guardName exposed in these resources. Example:
+Index: name, assigned User count (all active/inactive), permission count, isActive, computed isProtected, roleId; paginated 15 default / 100 maximum; literal search by the single name, exact isActive filter; deterministic newest ID first. No per-row full permission lists. Detail adds permissions as objects with stable name and stored aliasName. No Role aliasName, timestamps or guardName exposed in these resources. Example:
 
 ```json
 {"success":true,"message":"","data":{"items":[{"roleId":3,"name":"مشرف الأنشطة","usersCount":5,"permissionsCount":2,"isActive":true,"isProtected":false}],"pagination":{"total":1,"currentPage":1,"perPage":15,"lastPage":1}}}
@@ -33,28 +33,28 @@ Create JSON:
 {"name":"مشرف الأنشطة","permissions":["identity.users.view","identity.users.create"]}
 ```
 
-Create active by default; empty permissions array allowed. Proposed optional boolean isActive; whether initial inactive creation is allowed to be confirmed. Name is unique in web guard; no two-column name/alias contract; proposed trimmed nonblank valid Unicode Arabic/English display name, length/normalization/collation behavior to be finalized against actual DB; reject reserved names and database collisions safely. Permission strings exact registered names, no duplicates, arrays only; no guard or ID/alias injection.
+Create active by default; empty permissions array allowed. Optional strict boolean isActive, default true; explicitly false is permitted for a custom role. Name is unique in web guard; no two-column name/alias contract; trimmed nonblank valid Unicode Arabic/English-capable display name, maximum 255 characters, validation and actual database collation per D02; reject reserved names and database collisions safely. Permission strings exact registered names, no duplicates, arrays only; no guard or ID/alias injection.
 
-Full PUT proposal:
+Full PUT:
 ```json
 {"name":"مشرف الأطفال","isActive":true,"permissions":["identity.users.view"]}
 ```
 
-For protected roles name must match its unchanged reserved name and isActive must remain true. Name edits preserve Role ID, memberships and grants except deliberate requested grant replacement. Proposed minimal 201/200 success envelope; 401/403/404/409/422 safe Arabic errors as appropriate. Reject protected-role deletion/deactivation/rename and used custom Role deletion; confirm exact HTTP error codes in review. Authorization before target lookup; recheck current actor and session under shared transaction lock. Existing approved roles.update may grant/revoke any predefined permission even if actor lacks it. **Open review:** whether roles.store can grant any predefined permission at creation as well; do not implement until approved. No implicit manager bypass.
+For protected roles name must match its unchanged reserved name and isActive must remain true. Name edits preserve Role ID, memberships and grants except deliberate requested grant replacement. Minimal 201/200 success envelope; 401/403/404/409/422 safe Arabic errors as specified in D04. Reject protected-role deletion/deactivation/rename and used custom Role deletion with 409. Authorization before target lookup; recheck current actor and session under shared transaction lock. Approved D01: roles.update may grant/revoke any predefined approved web catalogue permission, and roles.store may grant any such permission on creation, even if the actor lacks it. No implicit assignment to creator; both capabilities are sensitive delegation authority. No implicit manager bypass.
 
 ## 3. Selects and cross-feature contract correction
 
-Central GET /api/v1/selects?selects=permissions: permission options value = technical name, label = stored permission alias. Authorized by roles.store OR roles.update as approved. Existing roles and userFilterRoles retain authorization, eligibility, numeric ID values and result bounds; label changes from alias to name. Proposed max keys 3 (was 2), provider max 200 with safe overflow (review scalability), unknown/duplicate 422, any unauthorized key 403 for the entire request. No grouped payload changes; frontend groups permission keys by owning prefix.
+Central GET /api/v1/selects?selects=permissions: permission options value = technical name, label = stored permission alias. Authorized by roles.store OR roles.update as approved. Existing roles and userFilterRoles retain authorization, eligibility, numeric ID values and result bounds; label changes from alias to name. Approved max keys 3 (was 2), provider max 200 with safe 409 overflow, unknown/duplicate 422, any unauthorized key 403 for the entire request. No grouped payload changes; frontend groups permission keys by owning prefix.
 
 F02 /auth/me (and any login response using same projection) nested Role contract after F04: {"id":1,"name":"manager"}; unchanged User name/username and permission strings; no User ID addition, no role aliasName. F03 list/detail nested Role contract: {"id":2,"name":"reception","isActive":true} or null as before. No role aliasName; retain all unrelated User fields, exact shapes, filters, avatar and pagination. Role Select option examples {"value":1,"label":"manager"} and {"value":3,"label":"مشرف الأنشطة"}; do not change ID/eligibility. Permission aliasName remains unchanged. This is an intentionally approved breaking removal of the older Role display field; coordinate any existing API clients before deployment.
 
 ## 4. Migration and implementation review points (not executed)
 
-Existing roles.alias_name is NOT NULL in the actual historical migration. Keep old migrations intact; create a forward migration only after plan/tasks approval. Proposed safe default for existing rows: preserve roles.name, ID, guard, active flags, pivots, users and sessions. Never change manager/reception technical names or IdentityMutex. Existing aliases may contain unique custom display information; before any destructive execution inspect actual schema and role names/aliases in an authorized environment, assess collisions and back up role alias mapping; require explicit reviewed decisions for any existing custom name/display mismatch rather than silently overwrite/lose it. Do not infer production data from seed fixtures. Rollback needs compatible application code and reviewed restoration from backup, not generated fake aliases. MySQL DDL auto-commit; coordinate deployment with app/client compatibility and maintenance, no production operation now. No new index without evidence; preserve current unique (name, guard_name), actual collation/length to be reviewed.
+Existing roles.alias_name is NOT NULL in the actual historical migration. Keep old migrations intact; create a forward migration only after plan/tasks approval. Approved preservation policy for existing rows: preserve roles.name, ID, guard, active flags, pivots, users and sessions. Never change manager/reception technical names or IdentityMutex. Existing aliases may contain unique custom display information; before any destructive execution inspect actual schema and role names/aliases in an authorized environment, assess collisions and back up role alias mapping; require explicit reviewed decisions for any existing custom name/display mismatch rather than silently overwrite/lose it. Do not infer production data from seed fixtures. Rollback needs compatible application code and reviewed restoration from backup, not generated fake aliases. MySQL DDL auto-commit; coordinate deployment with app/client compatibility and maintenance, no production operation now. No new index without evidence; preserve current unique (name, guard_name), actual collation/length to be reviewed.
 
 Actual source dependencies on role alias at baseline: SeedIdentityCatalogueAction (role seed attributes only; permission aliases unaffected), IdentityAccess.context (select and projection), MeResource, UsersQuery (role eager projection), UserManagementResource and RoleOptionsProvider. Review all role factory/fixture inserts, schema tests, authentication/resource/select assertions and concurrency harness fixtures; change only superseded Role alias expectations and preserve existing security/behavior assertions. Review F01 bootstrap, IdentityMutex, protected roles, permission cache, Role deletion vs assignment, Role disable vs login/profile/admin writes, bulk credential generation bounds and failure rollback. Do not add a second technical role column or use role display text as authority.
 
-## 5. Proposed acceptance criteria (Not Run)
+## 5. Approved acceptance criteria (Not Run)
 
 | ID | Required verification |
 | --- | --- |
@@ -71,11 +71,11 @@ Actual source dependencies on role alias at baseline: SeedIdentityCatalogueActio
 | F04-11 | Forward migration preserves Role IDs/names/grants/membership, User credentials/session data and Permission aliases; no Role alias in schema/resources; safe preflight and backup/rollback review. |
 | F04-12 | F01–F03 complete regression with intentional updated Role label contract, additive seeders, no unexpected schema/routes/permissions/dependencies, safe errors, Pint and CI. |
 
-## 6. Contract review defaults proposed with the technical plan
+## 6. Approved contract decisions (2026-11-26)
 
-These defaults are recommendations for approval, not newly approved requirements:
+User approved the presented specification, technical plan, tasks and decisions D01–D08.
 
-| ID | Decision | Recommended default |
+| ID | Decision | Approved behavior |
 | --- | --- | --- |
 | D01 | Store grant authority | Like the already-approved roles.update, roles.store may assign any existing approved web catalogue permission, even if the actor lacks it. Treat this as a privileged delegation capability; it does not itself change the actor's grants. User create/update combined with Role store can establish a more privileged account, so grant these capabilities deliberately. No direct grants. |
 | D02 | Name validation / uniqueness | Single trimmed, nonblank Arabic/English-capable Unicode name, maximum 255 characters, no invalid UTF-8, control characters or invisible directional formatting; retain normal spaces, digits and ordinary punctuation. Reject reserved-name variants under actual DB collation; permanent exact names immutable. Use existing unique (name, guard_name) and its actual case/accent equivalence (default utf8mb4_unicode_ci); confirm on MySQL 8 rather than assuming binary equality or adding a second index. |
@@ -86,8 +86,8 @@ These defaults are recommendations for approval, not newly approved requirements
 | D07 | Legacy name migration | Preserve current roles.name and all IDs/pivots, no automatic alias-to-name rename; inspect and back up legacy alias mapping and separately approve disposition of real custom names that differ from aliases before dropping. Permanent roles display manager/reception literally under the backend contract. |
 | D08 | Role disable semantics | On a true-to-false transition, advance auth_version for every associated User including inactive Users, once, delete their authoritative sessions in the same transaction, keep assignments and User is_active unchanged. Repeat false->false and true reactivation do not advance versions. Same behavior for actor if authorized self-role disable leaves another viable admin; clear browser only after known commit. Grant/rename-only changes preserve sessions. |
 
-D08 refines the already approved role-disable/re-enable behavior. The exact transaction, cache and failure design is in plan.md. If a proposal is rejected, revise these documents before implementation.
+D08 refines the already approved role-disable/re-enable behavior. The exact transaction, cache and failure design is in plan.md. Any later substantive change requires separate review before implementation.
 
 ## 7. Gate
 
-Naming correction and previously approved business decisions are recorded. Full specification defaults above, technical plan and task breakdown are supplied for review together; Store grant authority remains a distinct security decision. Approval of documents does not authorize destructive execution: specifically approve the forward drop and any reset/rollback testing only in verified disposable MySQL 8 CI before adding an automatically executed migration to an implementation PR. Real DB inspection, data transformation, migration, production deployment and merge require their own authorization. No application implementation or test execution for Feature 04 yet.
+Specification, plan and task breakdown, including D01–D08, approved on 2026-11-26. User specifically authorized testing the forward DROP COLUMN roles.alias_name only in the verified disposable GitHub Actions MySQL 8 database. This approval does not extend to real databases, new reset/rollback operations, data transformations, deployment or merge. The already approved test harness's routine guarded disposable fixture initialization remains part of the existing baseline; do not add new destructive reset/down procedures. Prefer a forward-only upgrade fixture in a guarded fresh CI service lifecycle with pre-drop export. See plan.md for exact guard and recovery requirements. Documentation PR #11 must pass required CI and receive explicit merge authorization; no application code or F04 migration execution yet.

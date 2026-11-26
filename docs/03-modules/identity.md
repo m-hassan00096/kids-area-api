@@ -140,7 +140,7 @@ The seeded technical roles are **`manager` and `reception`**. Both are permanent
 
 Custom roles may be created, assigned to Users, edited, activated/deactivated and **hard-deleted if and only if they have zero assigned Users**, including inactive accounts. Role deletion removes its permission pivots, **not the shared Permission catalogue or historical audit**. Reject deletion of a used custom role with `409`. No auto-reassignment occurs when a custom role is deactivated.
 
-Role `name` is the stored display name, unique within `web`; a custom role may be renamed by an authorized update, but the permanent role names are immutable. `guard_name` remains stable. There is no role alias column in the Feature 04 target schema. `roles.is_active` determines eligibility for new role assignments and protected access. A custom role can be disabled while assigned, but its Users then lose protected access until the role is reactivated or they are reassigned.
+Role `name` is the stored display name, unique within `web`; a custom role may be renamed by an authorized update, but the permanent role names are immutable. `guard_name` remains stable. There is no role alias column in the Feature 04 target schema. `roles.is_active` determines eligibility for new role assignments and protected access. A custom role can be disabled while assigned. **Approved F04 D08:** on active-to-inactive transition advance the credential generation once for every assigned User (including inactive Users) and invalidate all their authoritative sessions atomically with the Role update. Keep User active flags and assignments; reactivation never restores old sessions. Rename/grant-only changes do not revoke sessions.
 
 ### 5.2 Role CRUD and technical capabilities
 
@@ -152,7 +152,7 @@ Role `name` is the stored display name, unique within `web`; a custom role may b
 | PUT | `/roles/{role}` | `identity.roles.update` |
 | DELETE | `/roles/{role}` | `identity.roles.delete` |
 
-The `PUT` edits the custom role's unique name, activation for custom roles, and the role's selected Permission identifiers; protected role names stay unchanged. All five role operations are **independently permissioned**. `identity.roles.update` allows the actor to grant/revoke **any predefined catalogue Permission** to a Role, **even when the actor does not personally hold that permission**, subject to the protected baseline roles and last viable administrator rule. There is no separate `identity.roles.manage` shortcut and no unrestricted Manager bypass.
+The `PUT` edits the custom role's unique name, activation for custom roles, and the role's selected Permission identifiers; protected role names stay unchanged. All five role operations are **independently permissioned**. `identity.roles.update` allows the actor to grant/revoke **any predefined approved web catalogue Permission** to a Role, **even when the actor does not personally hold that permission**, subject to the protected baseline roles and last viable administrator rule. **Approved 2026-11-26 (F04 D01):** `identity.roles.store` may likewise grant any existing approved web catalogue Permission when creating a custom role; it does not implicitly assign that role or its permissions to the creator. There is no separate `identity.roles.manage` shortcut and no unrestricted Manager bypass.
 
 These are intentionally powerful administrative permissions. Grant them explicitly, apply all security invariants, and record the required audit **after the deferred Audit feature is implemented**; no synthetic authority is derived just from the role's name. Before then, sensitive changes lack the central audit trail and must not be described as fully audited.
 
@@ -163,7 +163,7 @@ These are intentionally powerful administrative permissions. Grant them explicit
 - Initial `manager` receives **all approved permissions at first installation**, explicitly, not through a wildcard or unconditional Laravel Gate.
 - Initial `reception` receives the separately approved **routine operating capabilities**, not sensitive administration by default.
 - On later deploy/reseed, **add missing definitions only**; do not reset role names, permission aliases, active flags, custom role grants, passwords or any existing role's permissions; new catalogue entries are **not automatically granted to existing manager/reception roles**.
-- The UI may assign/revoke existing Permission records **through role editing only**. It cannot create, rename or delete arbitrary technical Permission keys, and direct User grants are unsupported.
+- The UI may assign/revoke existing Permission records **through authorized role creation/editing only**. It cannot create, rename or delete arbitrary technical Permission keys, and direct User grants are unsupported.
 - `permissions.alias_name` is persisted permission display text; roles display their own `name` directly. Do not use display text as authority or introduce translation tables.
 - Permission-cache coherence, post-commit revocation visibility and consistent Laravel/Spatie guard configuration are required and verified in the RBAC plan.
 

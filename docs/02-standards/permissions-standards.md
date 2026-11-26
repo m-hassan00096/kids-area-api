@@ -193,7 +193,7 @@ UNIQUE (model_type, model_id)
 
 - **Users:** `identity.users.view`, `identity.users.create`, `identity.users.update`, and independent `identity.users.delete`. `identity.users.update` covers user data, role, activation and password reset for **another** account through the same `PUT /users/{user}`. Password remains unchanged if omitted/empty. Self password changes always use Profile with current password.
 - **Roles:** independent `identity.roles.index`, `identity.roles.store`, `identity.roles.show`, `identity.roles.update`, `identity.roles.delete`; `identity.roles.update` includes all predefined Role Permission grants/revocations and custom-role activation.
-- **Grants are intentionally broad:** the holder of `identity.roles.update` may grant/revoke **any existing technical catalogue Permission**, including one they do not personally possess. There is **no additional per-permission dominance restriction**, but no unapproved implicit manager bypass either.
+- **Grants are intentionally broad:** the holder of `identity.roles.update` may grant/revoke **any existing approved web catalogue Permission**, including one they do not personally possess. **Approved F04 D01 (2026-11-26):** the holder of `identity.roles.store` may grant any such Permission on creation of a custom Role; this does not automatically assign the Role or change the creator's grants. There is no per-permission dominance restriction or implicit manager bypass. Treat these as sensitive delegation capabilities.
 - **Account targets are intentionally broad:** the holder of `identity.users.update` may edit another Manager just like other Users, **except User ID 1**. No generic higher-role target restriction is added. Changing a User's own password through Users PUT remains prohibited.
 - **User ID 1:** nobody else may update it, regardless of permissions or Role; nobody may deactivate or delete it (including itself). The owner may perform otherwise authorized ordinary updates and can change its password only through Profile/current password. Last Manager Protection still applies to self role changes.
 - **Last viable admin protection remains mandatory** for every affected role/User/grant mutation; no permission authorizes deleting/stranding the final viable access-management path.
@@ -221,7 +221,7 @@ Spatie does **not** enforce a custom `roles.is_active` flag by default. A disabl
 - An authenticated request without an active Role returns **`403`**; a genuinely unauthenticated request returns **`401`**. Keep the shared JSON failure envelope.
 - Revocation/deactivation is effective for the **next newly authorized request** once the change is committed and permission state coherently refreshed; in-flight requests cannot be retroactively canceled. Business-critical Actions still re-check their own authority/state at their trusted execution boundary where appropriate.
 - Never assign an inactive role to a new user. Existing User-role links are **preserved** when the role becomes inactive; **do not automatically reassign** users.
-- Reactivating a role restores only that role's **currently granted permissions**, not any implicit managerial bypass.
+- **Approved F04 D08 (2026-11-26):** on active-to-inactive Role transition, atomically increment every assigned User's credential generation once and invalidate authoritative sessions, including inactive Users. Preserve User activation and role assignment; repeat disable/re-enable does not increment versions again. Reactivating a role restores only its currently granted permissions, never prior sessions or an implicit managerial bypass.
 - Active/inactive roles remain visible to properly authorized administration/audit views; ordinary assignment selectors should return only eligible active roles.
 - Register the custom active-staff-role middleware once in the Laravel 12 middleware configuration. Its public alias may be `staff.active` or a documented equivalent; test middleware ordering against installed Spatie middleware.
 
@@ -527,7 +527,7 @@ Keep all details of [API Standards](api-standards.md) and [Error Handling Standa
 | Record scoping | Unauthorized sensitive record `404` as specified; feature permission `403` |
 | Select Registry | Unknown key `422`; any forbidden key `403` with **no partial options** |
 | Role management | Only authorized actor can manage each eligible Role/permission set |
-| Administrative grants | `identity.roles.update` may grant any predefined Permission (including not personally held); `identity.users.update` may manage other Managers except User ID 1; test Last Manager safeguards |
+| Administrative grants | `identity.roles.update` may grant/revoke and `identity.roles.store` may grant any existing approved web catalogue Permission (including not personally held); `identity.users.update` may manage other Managers except User ID 1; test Last Manager safeguards |
 | Last viable administrator | Any active single-Role User (including custom Roles) with all six essential effective permissions counts; no concurrent mutation may leave zero viable paths |
 | True concurrency | Two independently overlapping MySQL transactions cannot remove two final Managers |
 | Admin-grant race | Concurrent role permission removals honor the same serialization invariant |
