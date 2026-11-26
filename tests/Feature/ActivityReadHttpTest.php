@@ -112,7 +112,16 @@ class ActivityReadHttpTest extends AuthenticationHttpTestCase
         $server = $this->server();
         $anonymous = $this->browser($server);
         $this->assertSame(401, $anonymous->request('GET', '/api/v1/activities')->status);
-        $this->assertSame(403, $anonymous->request('GET', '/api/v1/activities', options: ['headers' => ['Origin' => 'https://unapproved.invalid']])->status);
+        foreach ([
+            ['Origin' => 'https://unapproved.invalid'],
+            ['Origin' => null, 'Referer' => null],
+            ['Authorization' => 'Bearer synthetic-token'],
+            ['Host' => 'unapproved.invalid'],
+        ] as $headers) {
+            $response = $anonymous->request('GET', '/api/v1/activities', options: ['headers' => $headers]);
+            $this->assertSame(403, $response->status);
+            $this->assertSame('0', $response->header('X-Test-Activity-Reads'));
+        }
         $manager = $this->user('Activity.Boundary.Manager');
         $admin = $this->browser($server);
         $this->assertSame(200, $admin->login($manager->username)->status);

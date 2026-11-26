@@ -140,7 +140,20 @@ class ActivityWriteHttpTest extends AuthenticationHttpTestCase
             $this->assertSame(400, $admin->request('POST', '/api/v1/activities', options: ['raw' => $raw])->status);
         }
         $this->assertSame(422, $admin->request('POST', '/api/v1/activities?extra=1', $valid)->status);
-        $this->assertSame(422, $admin->request('POST', $path, $valid, ['headers' => ['X-HTTP-Method-Override' => 'PUT']])->status);
+        foreach ([
+            ['/api/v1/activities', $valid + ['_method' => 'PUT'], []],
+            [$path, $valid + ['_method' => 'PUT'], []],
+            [$path.'?_method=DELETE', null, []],
+            ['/api/v1/activities?_method=PUT', $valid, []],
+            [$path, $valid, ['headers' => ['X-HTTP-Method-Override' => 'PUT']]],
+            ['/api/v1/activities', $valid, ['headers' => ['X-HTTP-Method-Override' => 'PUT']]],
+            [$path, null, ['headers' => ['X-HTTP-Method-Override' => 'DELETE']]],
+        ] as [$uri, $body, $options]) {
+            $response = $admin->request('POST', $uri, $body, $options);
+            $this->assertSame(422, $response->status);
+            $this->assertSame('0', $response->header('X-Test-Activity-Writes'));
+            $this->assertSame('0', $response->header('X-Test-Activity-Reads'));
+        }
         $missingActive = $valid;
         unset($missingActive['isActive']);
         $response = $admin->request('PUT', $path, $missingActive);
