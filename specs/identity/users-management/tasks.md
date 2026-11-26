@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 20/49 complete (T01–T20); T21–T25 private avatar infrastructure in progress; verification pending. All 19 full acceptance scenarios Not Run. No production or merge.
+> **Progress:** 20/49 complete (T01–T20); T21–T25 authored, verification blocked by new Composer security advisories (see §21.1). No production or merge; 19 full acceptance scenarios Not Run.
 
 ## 1. Gates and evidence rules
 
@@ -316,3 +316,7 @@ Private identity-avatars disk, exclusive immutable staged files, format-aware JP
 ### Phase D tests authored (not yet verified)
 
 Synthetic PHP/GD fixtures including an independently generated JPEG with restart markers and stuffed entropy bytes; canonical output, dimensions, alpha, metadata, invalid structure, upload byte limits, actual private exclusive storage and no symlink following, known outcome cleanup and primary reference check, read replacement retry, actual protected binary HTTP and guarded native multipart POST/PUT probe on existing routes (no production probe or write). Tests use isolated private root; real mutation integration remains later. Manual reconciliation: stop all writes/requests and wait for in-flight work to drain; coordinated DB/private-tree backup; inventory only canonical keys and compare against primary current users.avatar_key, investigate missing references and preserve ambiguous files; separate approval before deleting any unreferenced file; never auto-delete by age alone. No host operation authorized.
+
+### 21.1 Phase D verification blockers (2026-11-26)
+
+Main CI 45792700708 stopped at `composer audit --locked`: five advisories against existing symfony/http-kernel v7.4.23 (CVE-2026-133743), symfony/mailer v7.4.22 (CVE-2026-133751/133755), symfony/routing v7.4.23 (CVE-2026-133746/133754), fixed in 7.4.24 according to logged affected ranges. No Composer change or audit suppression; separate exact patch approval required. No Laravel Phase D tests ran. Isolated PHP8.2 native-only probe 45792957589 passed lint and JPEG/PNG/WebP resize + alpha; then failed on independent JPEG fixture. The committed Base64 was 1544 rather than generated 1548 characters (transcription error); restored independently generated 1159-byte fixture with exact SHA256 assertion. Native proof and security solver to be rerun independently, no vendor install. Added storage normalized-output header/dimension guard and distinct collision fixture. T21–T25 remain unchecked.

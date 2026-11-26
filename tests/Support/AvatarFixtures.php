@@ -53,6 +53,11 @@ final class AvatarFixtures
     {
         // Independent libjpeg fixture (Pillow 12.3.0, random seed123,
         // 32x32 RGB, quality65, restart_marker_blocks=1); synthetic only.
-        return base64_decode(trim(file_get_contents(__DIR__.'/fixtures/avatar-restart-jpeg.base64')), true);
+        $bytes = base64_decode(trim(file_get_contents(__DIR__.'/fixtures/avatar-restart-jpeg.base64')), true);
+        if (! is_string($bytes) || strlen($bytes) !== 1159 || hash('sha256', $bytes) !== 'a47ea278093479ec5540aac70043730e778430243073ba3746c5ce3fc214e1e6') {
+            throw new RuntimeException('Synthetic JPEG fixture integrity failed.');
+        }
+
+        return $bytes;
     }
 }

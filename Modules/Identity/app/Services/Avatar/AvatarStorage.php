@@ -11,8 +11,7 @@ class AvatarStorage
 {
     public function stage(#[SensitiveParameter] NormalizedAvatar $image): string
     {
-        if (! AvatarFormat::structure($image->bytes, $image->extension)
-            || (new \finfo(FILEINFO_MIME_TYPE))->buffer($image->bytes) !== AvatarFormat::mime($image->extension)) {
+        if (! AvatarFormat::normalized($image->bytes, $image->extension)) {
             throw new RuntimeException('Invalid staged avatar.');
         }
         $key = $this->newKey($image->extension);
@@ -83,8 +82,7 @@ class AvatarStorage
         }
         $extension = AvatarFormat::extension($key);
         if (! is_string($bytes) || strlen($bytes) !== $stat['size'] || $extension === null
-            || ! AvatarFormat::structure($bytes, $extension)
-            || (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes) !== AvatarFormat::mime($extension)) {
+            || ! AvatarFormat::normalized($bytes, $extension)) {
             throw new RuntimeException('Avatar stored data invalid.');
         }
 
@@ -122,9 +120,10 @@ class AvatarStorage
         clearstatcache(true, $root);
         $resolved = realpath($root);
         $public = realpath(public_path());
+        $permissions = @fileperms($root);
         if ($resolved === false || $public === false || is_link($root) || $resolved === $public
             || str_starts_with($resolved.DIRECTORY_SEPARATOR, $public.DIRECTORY_SEPARATOR)
-            || (fileperms($root) & 0077) !== 0) {
+            || $permissions === false || ($permissions & 0077) !== 0) {
             throw new RuntimeException('Avatar root is not private.');
         }
 

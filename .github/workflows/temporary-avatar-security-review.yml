@@ -58,6 +58,7 @@ jobs:
           $png=AvatarFixtures::image('png');
           $webp=AvatarFixtures::image('webp');
           $restart=AvatarFixtures::restartJpeg();
+          echo 'NATIVE_RESTART_DIAGNOSTIC '.json_encode(['bytes'=>strlen($restart),'sha256'=>hash('sha256',$restart),'structure'=>AvatarFormat::structure($restart,'jpg'),'mime'=>(new \finfo(FILEINFO_MIME_TYPE))->buffer($restart)]).PHP_EOL;
           need(str_contains($restart,"\xff\xd0")&&str_contains($restart,"\xff\x00")&&$n->normalize($restart,'jpg')->extension==='jpg','independent_jpeg_restart_stuffing');
           need($n->normalize(AvatarFixtures::image('jpg',64,32,true),'jpg')->extension==='jpg','progressive');
           need(!AvatarFormat::structure($jpg.$png."\xff\xd9",'jpg'),'dual_jpeg_png_eoi');
@@ -72,6 +73,7 @@ jobs:
           PHP
           test ! -d vendor
       - name: Dry-run exact security patches only (no install)
+        if: always()
         shell: bash
         run: |
           set -euo pipefail

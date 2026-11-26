@@ -45,6 +45,17 @@ final class AvatarFormat
         };
     }
 
+    public static function normalized(string $bytes, string $extension): bool
+    {
+        if (! self::structure($bytes, $extension) || (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes) !== self::mime($extension)) {
+            return false;
+        }
+        $info = @getimagesizefromstring($bytes);
+
+        return is_array($info) && ($info['mime'] ?? null) === self::mime($extension)
+            && $info[0] > 0 && $info[1] > 0 && $info[0] <= 512 && $info[1] <= 512;
+    }
+
     // Walk actual length-delimited marker segments and entropy scans.
     // An EOI-like byte pair inside APP/COM data is not a terminating marker.
     private static function jpeg(string $bytes): bool
