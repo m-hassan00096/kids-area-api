@@ -52,8 +52,8 @@ if (! $app->environment('testing') || $connection->getDatabaseName() !== 'kids_a
     http_response_code(503);
     exit;
 }
-$server = $connection->selectOne('SELECT DATABASE() AS db, VERSION() AS version, @@default_storage_engine AS engine, CONNECTION_ID() AS connection_id');
-if ($server->db !== 'kids_area_test' || ! str_starts_with($server->version, '8.') || $server->engine !== 'InnoDB' || $app->runningInConsole()) {
+$server = $connection->selectOne('SELECT DATABASE() AS db, CURRENT_USER() AS principal, VERSION() AS version, @@default_storage_engine AS engine, CONNECTION_ID() AS connection_id');
+if ($server->db !== 'kids_area_test' || ! str_starts_with($server->principal, 'kids_area_ci@') || ! str_starts_with($server->version, '8.') || $server->engine !== 'InnoDB' || $app->runningInConsole()) {
     http_response_code(503);
     exit;
 }
@@ -73,6 +73,14 @@ if (is_string($barrierDir) && dirname($barrierDir) === sys_get_temp_dir()
 }
 $barrier = $request->headers->get('X-Identity-Test-Barrier');
 $mode = $request->headers->get('X-Identity-Test-Mode');
+// Role fault and barrier modes are confined to the authorized CI database.
+if (is_string($mode) && (str_contains($mode, 'roles-action-') || str_contains($mode, 'role-write')
+    || str_contains($mode, 'role-insert') || str_contains($mode, 'role-delete') || str_contains($mode, 'role-grant')
+    || str_contains($mode, 'role-generation') || str_contains($mode, 'role-session') || str_contains($mode, 'roles-deadlock'))
+    && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1')) {
+    http_response_code(503);
+    exit;
+}
 if (is_string($mode) && str_starts_with($mode, 'users-probe-') && $request->is('api/v1/users', 'api/v1/users/*')) {
     // Swap only the controller in the guarded test router for isolated boundary probes. The real route and middleware stack runs unchanged.
     $app->bind(UsersController::class, fn () => new UsersBoundaryProbe);
@@ -174,6 +182,25 @@ Route::middleware('api')->post('/api/v1/__fixture-user-link/{user}', static func
     }
 
     return response()->json(['fixture' => 'linked'], 201);
+});
+// Only the synthetic CI fixture can invert the manager/User lock order.
+// The extra undo entries make the small Role transaction the deadlock victim.
+// Reuse the existing throttle table; no fixture DDL or new reset is needed.
+Route::middleware('api')->post('/api/v1/__fixture-roles-deadlock/{user}', static function (int $user) use ($mode, $pause) {
+    abort_unless($mode === 'hold-roles-deadlock' && getenv('GITHUB_ACTIONS') === 'true', 404);
+    DB::transaction(function () use ($user, $pause): void {
+        $rows = [];
+        for ($i = 0; $i < 100; $i++) {
+            $rows[] = ['scope' => 250, 'key_digest' => hash('sha256', 'synthetic-role-deadlock-'.$i),
+                'failure_times' => '[]', 'blocked_until_ms' => null, 'expires_at_ms' => now()->getTimestampMs() + 60000];
+        }
+        DB::table('identity_login_throttles')->insert($rows);
+        abort_if(DB::table('users')->where('id', $user)->lockForUpdate()->first(['id']) === null, 404);
+        $pause();
+        DB::table('roles')->where('name', 'manager')->where('guard_name', 'web')->lockForUpdate()->first(['id']);
+    }, 1);
+
+    return response()->json(['fixture' => 'committed'], 201);
 });
 if (in_array($mode, ['hold-avatar-before-read', 'hold-avatar-after-read', 'fault-avatar-stage'], true)) {
     $app->bind(AvatarStorage::class, static fn () => new class($mode, $pause) extends AvatarStorage
@@ -338,11 +365,11 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
             $statement = $connection->getPdo()->prepare('UPDATE users SET username = ? WHERE username = ?');
             $statement->execute(['Fixture.New', 'Fixture.Collision']);
         }
-        if ($restoreStatements === 2 && $mode === 'users-action-cache') {
+        if ($restoreStatements === 2 && in_array($mode, ['users-action-cache', 'roles-action-cache'], true)) {
             app()->forgetInstance(PermissionRegistrar::class);
             app()->bind(PermissionRegistrar::class, static fn () => throw new RuntimeException('Synthetic postcommit cache failure.'));
         }
-        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore'], true)) {
+        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore', 'roles-action-timeout-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
     }
@@ -377,7 +404,21 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     $userInsert = str_starts_with($sql, 'insert into users');
     $userDelete = str_starts_with($sql, 'delete from users');
     $roleInsert = str_starts_with($sql, 'insert into model_has_roles');
-    if ($mode === 'users-action-final-save' && $request->attributes->get('staff_self_revoked') && ($nativeSave || $nativeInsert)) {
+    $roleCreate = str_starts_with($sql, 'insert into roles ');
+    $roleWrite = str_starts_with($sql, 'update roles set ');
+    $roleDelete = str_starts_with($sql, 'delete from roles ');
+    $roleGrant = str_starts_with($sql, 'insert into role_has_permissions ');
+    $roleGeneration = $userWrite && str_contains($sql, 'auth_version');
+    if ($roleCreate && $mode === 'roles-action-duplicate') {
+        // Same real transaction: force the named MySQL unique constraint
+        // AFTER the service's collation precheck, before its native insert.
+        $armed = false;
+        $statement = $connection->getPdo()->prepare('INSERT INTO roles (name, guard_name, is_active) VALUES (?, ?, ?)');
+        $statement->execute(['Fixture Constraint Collision', 'web', 1]);
+
+        return;
+    }
+    if (in_array($mode, ['users-action-final-save', 'roles-action-final-save'], true) && $request->attributes->get('staff_self_revoked') && ($nativeSave || $nativeInsert)) {
         $armed = false;
         throw new RuntimeException('Synthetic postcommit native save failure.');
     }
@@ -385,6 +426,12 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         'hold-credentials', 'fault-report' => $credentialRead,
         'hold-manager', 'hold-manager-expire' => $managerLock,
         'hold-users-insert' => $userInsert,
+        'hold-role-insert' => $roleCreate,
+        'hold-role-write', 'fault-role-write' => $roleWrite,
+        'hold-role-delete', 'fault-role-delete' => $roleDelete,
+        'fault-role-grant' => $roleGrant,
+        'fault-role-generation' => $roleGeneration,
+        'fault-role-session' => $revoke,
         'hold-users-update' => $userWrite,
         'hold-users-delete-fk' => $userDelete,
         'fault-users-pivot' => $roleInsert,
@@ -428,14 +475,14 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
-if (in_array($mode, ['observe-deadlock', 'users-performance'], true)) {
+if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
 }
 if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
     $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
 }
 $commitFault = null;
-if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack'], true)) {
+if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }
@@ -461,6 +508,10 @@ if ($commitFault !== null) {
     $response->headers->set('X-Test-Actual-Commit-Count', (string) $commitFault->commits);
 }
 $response->headers->set('X-Test-Query-Count', (string) $count);
+if ($request->attributes->has('_test_roles_mysql_code')) {
+    $response->headers->set('X-Test-Roles-MySQL-Code', (string) $request->attributes->get('_test_roles_mysql_code'));
+    $response->headers->set('X-Test-Roles-MySQL-Count', (string) $request->attributes->get('_test_roles_mysql_count'));
+}
 $response->headers->set('X-Test-Users-Deadlock-Count', (string) $request->attributes->get('_test_users_deadlock_count', 0));
 if ($request->attributes->has('_test_users_deadlock_code')) {
     $response->headers->set('X-Test-Users-Deadlock-Code', (string) $request->attributes->get('_test_users_deadlock_code'));
@@ -470,6 +521,10 @@ $response->headers->set('X-Test-Users-Self-Revoked', $request->attributes->get('
 $outcome = $request->attributes->get('identity_users_outcome');
 if (is_string($outcome)) {
     $response->headers->set('X-Test-Users-Outcome', $outcome);
+}
+$rolesOutcome = $request->attributes->get('identity_roles_outcome');
+if (is_string($rolesOutcome)) {
+    $response->headers->set('X-Test-Roles-Outcome', $rolesOutcome);
 }
 if ($diagnostic !== null) {
     $response->headers->set('X-Test-Exception-Class', $diagnostic);
@@ -522,6 +577,13 @@ if ($inspect) {
     $response->headers->set('X-Test-Users-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
         && is_string($outcome) && ($log[1]['mutation_outcome'] ?? null) === $outcome) ? '1' : '0');
+    $response->headers->set('X-Test-Roles-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
+        && is_string($rolesOutcome) && ($log[1]['mutation_outcome'] ?? null) === $rolesOutcome) ? '1' : '0');
+    $response->headers->set('X-Test-Roles-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Roles lock timeout restoration failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
+    $response->headers->set('X-Test-Roles-Cache-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Roles permission cache invalidation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Users-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Users lock timeout restoration failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Users-Cache-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Users permission cache invalidation failed.'

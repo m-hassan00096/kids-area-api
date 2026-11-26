@@ -31,7 +31,13 @@ class UsersObservedStatement extends PDOStatement
 
             return $result;
         } catch (PDOException $exception) {
-            if ((int) ($exception->errorInfo[1] ?? 0) === 1213) {
+            $code = (int) ($exception->errorInfo[1] ?? 0);
+            if (in_array(request()->headers->get('X-Identity-Test-Mode'), ['roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore'], true)
+                && in_array($code, [1062, 1205, 1213], true)) {
+                request()->attributes->set('_test_roles_mysql_code', $code);
+                request()->attributes->set('_test_roles_mysql_count', 1 + (int) request()->attributes->get('_test_roles_mysql_count', 0));
+            }
+            if ($code === 1213) {
                 request()->attributes->set('_test_users_deadlock_code', 1213);
                 request()->attributes->set('_test_users_deadlock_count', 1 + (int) request()->attributes->get('_test_users_deadlock_count', 0));
             }

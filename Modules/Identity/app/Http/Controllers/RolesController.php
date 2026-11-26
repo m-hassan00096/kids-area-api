@@ -9,8 +9,8 @@ use Modules\Identity\Actions\CreateRoleAction;
 use Modules\Identity\Actions\DeleteRoleAction;
 use Modules\Identity\Actions\UpdateRoleAction;
 use Modules\Identity\Http\Requests\CreateRoleRequest;
-use Modules\Identity\Http\Requests\UpdateRoleRequest;
 use Modules\Identity\Http\Requests\RolesIndexRequest;
+use Modules\Identity\Http\Requests\UpdateRoleRequest;
 use Modules\Identity\Queries\RolesQuery;
 
 final class RolesController
