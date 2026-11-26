@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 33/49 complete T01–T33; T34–T37 implemented, focused CI 45804378519 green (25/1087, Pint 149), full standard CI 45804312638 in_progress. T34–T37 unchecked pending full verification. 19 full acceptance scenarios Not Run; no merge.
+> **Progress:** 37/49 complete (T01–T37); standard CI 45804312638 success (§24.2). T38–T43 race/fault matrix next when authorized; 19 full acceptance scenarios Not Run; no merge.
 
 ## 1. Gates and evidence rules
 
@@ -86,13 +86,13 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 - [x] **T33 — DeleteUserAction.** Dependencies: T23,T27–T30. Block founder/all self deletes; independent permission, native own membership removal and target session delete, actual RESTRICT conflict409, no historical cascade, last-admin check and postcommit file cleanup. Evidence: Target-only delete/rollback proof F03-08/12/13/16.
 
-- [ ] **T34 — Postcommit and self-disable lifecycle.** Dependencies: T28–T33. Known commit clear self-revoked device and suppress touch, stale native save no authority, active role preserves session, unrelated device unaffected; distinguish cache/cleanup failure and ambiguous commit, no retry. Evidence: Browser/final save/cache/cleanup proof F03-09/10/11/16/18.
+- [x] **T34 — Postcommit and self-disable lifecycle.** Dependencies: T28–T33. Known commit clear self-revoked device and suppress touch, stale native save no authority, active role preserves session, unrelated device unaffected; distinguish cache/cleanup failure and ambiguous commit, no retry. Evidence: Browser/final save/cache/cleanup proof F03-09/10/11/16/18.
 
-- [ ] **T35 — Create/update HTTP integration.** Dependencies: T25,T31,T32,T34. Actual JSON/multipart create and update/201/200, validated fields/duplicates, reset/preserve/self rejection, avatar optional/replace/remove/invalid retains old, native CSRF/origin and independent permission. Evidence: HTTP/DB/filesystem assertions F03-04–07/14–16.
+- [x] **T35 — Create/update HTTP integration.** Dependencies: T25,T31,T32,T34. Actual JSON/multipart create and update/201/200, validated fields/duplicates, reset/preserve/self rejection, avatar optional/replace/remove/invalid retains old, native CSRF/origin and independent permission. Evidence: HTTP/DB/filesystem assertions F03-04–07/14–16.
 
-- [ ] **T36 — Founder, role and revocation tests.** Dependencies: T30–T32,T34,T35. Founder/self rules incl image/reset, active/inactive role rules and anomaly denial, fresh Me/grants, all-device disable/reenable, combined increment, unrelated devices/Profile unchanged. Evidence: Real multi-cookie/DB state F03-08–12.
+- [x] **T36 — Founder, role and revocation tests.** Dependencies: T30–T32,T34,T35. Founder/self rules incl image/reset, active/inactive role rules and anomaly denial, fresh Me/grants, all-device disable/reenable, combined increment, unrelated devices/Profile unchanged. Evidence: Real multi-cookie/DB state F03-08–12.
 
-- [ ] **T37 — Delete and FK tests.** Dependencies: T33,T34. Authorized nonself/nonfounder, disposable actual FK RESTRICT fixture and 1451 conflict retaining row/pivots/session/file, no role/other account removal; no synthetic production table. Evidence: Real MySQL/HTTP evidence F03-13/16.
+- [x] **T37 — Delete and FK tests.** Dependencies: T33,T34. Authorized nonself/nonfounder, disposable actual FK RESTRICT fixture and 1451 conflict retaining row/pivots/session/file, no role/other account removal; no synthetic production table. Evidence: Real MySQL/HTTP evidence F03-13/16.
 
 ## 7. Phase F — Concurrency, faults, security and performance (T38–T46)
 
@@ -158,7 +158,7 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 | T05 documentation merge and implementation | Complete; PR #9 merged and implementation branch approved |
 | T06 package/platform | Verified approved additions, CI 45673916280 success |
 | T07–T09 guarded DB/FS/migration | T07 verified 45678335241; T08/T09 verified 45678811050 |
-| T10–T37 HTTP/reads/selects/avatar/writes | T10–T33 task-level verified; T34–T37 pending |
+| T10–T37 HTTP/reads/selects/avatar/writes | T10–T37 verified |
 | T38–T46 races/faults/performance/scope | Not Run |
 | T47–T49 full tests/Pint/CI | Not Run |
 | Implementation merge / deployment | Not authorized |
@@ -370,3 +370,7 @@ T34–T37 tests authored: real self-disable with native final save and cache fau
 ### 24.1 Actual integration verification
 
 Actual T34–T37 verification (2026-11-26). Exact feature source `5c9e86bc09df3d4ffd3577c5a181a3da033b6797`. Focused isolated [45804378519](https://github.com/m-hassan00096/kids-area-api/actions/runs/45804378519), job 139855617507 completed Success: 25 tests/1087 assertions, Pint 149 files, locked install/platform/audit, guarded MySQL migrations, route cache/module/scope all passed. Eight new tests and expanded delete proof cover actual independent permissions, native CSRF/origin, genuine multipart create/update at 2MiB and +1, canonical formats, invalid image retention, founder own/other avatar protections, custom six-capability last-admin, fresh role/session and Profile, inactive/wrong guard, real named vs unknown RESTRICT FK preserving entire row/two authoritative sessions/old bytes/pivots; actual self-disable suppresses touch and clears initiating device on known commit; real delayed native INSERT after disable remains anonymous even after reenable using distinct HTTP server/MySQL connection and deterministic barriers; actual replacement cleanup/cache faults preserve referenced bytes with success, real commit plus synthetic lost acknowledgement returns 503, one commit and one generation increment, retains files. Native final-session-save failure after known commit returns safe 500 while DB change persists and revoked sessions remain nonauthoritative; safe correlated diagnostic explicitly reports committed (not rollback). No retry or public outcome API change. Existing Auth race/await bodies and old test body verified identical after extraction to shared trait; no thresholds/assertions weakened. Temporary probe retired at `0d0208c30553899938247bfbb7b3f6fb53871f27`, exact source tree restored. Standard CI [45804312638](https://github.com/m-hassan00096/kids-area-api/actions/runs/45804312638), job 139855388971: in_progress. Authentication and Identity focused steps passed; full suite not yet confirmed. T34–T37 remain unchecked, 33/49, pending full standard regression. T38–T43 full contention/fault matrix, T44–T49 security/scale/acceptance/reconciliation remain open; all 19 complete acceptance scenarios Not Run. No package/schema/routes/permissions change, production/hosting operation or merge.
+
+### 24.2 Standard regression and closure
+
+Standard CI [45804312638](https://github.com/m-hassan00096/kids-area-api/actions/runs/45804312638), job 139855388971, exact source `5c9e86bc09df3d4ffd3577c5a181a3da033b6797`, completed Success. Actual logs: No security vulnerability advisories found.; Tests:    41 passed (1443 assertions); Tests:    56 passed (825 assertions); Tests:    157 passed (4941 assertions); PASS   ......................................................... 149 files; INFO  Routes cached successfully.. All required standard steps passed. Compared checkpoint `c0bf4e836491e108e07f607b97811a96113fa80c` to tested source; documentation-only delta. T34–T37 verified/closed; 37/49. T38–T43 broader deterministic race/fault matrix next when authorized; T44–T49 remain open; all 19 complete acceptance scenarios Not Run. No merge or production operation.
