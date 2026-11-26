@@ -133,13 +133,16 @@ jobs:
           cat "$RUNNER_TEMP/users-tests.txt"
       - name: Run focused Users Management, Avatar and Select Registry tests
         run: php artisan test --filter='Users|Avatar|SelectRegistry'
-      - name: Verify focused Roles read test discovery
+      - name: Verify focused Roles test discovery
         run: |
-          vendor/bin/phpunit --list-tests --filter=RolesRead > "$RUNNER_TEMP/roles-tests.txt"
-          grep -Fq 'Tests\Feature\RolesReadHttpTest::' "$RUNNER_TEMP/roles-tests.txt"
+          vendor/bin/phpunit --list-tests --filter=Roles > "$RUNNER_TEMP/roles-tests.txt"
+          for source in tests/Feature/Roles*Test.php; do
+            class="$(basename "$source" .php)"
+            grep -Fq "Tests\\Feature\\${class}::" "$RUNNER_TEMP/roles-tests.txt"
+          done
           cat "$RUNNER_TEMP/roles-tests.txt"
-      - name: Run focused Roles reads
-        run: php artisan test --filter=RolesRead
+      - name: Run focused Roles tests
+        run: php artisan test --filter=Roles
       - name: Run PHPUnit
         run: php artisan test
       - name: Check Laravel Pint

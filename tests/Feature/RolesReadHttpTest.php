@@ -149,7 +149,7 @@ class RolesReadHttpTest extends AuthenticationHttpTestCase
 
         $expected = ['api/v1/roles' => 'identity.roles.index', 'api/v1/roles/{role}' => 'identity.roles.show'];
         foreach (Route::getRoutes() as $route) {
-            if (! isset($expected[$route->uri()])) {
+            if (! isset($expected[$route->uri()]) || ! in_array('GET', $route->methods(), true)) {
                 continue;
             }
             $middleware = $route->gatherMiddleware();

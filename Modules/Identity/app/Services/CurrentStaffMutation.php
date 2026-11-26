@@ -2,12 +2,15 @@
 
 namespace Modules\Identity\Services;
 
+use App\Exceptions\BusinessException;
 use App\Support\SensitiveQueryScope;
+use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use LogicException;
 use Modules\Identity\Models\User;
 use SensitiveParameter;
@@ -22,6 +25,32 @@ final readonly class CurrentStaffMutation
      */
     public function lock(#[SensitiveParameter] Request $request, string $permission): array
     {
+        [$actor, $target] = $this->lockPrepared($request, $permission, function () use ($request, $permission): ?User {
+            $snapshot = $request->attributes->get('users_target');
+            $target = null;
+            if ($permission !== 'identity.users.create' && $snapshot instanceof User) {
+                $target = User::query()->whereKey($snapshot->id)->lockForUpdate()->first();
+                if ($target !== null) {
+                    DB::table('model_has_roles')->where('model_type', $target->getMorphClass())
+                        ->where('model_id', $target->id)->orderBy('role_id')->lockForUpdate()->get();
+                    DB::table('model_has_permissions')->where('model_type', $target->getMorphClass())
+                        ->where('model_id', $target->id)->orderBy('permission_id')->lockForUpdate()->get();
+                }
+            }
+
+            return $target;
+        });
+
+        if ($permission !== 'identity.users.create') {
+            abort_unless($target instanceof User, 404);
+        }
+
+        return [$actor, $target];
+    }
+
+    /** Prepare authorized access rows before locking the initiating session. */
+    public function lockPrepared(#[SensitiveParameter] Request $request, string $permission, Closure $prepare): array
+    {
         if (DB::transactionLevel() !== 1 || $request !== request()) {
             throw new LogicException('Current staff check requires the original request and outer transaction.');
         }
@@ -35,15 +64,13 @@ final readonly class CurrentStaffMutation
         $actorId = $admitted->id;
         $allowed = $this->access->currentHasAll([$permission], $actorId);
         $actor = User::query()->whereKey($actorId)->lockForUpdate()->first(['id', 'auth_version', 'is_active']);
-        $snapshot = $request->attributes->get('users_target');
-        $target = null;
-        if ($allowed && $permission !== 'identity.users.create' && $snapshot instanceof User) {
-            $target = User::query()->whereKey($snapshot->id)->lockForUpdate()->first();
-            if ($target !== null) {
-                DB::table('model_has_roles')->where('model_type', $target->getMorphClass())
-                    ->where('model_id', $target->id)->orderBy('role_id')->lockForUpdate()->get();
-                DB::table('model_has_permissions')->where('model_type', $target->getMorphClass())
-                    ->where('model_id', $target->id)->orderBy('permission_id')->lockForUpdate()->get();
+        $prepared = null;
+        $preparationFailure = null;
+        if ($allowed) {
+            try {
+                $prepared = $prepare();
+            } catch (BusinessException|ValidationException $exception) {
+                $preparationFailure = $exception;
             }
         }
 
@@ -60,11 +87,11 @@ final readonly class CurrentStaffMutation
 
         // A valid session without the requested permission is not revoked.
         abort_unless($allowed && $actor->is_active, 403);
-        if ($permission !== 'identity.users.create') {
-            abort_unless($target instanceof User, 404);
+        if ($preparationFailure !== null) {
+            throw $preparationFailure;
         }
 
-        return [$actor, $target];
+        return [$actor, $prepared];
     }
 
     public function retireInvalid(#[SensitiveParameter] Request $request): void

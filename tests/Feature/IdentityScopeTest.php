@@ -50,8 +50,8 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
             'api/v1/users/{user}' => ['GET', 'HEAD', 'PUT', 'DELETE'],
             'api/v1/users/{user}/avatar' => ['GET', 'HEAD'],
             'api/v1/selects' => ['GET', 'HEAD'],
-            'api/v1/roles' => ['GET', 'HEAD'],
-            'api/v1/roles/{role}' => ['GET', 'HEAD'],
+            'api/v1/roles' => ['GET', 'HEAD', 'POST'],
+            'api/v1/roles/{role}' => ['GET', 'HEAD', 'PUT', 'DELETE'],
         ];
         foreach (Route::getRoutes() as $route) {
             if (isset($approvedRoutes[$route->uri()])) {

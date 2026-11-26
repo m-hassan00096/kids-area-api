@@ -22,6 +22,12 @@ Route::middleware(RequireStatefulBrowser::class)->group(function (): void {
             ->middleware(RequireRolesCapability::class.':identity.roles.index');
         Route::get('roles/{role}', [RolesController::class, 'show'])->where('role', '[1-9][0-9]*')
             ->middleware(RequireRolesCapability::class.':identity.roles.show');
+        Route::post('roles', [RolesController::class, 'store'])
+            ->middleware(RequireRolesCapability::class.':identity.roles.store');
+        Route::put('roles/{role}', [RolesController::class, 'update'])->where('role', '[1-9][0-9]*')
+            ->middleware(RequireRolesCapability::class.':identity.roles.update');
+        Route::delete('roles/{role}', [RolesController::class, 'destroy'])->where('role', '[1-9][0-9]*')
+            ->middleware(RequireRolesCapability::class.':identity.roles.delete');
 
         Route::get('users', [UsersController::class, 'index'])
             ->middleware([RequireUsersCapability::class.':identity.users.view', NormalizeUsersInput::class]);
