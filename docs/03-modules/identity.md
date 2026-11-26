@@ -1,6 +1,6 @@
 # Identity Module — Module Reference
 
-> **Status:** F01/F02/F03 merged (PR #6/#8/#10); F04 Roles implementation/test evidence verified on PR #12 source 1ad5649 / CI 45839858158, awaiting final documentation-head review gate and explicit merge approval. Requirements unchanged; execution evidence in [Roles tasks](../../specs/identity/roles-management/tasks.md) and live PR #12. F05 Audit remains deferred.
+> **Status:** F01/F02/F03 merged (PR #6/#8/#10); F04 Roles merged via [PR #12](https://github.com/m-hassan00096/kids-area-api/pull/12) at fd77cd022ab79248ad59cd99cc8a43a780e29504. Final exact head f455b6c481e4c0c7036b0c8b51d137717c1b24c4, CI 45842208192: 206 tests / 16656 assertions, Pint 184; 44/44 tasks, 12/12 acceptance criteria verified in isolated CI, merge tree identical. Execution evidence in [Roles tasks](../../specs/identity/roles-management/tasks.md) and live PR #12. F05 Audit remains deferred; no production migration/deployment.
 > **Path:** `docs/03-modules/identity.md`
 > **Scope:** One Kids Area location; Laravel 12 API-first modular monolith, MySQL 8 / InnoDB.
 > **Owning module:** `Modules/Identity`.

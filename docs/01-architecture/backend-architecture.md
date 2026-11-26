@@ -1,6 +1,6 @@
 # Kids Area — Backend Architecture
 
-> **Status:** Approved architectural decisions; implementation not started  
+> **Status:** Approved architectural decisions; Foundation and Identity F01–F04 merged; Activities D01–D102 module design approved, no Activities implementation started  
 > **Scope:** V1, single-location, backend/API-first  
 > **Canonical repository path:** `docs/01-architecture/backend-architecture.md`  
 > **Business source of truth:** [`../00-overview/project-overview.md`](../00-overview/project-overview.md)
@@ -146,7 +146,7 @@ A failed receipt, invoice, movement, or state transition means **the entire clos
 
 - **One MySQL 8 InnoDB database.** Each module owns its migrations and data models; migrations are ordered so referenced tables exist before their foreign keys.
 - Use Laravel conventional **unsigned BIGINT IDs** (`id`, `foreignId`) unless a documented specific requirement calls for a different key.
-- Enforce essential foreign keys within and across modules (`subscriptions.child_id`, `subscriptions.group_id`, `staff_attendance.employee_id`, `payments.invoice_id`, etc.). Do not add speculative foreign keys or loose generic polymorphic links where a safer explicit relation is possible.
+- Enforce essential foreign keys within and across modules (e.g., activity subscription child/group and membership history, staff attendance employee, payment invoice relationships; exact names in approved feature plans). Do not add speculative foreign keys or loose generic polymorphic links where a safer explicit relation is possible.
 - Monetary amounts use **`DECIMAL(12,2)`** for settled EGP amounts, as required by Database Standards; calculations use exact decimal arithmetic / integer minor units where appropriate. Rounding and minute-precision policy belong in the respective feature specifications.
 - Use `NOT NULL`, unique constraints, meaningful check/application invariants, and indexes reflecting actual filters and join paths. Database constraints supplement—not replace—application validation.
 - Historic financial, attendance, contract, and time evidence should not disappear due to cascading deletes. Prefer restrictive foreign keys, status transitions, and explicit reversible corrections over destructive deletion. Soft delete is not a substitute for a financial audit trail.
@@ -211,16 +211,16 @@ Providers enforce authorization and accept only approved parameters/filters. The
 - A **User** is an Identity entity with permissions; an **Employee** is an HR entity with jobs, contracts, shifts, and payroll. Linking user to employee is optional in either direction where it makes business sense.
 - Children and guardians do **not** require sign-in accounts in V1.
 - **Spatie Permission + Policies/Gates** check actual permission keys, not fixed role-name conditions throughout business code. Manager receives broad management capability; reception capabilities follow explicitly assigned permissions, including invoice cancellations/refunds when granted.
-- Security checks apply to reading sensitive records, dropdown providers, reports, exports, and business actions—not just write endpoints. Audit sensitive permission changes.
+- Security checks apply to reading sensitive records, dropdown providers, reports, exports, and business actions—not just write endpoints. Sensitive permission-change audit persistence remains an approved design but its shared implementation is deferred.
 - Login/rate-limit protections, session invalidation, password hashing, and appropriate `401`/`403` handling are required. Never log plaintext passwords, tokens, payment credentials, or secrets.
 
 ## 8. Shared Infrastructure & Localization
 
-**Core**, not a separate business module, provides centralized Select Registry, response serialization/error handling, localization, and a narrow audit logger. Avoid generic helper packages growing into an ungoverned 'shared business logic' module.
+**Core**, not a separate business module, provides centralized Select Registry, response serialization/error handling and localization; a narrow shared audit logger remains in the deferred Audit design. Avoid generic helper packages growing into an ungoverned 'shared business logic' module.
 
 **Arabic-first V1:** `APP_LOCALE=ar`, `APP_FALLBACK_LOCALE=ar`. System-owned API messages, validation errors, permission/role display labels, and status labels are Arabic in the active user experience. Underlying permission keys, enum/status codes, route names, and database identifiers remain stable English. Build for future language packs but do not require translated user-entered names or a language switch in V1.
 
-**Audit Logs:** Record **business-sensitive** events only (payments/refunds, prices, payroll and contract changes, subscriptions/corrections, permissions, cashier review, critical attendance overrides, timer transitions). Capture actor, time, target, action, reason when relevant, and safe before/after fields. Do not log ordinary reads or secret/sensitive payloads. The audit log is **not** a substitute for source transaction, financial, attendance, or time-segment records. Critical audit entries are persisted synchronously alongside the protected operation when appropriate.
+**Audit Logs (approved design; implementation deferred):** Record **business-sensitive** events only (payments/refunds, prices, payroll and contract changes, subscriptions/corrections, permissions, cashier review, critical attendance overrides, timer transitions). Capture actor, time, target, action, reason when relevant, and safe before/after fields. Do not log ordinary reads or secret/sensitive payloads. The audit log is **not** a substitute for source transaction, financial, attendance, or time-segment records. When the shared Audit feature is delivered, critical audit entries are persisted synchronously alongside the protected operation when appropriate. Before then, retain all required domain operational/financial history and explicitly review the residual production-control gap; do not claim a shared audit writer exists.
 
 ## 9. Timer & Session Integrity
 
@@ -260,12 +260,12 @@ Providers enforce authorization and accept only approved parameters/filters. The
 
 ## 11. Attendance, Subscriptions & Payroll Boundaries
 
-- An activity may be monthly, hourly, or both; nursery is **monthly-only**. Monthly subscriptions have child, guardian, group, period, price/collection history, and active/expired determination from dates.
+- Activities use independent subscription/hourly flags and activity-level unit prices; nursery is an ordinary activity configured subscription-only. Subscriptions have a child/guardian relationship, effective group history, selected 1–12 whole calendar months, exclusive end, saved unit/contract price and authoritative financial records. See the approved [Activities Module Reference](../03-modules/activities.md).
 - No cron is required to expire a subscription: **time-based eligibility is computed on query/action**. Renewal is manual; freezing and automatic renewal are not supported.
-- A child may hold concurrent subscriptions to different activities. Group capacity, if configured, is enforced under concurrency protection.
-- Make-up classes are linked to a missed scheduled class and cannot be consumed twice. They may be fulfilled within the active period or within **seven days following expiry**, without extending the subscription; capacity and booking details belong in the Activities spec.
+- A child may hold concurrent subscriptions to different activities (schedule clashes warn; no overlapping actual attendance or conflicting makeup booking). Same-activity overlapping contracts are rejected. Group capacity counts peak overlapping regular commitments and confirmed class-specific makeups, under concurrency protection. Groups have required operating start and optional inclusive last day; no subscription extends beyond the group.
+- Make-up entitlements derive from an eligible absence or a management-cancelled compensable regular class and cannot be consumed twice. Actual fulfillment must occur within the contract or its **seven calendar days following expiry**; no extension of subscription or finished group. Use an eligible same-activity group, capacity and booking rules from the Activities reference.
 - Workforce distinguishes staff **shift attendance** from trainer **scheduled-class attendance**. Pay contract type (fixed / per-class / combined) does not determine attendance model.
-- Trainer substitution is per delivered class; only the person who actually delivered a class receives eligible per-class compensation. A trainer's presence without class delivery does not imply a payable class.
+- Groups have multiple trainer assignments and effective-dated schedules. Several trainers may co-deliver a class; each actual delivery participant may receive one eligible per-class credit according to contract. Class-specific substitutions preserve assignment/delivery history. Presence or assignment without delivery, and cancelled classes, do not imply payable classes.
 - Payroll calculations are **on demand**. Suggested lateness/absence deductions require review; the manager can accept/change/waive them. Preserve suggested versus final approved figures and avoid double-penalizing an undelivered class.
 - Leave/permissions are recorded directly by authorized management; no staff self-service approval workflow in V1.
 
@@ -275,6 +275,7 @@ Providers enforce authorization and accept only approved parameters/filters. The
 
 - Timers derive elapsed duration from stored instants, not scheduled increments.
 - Subscription status/expiry and reminders shown to staff derive from real-time queries when a screen is opened.
+- Class records use synchronous **Rolling Horizon Generation**: automatic bounded 60-day generation on group writes, extended to cover confirmed subscriptions (up to 12 months), missing-only reconciliation and authorized explicit sync. GET remains read-only. Stable occurrence identity protects cancellation/reschedule/exceptional classes; no background progress without requests. Actual generation windows, batch limits, constraints and sync authorization belong to the feature plan.
 - Payroll runs calculate on manager request, within bounded transactional work units.
 - Dashboards query business-owned records and authorized projections, distinguishing sales from collections and refunds. Do not post new financial movements in reports.
 - Excel and PDF exports are **synchronous**. Prefer streaming/chunked queries and small-memory output where the chosen library supports them; apply date filters, explicit size/range limits, and a clear validation error for oversized requests. Do not silently queue.
@@ -356,25 +357,27 @@ Approved module reference (when applicable)
 
 | Phase | Focus | Example deliverables |
 |---|---|---|
-| **00 — Foundation** | Framework and shared foundation | Laravel, modules, MySQL, common API conventions, locale, selects, audit infrastructure, GitHub CI |
-| **01 — Identity + Core Data** | Access and basic entities | Login/permissions, children/guardians, customers, initial employees/trainers |
-| **02 — Activities + Café Catalogue** | Priced service setup | Activity types, groups, schedules, trainers, café products/prices |
+| **00 — Foundation** | Framework and shared foundation | Laravel, modules, MySQL, common API conventions, locale, selects, GitHub CI; shared Audit implementation deferred |
+| **01 — Identity + Core Data** | Access and basic entities | Login/permissions, children/guardians, customers, initial employees/trainers; independent Activity Catalogue may be delivered immediately after Identity |
+| **02 — Activities + Café Catalogue** | Priced service setup | Activity catalogue (independent hourly/subscription modes), groups, multiple trainers, effective schedules and bounded class generation after real core entities, café products/prices |
 | **03 — Finance + POS Foundation** | Safe financial base | Canonical movements, invoices/payments, cash shifts, expenses and refunds |
 | **04 — Sessions & Timers** | Walk-in daily operations | Timer state machine/segments, café attachment, full settlement and closing |
-| **05 — Subscriptions & Child Attendance** | Enrollment | Monthly subscriptions, installments, renewals, group attendance and make-up classes |
-| **06 — Workforce & Payroll** | Staff operations | Shifts, trainer class attendance/substitution, leave, contracts, payroll and review |
+| **05 — Subscriptions & Child Attendance** | Enrollment | 1–12 calendar-month contracts, installments, renewals, transfers/cancellations; group attendance and make-ups after prerequisite Workforce evidence |
+| **06 — Workforce & Payroll** | Staff operations | Shifts, trainer actual class attendance/co-delivery/substitution, leave, contracts, payroll and review; deliver the necessary trainer evidence slice before closing child classes |
 | **07 — Reports & Final Integration** | Management visibility and release quality | Role dashboards, operational/finance reports, Excel/PDF, cross-module acceptance tests |
 
 This is an **order of dependencies, not a sequence of whole-module completions**. A module may be worked on across multiple phases to support end-to-end features. All eleven modules remain in V1 scope.
+
+**Approved Activities-specific order (2026-11-26):** Activity Catalogue first after Identity F04; People Core; Employees Core; Groups/Schedules/Class Generation; POS/Finance foundation; Subscriptions; Workforce trainer-attendance evidence; Classes/Child Attendance; Make-up Classes. Sessions/Café and other work follow their own prerequisites. No new placeholders or financial stub flow; only each approved feature's real tables/routes/permissions are added. Catalogue extends the existing central permission aggregation, with reviewed one-time initial grants for its new capabilities and additive routine reseeding. Shared Audit remains deferred; see [Activities](../03-modules/activities.md) for precise requirements and review gates.
 
 ## 17. Decisions Deferred to Feature Specifications
 
 Do not invent these rules at architecture level; settle them when the owning feature is specified:
 
 - Exact minute/second treatment and rounding of time-based charges, discounts, and decimal precision.
-- Precise definition of an eligible trainer-delivered class and attendance evidence; exception approval and substitution accounting.
-- Group-capacity concurrency and make-up booking/cancellation rules; boundary dates for subscriptions starting on the 29th–31st.
-- Subscription receipt/obligation modeling and policy for overpayments, cancellations, and adjustments.
+- Exact Workforce/Payroll evidence contracts and correction integration for actual multi-trainer class delivery; the approved business eligibility is in Activities.
+- Exact group-capacity locking/constraints, make-up booking state representation, versioned occurrence and schedule identity, and bounded synchronous generation mechanics. Subscription calendar boundaries, group capacity and make-up business rules have been approved in Activities; do not reopen them implicitly.
+- Exact POS/Finance subscription receipt/obligation source relations and adjustments, shared transaction and permissions; Activities approves no overpayment, independent cancellation settlement and eligible separate refund.
 - Exact idempotency key scope/retention, source-reference uniqueness, refund/partial refund reversals, and invoice numbering.
 - Large-report export size thresholds and the chosen synchronous Excel/PDF libraries.
 - Frontend-origin-aware configuration for the **already approved** Sanctum Cookie/Session mode (actual domains, CSRF/CORS settings, session backing store, and revocation implementation); 12-hour idle expiry is approved.
