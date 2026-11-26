@@ -157,7 +157,8 @@ class UsersActionsTest extends AuthenticationHttpTestCase
         $admin = $this->browser($server);
         $targetBrowser = $this->browser($server);
         $otherBrowser = $this->browser($server);
-        foreach ([[$admin, $actor], [$targetBrowser, $target], [$otherBrowser, $other]] as [$browser, $user]) {
+        $secondTargetBrowser = $this->browser($server);
+        foreach ([[$admin, $actor], [$targetBrowser, $target], [$secondTargetBrowser, $target], [$otherBrowser, $other]] as [$browser, $user]) {
             $this->assertSame(200, $browser->login($user->username)->status);
         }
         $this->assertSame(403, $admin->request('DELETE', '/api/v1/users/'.$founder->id)->status);
@@ -178,6 +179,8 @@ class UsersActionsTest extends AuthenticationHttpTestCase
         $this->assertNotNull($key);
         $this->assertNotNull($otherKey);
         $this->assertFileExists($this->barrierDir.'/avatars/'.$key);
+        $oldBytes = file_get_contents($this->barrierDir.'/avatars/'.$key);
+        $before = $target->fresh()->getAttributes();
         $roleCount = Role::count();
         $permissionCount = Permission::count();
         Schema::create('fixture_user_links', function (Blueprint $table): void {
@@ -189,14 +192,32 @@ class UsersActionsTest extends AuthenticationHttpTestCase
         try {
             DB::table('fixture_user_links')->insert(['user_id' => $target->id]);
             $path = '/api/v1/users/'.$target->id;
-            $response = $admin->request('DELETE', $path, options: ['headers' => ['X-Identity-Test-Mode' => 'users-action-protected-fk']]);
+            // An unregistered constraint must not be translated to a known
+            // business conflict or expose the native SQL/constraint message.
+            $unknown = $admin->request('DELETE', $path, options: ['headers' => ['X-Identity-Test-Inspect' => '1']]);
+            $this->assertSame(500, $unknown->status);
+            $this->assertSame('rolled_back', $unknown->header('X-Test-Users-Outcome'));
+            $this->assertSame('1', $unknown->header('X-Test-Users-Outcome-Reported'));
+            $this->assertSame('1', $unknown->header('X-Test-Redacted'));
+            $this->assertSame($before, $target->fresh()->getAttributes());
+            $this->assertSame(2, DB::table('sessions')->where('auth_user_id', $target->id)->count());
+            $this->assertSame($oldBytes, file_get_contents($this->barrierDir.'/avatars/'.$key));
+            $response = $admin->request('DELETE', $path, options: ['headers' => [
+                'X-Identity-Test-Mode' => 'users-action-protected-fk', 'X-Identity-Test-Inspect' => '1',
+            ]]);
             $this->assertSame(409, $response->status, $response->header('X-Test-Exception-Class') ?? '');
             $this->assertSame('IDENTITY_USER_LINKED', $response->json()['errors']['code']);
             $this->assertNotNull($target->fresh());
             $this->assertSame($key, $target->fresh()->avatar_key);
             $this->assertFileExists($this->barrierDir.'/avatars/'.$key);
             $this->assertSame('reception', $target->fresh()->roles()->sole()->name);
+            $this->assertSame('rolled_back', $response->header('X-Test-Users-Outcome'));
+            $this->assertSame('1', $response->header('X-Test-Redacted'));
+            $this->assertSame($before, $target->fresh()->getAttributes());
+            $this->assertSame($oldBytes, file_get_contents($this->barrierDir.'/avatars/'.$key));
+            $this->assertSame(2, DB::table('sessions')->where('auth_user_id', $target->id)->count());
             $this->assertSame(200, $targetBrowser->me()->status);
+            $this->assertSame(200, $secondTargetBrowser->me()->status);
             $this->assertSame(1, DB::table('fixture_user_links')->count());
         } finally {
             Schema::drop('fixture_user_links');
@@ -212,6 +233,7 @@ class UsersActionsTest extends AuthenticationHttpTestCase
         $this->assertSame($roleCount, Role::count());
         $this->assertSame($permissionCount, Permission::count());
         $this->assertSame(401, $targetBrowser->me()->status);
+        $this->assertSame(401, $secondTargetBrowser->me()->status);
         $this->assertSame(200, $otherBrowser->me()->status);
         $this->assertSame(200, $admin->me()->status);
     }
