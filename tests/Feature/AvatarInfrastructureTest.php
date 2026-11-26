@@ -131,10 +131,16 @@ class AvatarInfrastructureTest extends IdentityDatabaseTestCase
             }
         };
         try {
-            $collision->stage($image);
+            $collision->stage(app(AvatarImageNormalizer::class)->normalize(AvatarFixtures::image('png', 9, 9), 'png'));
             $this->fail('Existing file overwritten.');
         } catch (RuntimeException) {
             $this->assertSame($image->bytes, $storage->read($key)->bytes);
+        }
+        try {
+            $storage->stage(new NormalizedAvatar('png', AvatarFixtures::image('png', 513, 1)));
+            $this->fail('Non-normalized dimensions accepted.');
+        } catch (RuntimeException) {
+            $this->assertSame(1, count(glob($this->root.'/*')));
         }
         $link = str_repeat('a', 32).'.png';
         $this->assertTrue(symlink($this->root.'/'.$key, $this->root.'/'.$link));
