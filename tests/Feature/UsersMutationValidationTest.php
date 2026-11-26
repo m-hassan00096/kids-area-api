@@ -34,6 +34,28 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
             $this->assertSame(422, $response->status, $field);
             $this->assertArrayHasKey($field, $response->json()['errors']);
         }
+        // Reject privileged or server-owned fields even on otherwise valid input.
+        foreach ([
+            'id' => $founder->id,
+            'userId' => $founder->id,
+            'isActive' => false,
+            'auth_version' => 2,
+            'authVersion' => 2,
+            'roles' => [$role->id],
+            'permissions' => ['identity.users.delete'],
+            'avatarUrl' => '/storage/fixture.png',
+            'createdAt' => '2026-01-01',
+            'updatedAt' => '2026-01-01',
+        ] as $field => $value) {
+            $response = $browser->request('POST', '/api/v1/users', $create + [$field => $value]);
+            $this->assertSame(422, $response->status, $field);
+            $this->assertArrayHasKey('request', $response->json()['errors']);
+            $this->assertSame(2, User::count());
+        }
+        $response = $browser->request('POST', '/api/v1/users', array_replace($create, ['roleId' => [$role->id]]));
+        $this->assertSame(422, $response->status);
+        $this->assertArrayHasKey('roleId', $response->json()['errors']);
+        $this->assertSame(2, User::count());
         $response = $browser->request('POST', '/api/v1/users', $create);
         $this->assertSame(201, $response->status, $response->header('X-Test-Exception-Class') ?? '');
         $this->assertSame(['success' => true, 'message' => __('identity.user_created'), 'data' => []], $response->json());
@@ -65,13 +87,30 @@ class UsersMutationValidationTest extends AuthenticationHttpTestCase
             $this->assertSame(422, $response->status, $field);
             $this->assertArrayHasKey($field, $response->json()['errors']);
         }
+        $targetBrowser = $this->browser($browser->server);
+        $this->assertSame(200, $targetBrowser->login($target->username)->status);
+        $sessionId = $targetBrowser->sessionId();
         foreach ([
-            ['email' => '', 'phone' => null, 'password' => '', 'passwordConfirmation' => null],
-            ['password' => '  abcdef  ', 'passwordConfirmation' => '  abcdef  '],
-            ['removeAvatar' => true],
+            [],
+            ['password' => null, 'passwordConfirmation' => null],
+            ['email' => '', 'phone' => null, 'password' => '', 'passwordConfirmation' => ''],
         ] as $extra) {
             $this->assertSame(200, $browser->request('PUT', $path, array_replace($update, $extra))->status);
+            $this->assertSame($target->password, $target->fresh()->password);
+            $this->assertSame(1, $target->fresh()->auth_version);
+            $this->assertSame(200, $targetBrowser->me()->status);
+            $this->assertSame($sessionId, $targetBrowser->sessionId());
+            $this->assertSame(1, DB::table('sessions')->where('auth_user_id', $target->id)->count());
         }
+        $this->assertNull($target->fresh()->email);
+        $this->assertNull($target->fresh()->phone);
+
+        $this->assertSame(200, $browser->request('PUT', $path, $update + ['password' => '  abcdef  ', 'passwordConfirmation' => '  abcdef  '])->status);
+        $this->assertSame('argon2id', password_get_info($target->fresh()->password)['algoName']);
+        $this->assertSame(2, $target->fresh()->auth_version);
+        $this->assertSame(0, DB::table('sessions')->where('auth_user_id', $target->id)->count());
+        $this->assertSame(401, $targetBrowser->me()->status);
+        $this->assertSame(200, $browser->request('PUT', $path, $update + ['removeAvatar' => true])->status);
         $response = $browser->request('PUT', $path, $update + ['passwordConfirmation' => 'orphan-fixture']);
         $this->assertSame(422, $response->status);
         $this->assertArrayHasKey('passwordConfirmation', $response->json()['errors']);
