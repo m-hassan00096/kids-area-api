@@ -138,7 +138,7 @@ jobs:
           vendor/bin/phpunit --list-tests --filter='ActivityReadHttp|ActivitySelectHttp|ActivityWriteHttp|ActivityRaceHttp|ActivityFaultHttp' > "$RUNNER_TEMP/activity-api-tests.txt"
           for source in tests/Feature/Activity*HttpTest.php; do
             class="$(basename "$source" .php)"
-            grep -Fq "Tests\Feature\${class}::" "$RUNNER_TEMP/activity-api-tests.txt"
+            grep -Fq "Tests\\Feature\\${class}::" "$RUNNER_TEMP/activity-api-tests.txt"
           done
           cat "$RUNNER_TEMP/activity-api-tests.txt"
       - name: Run focused Activity API tests

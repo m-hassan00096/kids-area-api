@@ -149,6 +149,8 @@ Authored native HTTP read/transport, permission matrix, all filters/sorts/query 
 
 ### Write race/fault source checkpoint
 
+- CI 45906314415 exact 2907fdea: preflight success, foundation Activity schema/provisioning 19/491 passed; API discovery failed before running new API tests because a shell-escaped dollar prevented class interpolation in the grep pattern. Corrected to use the identical working Users discovery pattern with the Activity list file; no discovery/test gate removed. New exact head requires rerun.
+
 T31–T33 tests authored with guarded independent HTTP/MySQL connections: duplicate creates including approved Arabic equivalences, create/rename both orders, competing renames, update/delete/update/update/delete/delete, live revoke/disable versus already admitted writes, native observed 1062/1205/1213, actual post-DML rollback, lost COMMIT acknowledgement and native postcommit session failure. Existing guarded deadlock fixture and PDO delegate reused; no production fault hooks or speculative dependencies. These tests are **Not Run** on new head and must pass before T34. All 19 previously verified tasks remain the only checkmarks.
 
 ## Phase F — End-to-end verification and release review (T35–T42)
