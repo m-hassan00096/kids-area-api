@@ -111,11 +111,16 @@ final class ApiErrors
         // to Laravel's default exception logger on the API boundary.
         $status = self::status($exception);
         if ($status >= 500) {
-            Log::error('API operation failed.', [
+            $context = [
                 'request_id' => RequestId::id(request()),
                 'exception_class' => $exception::class,
                 'status' => $status,
-            ]);
+            ];
+            $outcome = request()->attributes->get('identity_users_outcome');
+            if (in_array($outcome, ['committed', 'rolled_back', 'unknown'], true)) {
+                $context['mutation_outcome'] = $outcome;
+            }
+            Log::error('API operation failed.', $context);
         }
 
         return false;

@@ -139,6 +139,10 @@ final class IdentityAccessMutation
             }
         }
 
+        // This is a trusted per-request diagnostic, not an HTTP contract.
+        // A subsequent native session save can fail after a known commit.
+        $request->attributes->set('identity_users_outcome', $outcome->state);
+
         if ($failure !== null) {
             if ($failure instanceof AuthenticationException && $outcome->state === 'rolled_back') {
                 try {

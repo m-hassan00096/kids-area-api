@@ -13,7 +13,9 @@ use Modules\Identity\Http\Controllers\UsersController;
 use Modules\Identity\Http\Middleware\FinalizeLoginSession;
 use Modules\Identity\Http\Middleware\RequireStaffSession;
 use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
+use Modules\Identity\Services\Avatar\AvatarStorage;
 use Modules\Identity\Services\LoginThrottle;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\AuthenticationCommitFault;
 use Tests\Support\UsersBoundaryProbe;
 
@@ -73,6 +75,18 @@ if (is_string($mode) && str_starts_with($mode, 'users-probe-') && $request->is('
 // The fixture FK is a reviewed test-only dependency, never a production table.
 if ($mode === 'users-action-protected-fk') {
     $app->when(DeleteUserAction::class)->needs('$protectedUserForeignKeys')->give(['fixture_user_protected_fk']);
+}
+
+// Real Actions are not substituted. Only inject this synthetic postcommit
+// cleanup fault in the guarded test router.
+if ($mode === 'users-action-cleanup') {
+    $app->bind(AvatarStorage::class, static fn () => new class extends AvatarStorage
+    {
+        public function delete(string $key): void
+        {
+            throw new RuntimeException('Synthetic avatar cleanup failure: '.$key);
+        }
+    });
 }
 
 // Isolated test-only route: prove ordinary API query events remain visible
@@ -155,6 +169,9 @@ if ($inspect) {
     foreach (DB::table('users')->pluck('password') as $hash) {
         $secrets[] = $hash;
     }
+    foreach (DB::table('users')->whereNotNull('avatar_key')->pluck('avatar_key') as $key) {
+        $secrets[] = $key;
+    }
     foreach (DB::table('sessions')->get(['id', 'payload']) as $session) {
         $secrets[] = $session->id;
         $secrets[] = $session->payload;
@@ -182,7 +199,8 @@ $selectLimit = '';
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, $request, $connection): void {
+$staffTouches = 0;
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -220,6 +238,10 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
             $statement = $connection->getPdo()->prepare('UPDATE users SET username = ? WHERE username = ?');
             $statement->execute(['Fixture.New', 'Fixture.Collision']);
         }
+        if ($restoreStatements === 2 && $mode === 'users-action-cache') {
+            app()->forgetInstance(PermissionRegistrar::class);
+            app()->bind(PermissionRegistrar::class, static fn () => throw new RuntimeException('Synthetic postcommit cache failure.'));
+        }
         if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
@@ -237,6 +259,9 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     if ($credentialRead) {
         $credentialReads++;
     }
+    if (str_starts_with($sql, 'update sessions set auth_last_activity')) {
+        $staffTouches++;
+    }
     if (! $armed) {
         return;
     }
@@ -248,6 +273,10 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     $nativeSave = str_starts_with($sql, 'update sessions set') && str_contains($sql, 'payload');
     $nativeInsert = str_starts_with($sql, 'insert into sessions');
 
+    if ($mode === 'users-action-final-save' && $request->attributes->get('staff_self_revoked') && ($nativeSave || $nativeInsert)) {
+        $armed = false;
+        throw new RuntimeException('Synthetic postcommit native save failure.');
+    }
     $hit = match ($mode) {
         'hold-credentials', 'fault-report' => $credentialRead,
         'hold-manager' => $managerLock,
@@ -298,6 +327,12 @@ if ($commitFault !== null) {
     $response->headers->set('X-Test-Actual-Commit-Count', (string) $commitFault->commits);
 }
 $response->headers->set('X-Test-Query-Count', (string) $count);
+$response->headers->set('X-Test-Users-Touches', (string) $staffTouches);
+$response->headers->set('X-Test-Users-Self-Revoked', $request->attributes->get('staff_self_revoked') ? '1' : '0');
+$outcome = $request->attributes->get('identity_users_outcome');
+if (is_string($outcome)) {
+    $response->headers->set('X-Test-Users-Outcome', $outcome);
+}
 if ($diagnostic !== null) {
     $response->headers->set('X-Test-Exception-Class', $diagnostic);
 }
@@ -344,11 +379,22 @@ if ($inspect) {
     $response->headers->set('X-Test-Native-Session-Query-Visible', $nativeVisible ? '1' : '0');
     $correlated = collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.' && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID'));
     $response->headers->set('X-Test-Correlated-Report', $correlated ? '1' : '0');
+    $response->headers->set('X-Test-Users-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
+        && is_string($outcome) && ($log[1]['mutation_outcome'] ?? null) === $outcome) ? '1' : '0');
+    $response->headers->set('X-Test-Users-Cache-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Users permission cache invalidation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
+    $response->headers->set('X-Test-Avatar-Cleanup-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Avatar lifecycle retained file.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
+        && ($log[1]['outcome'] ?? null) === 'cleanup_failed') ? '1' : '0');
     $response->headers->set('X-Test-Error-Report-Count', (string) collect($logs)->filter(fn ($log) => $log[0] === 'API operation failed.')->count());
     $response->headers->set('X-Test-Restore-Failure', collect($logs)->contains(fn ($log) => $log[0] === 'Login lock timeout restoration failed.') ? '1' : '0');
     $connection->disableQueryLog();
     foreach (DB::table('users')->pluck('password') as $hash) {
         $secrets[] = $hash;
+    }
+    foreach (DB::table('users')->whereNotNull('avatar_key')->pluck('avatar_key') as $key) {
+        $secrets[] = $key;
     }
     foreach (DB::table('sessions')->get(['id', 'payload']) as $session) {
         $secrets[] = $session->id;
