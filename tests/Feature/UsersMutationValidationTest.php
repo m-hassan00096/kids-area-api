@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Modules\Identity\Models\User;
 use Modules\Identity\Models\Role;
+use Modules\Identity\Models\User;
 use Tests\Support\AvatarFixtures;
 
 class UsersMutationValidationTest extends AuthenticationHttpTestCase
