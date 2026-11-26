@@ -19,7 +19,9 @@ use Modules\Identity\Support\PermissionCatalogue;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\ActivityProvisionFixtures;
+use Tests\Support\AuthenticationBrowser;
 use Tests\Support\AuthenticationCommitFault;
+use Tests\Support\AuthenticationHttpServer;
 
 class ActivityProvisioningTest extends IdentityDatabaseTestCase
 {
@@ -219,6 +221,66 @@ class ActivityProvisioningTest extends IdentityDatabaseTestCase
         $this->assertSame(2, DB::table('model_has_roles')->count());
         $this->assertSame(1, (int) $managerUser->fresh()->auth_version);
         $this->assertSame(1, (int) $receptionUser->fresh()->auth_version);
+    }
+
+    public function test_existing_native_browser_sessions_and_role_endpoints_use_current_activity_grants(): void
+    {
+        [$manager, $reception] = $this->legacyActivityRoles();
+        $managerUser = User::factory()->create(['username' => 'Fixture.Provision.Manager']);
+        $managerUser->syncRoles([$manager]);
+        $receptionUser = User::factory()->create(['username' => 'Fixture.Provision.Reception']);
+        $receptionUser->syncRoles([$reception]);
+        $directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'kids-auth-'.bin2hex(random_bytes(10));
+        $this->assertTrue(mkdir($directory, 0700));
+        $server = new AuthenticationHttpServer($directory);
+        try {
+            $admin = new AuthenticationBrowser($server);
+            $staff = new AuthenticationBrowser($server);
+            foreach ([[$admin, $managerUser], [$staff, $receptionUser]] as [$browser, $user]) {
+                $this->assertSame(204, $browser->handshake()->status);
+                $this->assertSame(200, $browser->login($user->username)->status);
+            }
+            $this->assertNotContains('activities.store', $admin->me()->json()['data']['permissions']);
+            $this->assertSame([], $staff->me()->json()['data']['permissions']);
+            $this->assertTrue(app(ProvisionActivityCatalogueAction::class)->execute());
+            $adminBefore = $admin->me()->json()['data']['permissions'];
+            $this->assertContains('activities.store', $adminBefore);
+            $this->assertSame(ActivityPermissions::RECEPTION, $staff->me()->json()['data']['permissions']);
+            $options = $admin->request('GET', '/api/v1/selects?selects=permissions');
+            $this->assertSame(200, $options->status);
+            $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), array_column($options->json()['data'][0]['options'], 'value'));
+
+            $create = $admin->request('POST', '/api/v1/roles', ['name' => 'Catalogue custom', 'permissions' => ['activities.delete', 'activities.index']]);
+            $this->assertSame(201, $create->status);
+            $custom = Role::findByName('Catalogue custom', 'web');
+            $this->assertSame(['activities.delete', 'activities.index'], $this->grantKeys($custom));
+            $this->assertSame(200, $admin->request('PUT', '/api/v1/roles/'.$custom->id, [
+                'name' => $custom->name, 'isActive' => true, 'permissions' => ['activities.update'],
+            ])->status);
+            $this->assertSame(['activities.update'], $this->grantKeys($custom));
+            $this->assertSame(403, $staff->request('POST', '/api/v1/roles', ['name' => 'Denied', 'permissions' => ['activities.store']])->status);
+            $this->assertSame(422, $admin->request('PUT', '/api/v1/roles/'.$custom->id, [
+                'name' => $custom->name, 'isActive' => true, 'permissions' => ['ACTIVITIES.UPDATE'],
+            ])->status);
+            $this->assertSame(['activities.update'], $this->grantKeys($custom));
+
+            $marker = $this->marker();
+            $this->assertSame(200, $admin->request('PUT', '/api/v1/roles/'.$manager->id, [
+                'name' => 'manager', 'isActive' => true,
+                'permissions' => array_values(array_diff($adminBefore, ['activities.store'])),
+            ])->status);
+            $this->assertNotContains('activities.store', $admin->me()->json()['data']['permissions']);
+            $this->assertFalse(app(ProvisionActivityCatalogueAction::class)->execute());
+            $this->assertNotContains('activities.store', $admin->me()->json()['data']['permissions']);
+            $this->assertSame($marker, $this->marker());
+            $this->assertSame(2, DB::table('sessions')->whereNotNull('auth_user_id')->count());
+            $this->assertSame(0, DB::table('model_has_permissions')->count());
+        } finally {
+            $server->stop();
+            if (is_dir($directory) && ! is_link($directory)) {
+                rmdir($directory);
+            }
+        }
     }
 
     private function marker(): ?array

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Modules\Identity\Actions\ProvisionActivityCatalogueAction;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
@@ -77,6 +78,65 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $this->assertNotContains('activities.store', $this->grantKeys($manager));
         $this->assertSame($marker, (array) DB::table('identity_feature_provisions')->sole());
         $this->assertFalse(app(ProvisionActivityCatalogueAction::class)->execute());
+    }
+
+    #[DataProvider('provisionOutcomes')]
+    public function test_shared_native_permission_cache_repopulated_before_provision_outcome_is_evicted(bool $commit): void
+    {
+        [$manager] = $this->legacyActivityRoles();
+        $barrier = sys_get_temp_dir().DIRECTORY_SEPARATOR.'identity-race-'.bin2hex(random_bytes(12));
+        $cache = sys_get_temp_dir().DIRECTORY_SEPARATOR.'identity-provision-cache-'.bin2hex(random_bytes(12));
+        $this->assertTrue(mkdir($cache, 0700));
+        $common = ['barrier' => $barrier, 'cache_directory' => $cache];
+        $probe = function () use ($common, $manager): array {
+            $process = $this->worker(['mode' => 'provision-cache-probe', 'hold' => false, 'target' => $manager->id] + $common);
+            $this->assertSame(0, $process->run());
+            $result = $this->event($process, 'result');
+            $this->assertNotNull($result);
+            $this->assertSame('ok', $result['code']);
+
+            return $result;
+        };
+        $writer = $this->worker(['mode' => 'provision', 'hold' => true, 'fault_marker' => ! $commit] + $common);
+        try {
+            $warm = $probe();
+            $this->assertFalse($warm['cachedBefore']);
+            $this->assertTrue($warm['cachedAfter']);
+            $this->assertFalse($warm['granted']);
+            $writer->start();
+            $this->awaitEvent($writer, 'ready');
+            $this->awaitEvent($writer, 'held');
+            $during = $probe();
+            $this->assertFalse($during['cachedBefore'], 'Native grants must evict the old cache before commit.');
+            $this->assertTrue($during['cachedAfter']);
+            $this->assertFalse($during['granted'], 'Observer reads the old committed grant set during the transaction.');
+            file_put_contents($barrier, 'release');
+            $this->assertSame($commit ? 0 : 10, $writer->wait());
+            $outcome = $this->event($writer, 'result');
+            $this->assertSame($commit ? 'ok' : 'unexpected-query', $outcome['code']);
+            if (! $commit) {
+                $this->assertSame(1062, $outcome['native_code']);
+            }
+            $after = $probe();
+            $this->assertFalse($after['cachedBefore'], 'Post-outcome eviction removes independently repopulated old cache.');
+            $this->assertTrue($after['cachedAfter']);
+            $this->assertSame($commit, $after['granted']);
+            $this->assertSame($commit ? 1 : 0, DB::table('identity_feature_provisions')->count());
+        } finally {
+            file_put_contents($barrier, 'release');
+            if ($writer->isRunning()) {
+                $writer->stop(2);
+            }
+            unlink($barrier);
+            if (is_dir($cache) && ! is_link($cache)) {
+                File::deleteDirectory($cache);
+            }
+        }
+    }
+
+    public static function provisionOutcomes(): array
+    {
+        return [[true], [false]];
     }
 
     #[DataProvider('founderNames')]
