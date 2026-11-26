@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Modules\Identity\Actions\BootstrapManagerAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
@@ -96,14 +96,21 @@ class UsersManagementSchemaTest extends AuthenticationHttpTestCase
         $this->assertEquals(IdentityPermissions::CATALOGUE, DB::table('permissions')->pluck('alias_name', 'name')->all());
         Role::findById($managerId, 'web')->syncPermissions($permissions);
 
-        $founder = app(BootstrapManagerAction::class)->execute([
+        // Current Founder Bootstrap correctly requires the 15-key catalogue
+        // and its completion marker. This historical fixture predates both.
+        // Reproduce the historical founder row and native role assignment
+        // explicitly; preserve all original migration/session assertions.
+        $founder = User::query()->create([
             'name' => 'Synthetic Founder',
             'username' => 'Fixture.Founder',
             'email' => null,
             'phone' => null,
-            'password' => 'test-fixture-only-password',
-            'password_confirmation' => 'test-fixture-only-password',
+            'password' => Hash::make('test-fixture-only-password'),
+            'is_active' => true,
         ]);
+        $founder->syncRoles([Role::findById($managerId, 'web')]);
+        $this->assertSame(['manager'], $founder->roles()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), $founder->getAllPermissions()->pluck('name')->all());
         $staff = $this->user('Fixture.Existing', 'reception', ['phone' => '00012345678']);
         $this->assertSame(1, (int) $founder->id);
         $first = $this->browser($this->server());
