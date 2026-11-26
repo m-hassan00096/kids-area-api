@@ -178,4 +178,4 @@ No implementation step begun. No tasks.md authored by this plan. Re-evaluate liv
 | Read design | Three domain SQL statements max for nonempty page, validated allowlisted Spatie callbacks preserve literal search, no new search indexes absent evidence; measure with actual MySQL. |
 | Runtime | Existing shared host constraints; private disk GD/capacity, actual network outage, real browser deployment and backup/restore are not certified by CI. Audit remains deferred. |
 
-**Next:** T21–T25 private avatar infrastructure, then separate subsequent tasks. Reads and Select Registry verified; scale measurements T45. Mutations remain fail closed.
+**Next:** T21–T25 authored; native proof passed. Main regression blocked by newly reported Symfony advisories. Obtain separate approval of four exact 7.4.24 patches verified by dry-run (tasks.md §21.2); then install/audit and verify Phase D. No business writes yet.
