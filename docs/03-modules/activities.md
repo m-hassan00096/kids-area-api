@@ -292,7 +292,7 @@ Index candidates must support actual equality/range filters, joins, child/activi
 
 ### 9.4 API errors and localization
 
-Use existing shared `App\\Exceptions\\BusinessException` in Actions for expected business state conflicts, not a new exception framework. E.g.:
+Use existing shared `App\Exceptions\BusinessException` in Actions for expected business state conflicts, not a new exception framework. E.g.:
 ```php
 throw new BusinessException(
     message: ApiResponse::text('activities.errors.group_capacity_reached'),

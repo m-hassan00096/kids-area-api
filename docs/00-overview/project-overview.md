@@ -1,19 +1,19 @@
 # Kids Area — Operations Management System
 ## Business Requirements & Technical Overview
 
-> **Status:** V1 business scope agreed; module-level specifications pending.  
+> **Status:** V1 business scope agreed; Identity F01–F04 merged, Activities module decisions D01–D102 approved; feature specifications and implementation delivered incrementally.  
 > **Scope:** One physical Kids Area location, one backend application, API-first development.  
 > **Canonical location:** `docs/00-overview/project-overview.md`.
 
 ## Overview
 
-**Kids Area** is an internal operations management system for a children's entertainment and education venue. The business has three operational areas: **café sales**, **games and activities** (monthly subscriptions and/or pay-per-hour usage), and **nursery** (managed as a monthly-subscription activity, not as a separate business system).
+**Kids Area** is an internal operations management system for a children's entertainment and education venue. The business has three operational areas: **café sales**, **games and activities** (subscriptions priced per calendar month and/or pay-per-hour usage), and **nursery** (configured as a subscription-only activity, not as a separate business system).
 
 The system supports reception staff handling customer visits, activity sessions, attendance, café sales, invoices, collections, and cashier shifts. Managers oversee the entire operation, including staff, contracts, payroll, expenses, permissions, and reports. The primary objective is **fast daily operation without unnecessary administrative complexity**, while keeping money and attendance records reliable.
 
 This is a **single-location, Laravel 12 modular monolith**, with a RESTful JSON backend built first. A separate frontend will be designed and developed later. **V1 includes all agreed core modules, implemented incrementally rather than all at once.** Arabic is the operating language for V1, with a localization-ready foundation for future languages.
 
-An **activity** can offer monthly subscriptions, hourly use, or both. Monthly subscriptions belong to registered children, with groups, scheduled classes, attendance, and payments. Hourly activity use belongs to a **customer session**, which can contain several independently timed activities plus café orders. Session settlement is for the **whole session**, not per child.
+An **activity** can offer subscriptions priced per calendar month, hourly use, or both independently. Subscriptions for 1–12 whole calendar months belong to registered children, with groups, scheduled classes, attendance, and payments. Hourly activity use belongs to a **customer session**, which can contain several independently timed activities plus café orders. Session settlement is for the **whole session**, not per child.
 
 ---
 
@@ -61,7 +61,7 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 - Multiple activity timers may run simultaneously and finish at different times.
 - Café purchases can also be invoiced and paid **independently**, without an open session.
 
-### Child Enrollment and Monthly Subscription
+### Child Enrollment and Subscription (Monthly Unit Pricing)
 
 ```text
 [Reception registers or selects a child and guardian]
@@ -70,10 +70,10 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 [Select an activity and an available scheduled group]
              |
              v
-[Create a one-month subscription from its selected start date]
+[Select start date and number of months (1–12); confirm total and agreement]
              |
              v
-[Collect full or partial payment; keep any outstanding balance]
+[Collect full, partial or no initial payment; keep any outstanding balance]
              |
              v
 [Record attendance; arrange eligible make-up classes when needed]
@@ -88,7 +88,7 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 - A guardian's **name and mobile number** are mandatory when registering a child.
 - One guardian may be associated with several children; a child can hold separate active subscriptions to **different** activities.
 - A child can be registered without buying a subscription immediately.
-- **Nursery follows this monthly activity subscription flow; it has no hourly timer.**
+- **Nursery follows this subscription flow** as an ordinary activity configured subscription-only, without an hourly timer; no special type or hardcoded ID.
 
 ### Employee Attendance, Classes, and Payroll
 
@@ -143,17 +143,17 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 - **Every registered child must have a registered guardian** with a name and mobile number. One guardian may have multiple children.
 - Children may be registered in advance, before buying any subscription.
 - A child may have **multiple concurrent subscriptions to different activities**. Each subscription owns its group, period, attendance, payments, and remaining balance.
-- A monthly subscription runs for **one calendar month from its start date**; the precise end-date calculation and edge cases belong in the Activities specification.
+- A subscription runs for **1–12 whole calendar months** from its selected start date, computed without month overflow, start inclusive/end exclusive. Monthly unit price is saved at agreement; total is that price times the selected months, less any authorized fixed discount. No part-month subscription or prorating. The period must fit the group's operating dates; see [Activities](../03-modules/activities.md).
 - Subscription renewal is **manual**. Expiry does not create another subscription, automatic renewal, or new debt.
-- **Partial payment is allowed for monthly subscriptions**, including nursery. Any unpaid balance remains due even after subscription expiry.
+- **Full, partial or zero initial payment is allowed for subscriptions**, including nursery. One sale per agreed contract; later installments reduce debt, not new sales. Any adjusted unpaid balance remains collectible even after expiry, deactivation or cancellation.
 - **Subscription freezing is not available in V1.**
 - A missed scheduled class may be made up once, subject to available group capacity. **Make-up classes remain available for seven days after subscription expiry**, without extending the subscription itself. Exact eligibility and booking controls belong in the Activities specification.
 
 ### Activities, Groups, and Sessions
 
-- An activity may be configured for **monthly subscriptions, hourly use, or both**. **Nursery is monthly-only, without timers.**
-- A subscription-based activity can have **multiple groups**, each with its own trainer/teacher, days, and times. A child subscribes to a selected group.
-- Group capacity is **optional**. If set, a full group cannot accept another active subscriber; expired/cancelled subscriptions free places according to the group-capacity rules.
+- An activity may be configured for **subscription use, hourly use, or both**; independent modes with prices on the activity. Nursery is configured subscription-only, without timers. Hourly play is a separately paid service, even for an enrolled child.
+- A subscription-based activity can have **multiple groups**, each with one or more trainers/teachers, weekly slots, a required operating start date and optional inclusive end date. A child subscribes to a selected group. Classes are generated automatically with a bounded 60-day rolling horizon, extended to cover confirmed subscriptions; managers may add exceptional classes or make individual schedule changes. No scheduler reliance.
+- Group capacity is **optional**. If set, overlapping regular commitments (including future subscriptions) plus confirmed make-up reservations must fit the limit. Disablement prevents new enrollments/renewals but does not cancel prior obligations. Transfer, cancellation and capacity checks preserve history and commitments atomically.
 - A customer session can contain **multiple independently running hourly activity timers** and café orders, with a single final settlement.
 - Each hourly timer supports **Start, Pause, Resume, and Finish**. Paused time is excluded from chargeable duration.
 - Hourly billing is **proportional to actual chargeable time** at the activity's hourly rate: e.g. 70 minutes at EGP 60/hour costs EGP 70. Precision/rounding details will be set in the Sessions specification.
@@ -175,7 +175,7 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 - **Contract pay type does not determine attendance mode.** Reception, cleaning, and other operational staff follow shifts. Trainers and teachers are tracked against the scheduled classes of their activity groups, not against shift attendance solely because they receive fixed pay.
 - Operational shifts may be fixed or variable; the manager can modify a particular day's schedule.
 - **Per-class compensation counts only classes actually delivered**, derived from the trainer's recorded attendance matched to the scheduled class; cancelled/not-delivered classes are excluded. Exceptions must remain reviewable.
-- The manager can assign a **substitute trainer to a particular class**. A delivered class is credited to the trainer who actually delivered it, **not to both trainers**.
+- The manager can assign or substitute one or more trainers for a particular class. Several trainers may genuinely co-deliver a class; each actual participant is eligible for the applicable per-class pay once, according to contract and recorded delivery evidence. Assignment or presence alone is insufficient; a replaced non-delivering trainer receives no class credit.
 - The system may **suggest salary deductions** based on shifts, absence, lateness, leave, and permissions, but the manager decides whether to apply, change, or waive them. Avoid double deductions for undelivered classes already excluded from class pay.
 - **The manager directly records leave and hourly/partial-day permissions** for employees; no employee self-service leave approval flow in V1.
 
@@ -233,9 +233,9 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 ### Activities — Groups, Schedules, Subscriptions & Attendance
 
 - Activity catalogue with monthly and/or hourly availability.
-- Scheduled groups with instructor assignment and optional capacity.
-- Child enrollment, monthly subscriptions, partial collections, class attendance, make-up classes, and manual renewal.
-- Nursery represented as a monthly-only activity.
+- Scheduled groups with multiple trainer assignments, operating start/optional end, effective weekly schedules and optional capacity; automatic bounded class generation plus exceptional classes, rescheduling and cancellation.
+- Child enrollment, subscriptions for 1–12 calendar months, price snapshots, full/partial/zero initial payment, installment collections, manual renewal, same-activity transfers, controlled cancellation, class attendance and make-up classes.
+- Nursery represented by an ordinary activity configured for subscription use only; see [Activities Module Reference](../03-modules/activities.md).
 
 ### Sessions — Hourly Usage & Timers
 
@@ -311,9 +311,9 @@ An **activity** can offer monthly subscriptions, hourly use, or both. Monthly su
 2. **Correct Hourly Charges:** Server-derived chargeable time excludes pauses; each activity uses its own saved hourly rate and produces a correct final amount.
 3. **Flexible Café Sales:** Standalone orders and session-linked café orders both work, and the same sale is not posted twice.
 4. **Child & Guardian Records:** A registered child has a guardian with mandatory name and mobile number; one guardian can have several children and each child can keep multiple independent activity subscriptions.
-5. **Monthly Subscription Integrity:** Enrollment respects group capacity, tracks the month-long period and installments, expires without auto-renewal, and preserves older attendance/payments.
+5. **Subscription Integrity:** Enrollment respects group dates and interval-based capacity, tracks an agreed 1–12 calendar-month period and installments, expires without auto-renewal, and preserves historical price, attendance and payments. Automatic class generation preserves exceptions and confirmed commitments.
 6. **Controlled Make-up Classes:** An absence can be made up once within the subscription period or its seven-day post-expiry grace window, without extending the subscription or exceeding capacity.
-7. **Accurate Trainer Pay:** Trainer attendance and scheduled classes produce eligible delivered-class counts; substituted/cancelled classes do not produce duplicate or incorrect compensation.
+7. **Accurate Trainer Pay:** Every trainer who actually delivers or co-delivers a class may receive one eligible credit according to contract; non-delivering, substituted-out or cancelled classes do not produce incorrect compensation.
 8. **Manager-Controlled Payroll:** Suggested attendance deductions are visible with supporting facts; the manager may accept, change, or waive them before finalizing payroll.
 9. **Cashier Accountability:** Each cashier shift reconciles opening cash, actual cash collections, recorded cash expenses, and counted closing cash, while card and wallet amounts remain separate.
 10. **Correct Financial Reporting:** Sales, receipts, outstanding subscription balances, expenses, refunds, and payroll payouts reconcile without double posting or disappearing historical records.
