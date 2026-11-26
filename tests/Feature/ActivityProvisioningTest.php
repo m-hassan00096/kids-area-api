@@ -58,8 +58,10 @@ class ActivityProvisioningTest extends IdentityDatabaseTestCase
         $activityPermission->update(['alias_name' => 'نشاط مخصص']);
         $this->assertSame(1, Artisan::call('identity:provision-activity-catalogue'));
         $this->assertNull($this->marker());
-        $this->assertSame(0, Artisan::call('identity:provision-activity-catalogue', ['--confirm-reviewed-upgrade' => true]), Artisan::output());
-        $this->assertStringContainsString(__('identity.activity_provision_completed'), Artisan::output());
+        $exit = Artisan::call('identity:provision-activity-catalogue', ['--confirm-reviewed-upgrade' => true]);
+        $output = Artisan::output();
+        $this->assertSame(0, $exit, $output);
+        $this->assertStringContainsString(__('identity.activity_provision_completed'), $output);
         $this->assertEqualsCanonicalizing([...$oldManager, ...ActivityPermissions::keys()], $this->grantKeys($manager));
         $this->assertEqualsCanonicalizing([...$oldReception, ...ActivityPermissions::RECEPTION], $this->grantKeys($reception));
         $this->assertSame($oldCustom, $this->grantKeys($custom));
