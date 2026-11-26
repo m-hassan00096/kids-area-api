@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
+use Modules\Identity\Support\IdentityPermissions;
 use Tests\Support\AuthenticationBrowser;
 use Tests\Support\AuthenticationHttpResponse;
 
@@ -56,13 +57,64 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
         }
     }
 
+    public function test_permission_choices_use_exact_catalogue_and_independent_delegation_permissions(): void
+    {
+        $server = $this->server();
+        DB::table('permissions')->where('name', 'identity.users.view')->where('guard_name', 'web')
+            ->update(['alias_name' => 'اسم صلاحية مخصص']);
+        DB::table('permissions')->insert([
+            ['name' => 'identity.users.view', 'guard_name' => 'other', 'alias_name' => 'Wrong guard'],
+            ['name' => 'identity.unregistered', 'guard_name' => 'web', 'alias_name' => 'Unknown'],
+        ]);
+        $expected = DB::table('permissions')->whereRaw('BINARY guard_name = ?', ['web'])
+            ->whereIn('name', IdentityPermissions::keys())->orderBy('name')
+            ->get(['name', 'alias_name'])->map(fn ($row) => ['value' => $row->name, 'label' => $row->alias_name])->all();
+        $this->assertCount(10, $expected);
+        foreach (['index', 'show', 'store', 'update', 'delete'] as $capability) {
+            $role = Role::create(['name' => 'fixture-permission-select-'.$capability, 'guard_name' => 'web']);
+            $role->givePermissionTo(Permission::findByName('identity.roles.'.$capability, 'web'));
+            $actor = $this->user('Fixture.Permission.'.$capability, $role->name);
+            $browser = $this->browser($server);
+            $this->assertSame(200, $browser->login($actor->username)->status);
+            $response = $this->select($browser, 'permissions');
+            $allowed = in_array($capability, ['store', 'update'], true);
+            $this->assertSame($allowed ? 200 : 403, $response->status);
+            $this->assertSame($allowed ? '1' : '0', $response->header('X-Test-Select-Reads'));
+            if ($allowed) {
+                $this->assertSame([['label' => 'permissions', 'options' => $expected]], $response->json()['data']);
+                $this->assertSame('201', $response->header('X-Test-Select-Limit'));
+            } else {
+                $this->assertArrayNotHasKey('data', $response->json());
+            }
+            foreach (['permissions,roles', 'roles,permissions', 'permissions,userFilterRoles,roles'] as $keys) {
+                $mixed = $this->select($browser, $keys);
+                $this->assertSame(403, $mixed->status);
+                $this->assertSame('0', $mixed->header('X-Test-Select-Reads'));
+                $this->assertArrayNotHasKey('data', $mixed->json());
+            }
+        }
+
+        $manager = $this->user('Fixture.All.Selects');
+        $browser = $this->browser($server);
+        $this->assertSame(200, $browser->login($manager->username)->status);
+        foreach (['permissions,roles,userFilterRoles', 'userFilterRoles,permissions,roles', 'roles,permissions'] as $keys) {
+            $response = $this->select($browser, $keys);
+            $this->assertSame(200, $response->status);
+            $data = array_map(fn ($key) => [
+                'label' => $key, 'options' => $key === 'permissions' ? $expected : $this->expected($key === 'roles'),
+            ], explode(',', $keys));
+            $this->assertSame(['success' => true, 'message' => '', 'data' => $data], $response->json());
+            $this->assertSame((string) count($data), $response->header('X-Test-Select-Reads'));
+        }
+    }
+
     public function test_malformed_unknown_and_duplicate_keys_never_dispatch(): void
     {
         $actor = $this->user('Fixture.Manager');
         $browser = $this->browser($this->server());
         $this->assertSame(200, $browser->login($actor->username)->status);
-        foreach (['', '?selects=', '?selects[]=roles', '?selects=roles,roles', '?selects=permissions',
-            '?selects=roles,permissions', '?selects=roles,userFilterRoles,roles', '?selects=Roles',
+        foreach (['', '?selects=', '?selects[]=roles', '?selects=roles,roles', '?selects=unknown',
+            '?selects=roles,unknown', '?selects=roles,userFilterRoles,permissions,roles', '?selects=roles,userFilterRoles,roles', '?selects=Roles',
             '?selects=roles,', '?selects=,roles', '?selects=roles,%20userFilterRoles', '?selects=%20roles',
             '?selects=roles&sort=id', '?selects=roles&filter[isActive]=1',
         ] as $query) {

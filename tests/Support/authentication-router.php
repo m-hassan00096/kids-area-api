@@ -276,13 +276,15 @@ $usersPageReads = 0;
 $usersRoleReads = 0;
 $usersPageLimit = '';
 $usersSnapshot = 0;
+$rolesReads = 0;
+$rolesTargetReads = 0;
 $selectReads = 0;
 $selectLimit = '';
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
 $staffTouches = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -308,6 +310,22 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     }
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from roles') && preg_match('/\Aselect id, name from roles\b/', $sql) === 1
         && str_contains($sql, 'order by id asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+        $selectReads++;
+        $selectLimit = $match[1];
+    }
+    if ($request->is('api/v1/roles', 'api/v1/roles/*') && str_starts_with($sql, 'select')) {
+        if (preg_match('/\Aselect id from roles where\b/', $sql) === 1) {
+            $rolesTargetReads++;
+            $rolesReads++;
+        } elseif (preg_match('/\Aselect (?:count\(\*\) as aggregate|roles\.id, roles\.name, roles\.is_active) from roles\b/', $sql) === 1
+            || str_starts_with($sql, 'select mr.role_id, count(*) as aggregate from model_has_roles as mr')
+            || str_starts_with($sql, 'select rp.role_id, count(*) as aggregate from role_has_permissions as rp')
+            || str_starts_with($sql, 'select p.name, p.alias_name from role_has_permissions as rp')) {
+            $rolesReads++;
+        }
+    }
+    if (str_starts_with($sql, 'select p.name, p.alias_name from permissions as p')
+        && str_contains($sql, 'order by p.name asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
         $selectReads++;
         $selectLimit = $match[1];
     }
@@ -464,6 +482,8 @@ $response->headers->set('X-Test-Users-Page-Reads', (string) $usersPageReads);
 $response->headers->set('X-Test-Users-Role-Reads', (string) $usersRoleReads);
 $response->headers->set('X-Test-Users-Page-Limit', $usersPageLimit);
 $response->headers->set('X-Test-Users-Snapshot', (string) $usersSnapshot);
+$response->headers->set('X-Test-Roles-Reads', (string) $rolesReads);
+$response->headers->set('X-Test-Roles-Target-Reads', (string) $rolesTargetReads);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);
 $response->headers->set('X-Test-Select-Limit', $selectLimit);
 foreach (['state', 'file_outcome', 'calls', 'wait'] as $field) {

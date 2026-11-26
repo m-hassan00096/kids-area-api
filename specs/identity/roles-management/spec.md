@@ -1,6 +1,6 @@
 # Feature 04 — Roles & Permissions Management
 
-> **Status:** APPROVED (2026-11-26). User authorized the full spec/technical plan/task decisions D01–D08 and forward removal of roles.alias_name in the verified disposable GitHub Actions MySQL test database only. Documentation PR #11 merged after exact green CI; scoped implementation authorized. T05–T07 actual isolated CI metadata/backup/forward migration verified. T08–T12 pending corrected historical Authentication/Avatar fixture regression CI (see tasks.md).
+> **Status:** APPROVED (2026-11-26). D01–D08 and isolated CI forward-drop authorized. T01–T12 verified including migration and full historical regression at 2855a39 / CI 45830926166. Read routes and permission Select authored; runtime verification pending. No write routes, real DB, merge or deployment.
 > **Baseline:** develop `41b5eeca7e9b04eb7b064f93464b290754fea16a`, PR #10 merged; [exact final CI 45811979133](https://github.com/m-hassan00096/kids-area-api/actions/runs/45811979133) 174 tests / 9101 assertions, Pint 159. Existing schema and historical F01–F03 evidence are not proof of this change.
 > **Sources:** [Identity](../../../docs/03-modules/identity.md), [Permissions](../../../docs/02-standards/permissions-standards.md), [Localization](../../../docs/02-standards/localization-standards.md), [API](../../../docs/02-standards/api-standards.md), [Workflow](../../../docs/02-standards/ai-workflow-rules.md).
 

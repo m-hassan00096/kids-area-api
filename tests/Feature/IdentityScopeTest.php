@@ -50,6 +50,8 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
             'api/v1/users/{user}' => ['GET', 'HEAD', 'PUT', 'DELETE'],
             'api/v1/users/{user}/avatar' => ['GET', 'HEAD'],
             'api/v1/selects' => ['GET', 'HEAD'],
+            'api/v1/roles' => ['GET', 'HEAD'],
+            'api/v1/roles/{role}' => ['GET', 'HEAD'],
         ];
         foreach (Route::getRoutes() as $route) {
             if (isset($approvedRoutes[$route->uri()])) {
@@ -61,9 +63,9 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
 
                 continue;
             }
-            $this->fail('Unexpected route in approved F01/F02/F03 inventory: '.$route->uri());
+            $this->fail('Unexpected route in approved Identity checkpoint inventory: '.$route->uri());
         }
-        // Only the approved F01/F02 and F03 inventory may be registered.
+        // Only the approved implemented Identity routes may be registered.
         $this->assertSame([], $approvedRoutes);
     }
 }
