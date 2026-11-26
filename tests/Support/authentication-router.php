@@ -409,8 +409,11 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
-if ($mode === 'observe-deadlock') {
+if (in_array($mode, ['observe-deadlock', 'users-performance'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
+}
+if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
+    $connection->setPdo(new \Tests\Support\UsersMeasuredCommit($connection->getPdo()));
 }
 $commitFault = null;
 if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack'], true)) {
@@ -418,7 +421,23 @@ if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-acti
     $connection->setPdo($commitFault);
 }
 
+if ($mode === 'users-performance') {
+    memory_reset_peak_usage();
+}
 $response = $kernel->handle($request);
+if ($mode === 'users-performance') {
+    $response->headers->set('X-Test-Php-Peak-Bytes', (string) memory_get_peak_usage(true));
+    $usage = getrusage();
+    if (is_array($usage) && isset($usage['ru_maxrss'])) {
+        $response->headers->set('X-Test-Process-Peak-Rss', (string) $usage['ru_maxrss']);
+    }
+    foreach (['lock_wait_ms' => 'Lock-Wait-Ms', 'lock_span_ms' => 'Lock-Span-Ms'] as $attribute => $header) {
+        $value = $request->attributes->get('_test_users_'.$attribute);
+        if (is_float($value)) {
+            $response->headers->set('X-Test-Users-'.$header, (string) round($value, 3));
+        }
+    }
+}
 if ($commitFault !== null) {
     $response->headers->set('X-Test-Actual-Commit-Count', (string) $commitFault->commits);
 }

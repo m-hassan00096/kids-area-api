@@ -16,8 +16,20 @@ class UsersObservedStatement extends PDOStatement
 
     public function execute(#[SensitiveParameter] ?array $params = null): bool
     {
+        $sql = strtolower(str_replace(chr(96), '', $this->queryString));
+        $measure = request()->headers->get('X-Identity-Test-Mode') === 'users-performance'
+            && ! request()->attributes->has('_test_users_lock_acquired_ns')
+            && str_contains($sql, 'from roles') && str_contains($sql, 'for update');
+        $started = $measure ? hrtime(true) : null;
         try {
-            return parent::execute($params);
+            $result = parent::execute($params);
+            if ($result && $started !== null) {
+                $acquired = hrtime(true);
+                request()->attributes->set('_test_users_lock_acquired_ns', $acquired);
+                request()->attributes->set('_test_users_lock_wait_ms', ($acquired - $started) / 1000000);
+            }
+
+            return $result;
         } catch (PDOException $exception) {
             if ((int) ($exception->errorInfo[1] ?? 0) === 1213) {
                 request()->attributes->set('_test_users_deadlock_code', 1213);
