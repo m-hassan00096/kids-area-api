@@ -37,13 +37,29 @@ class AuthenticationSchemaTest extends IdentityDatabaseTestCase
         $this->assertFalse(Schema::hasTable('sessions'));
         $this->assertTrue(Schema::hasColumn('roles', 'alias_name'));
         // Historical schema requires the old Role alias; do not use the F04 seeder.
-        $manager = Role::create(['name' => 'manager', 'guard_name' => 'web', 'alias_name' => 'مدير', 'is_active' => true]);
-        Role::create(['name' => 'reception', 'guard_name' => 'web', 'alias_name' => 'استقبال', 'is_active' => true]);
+        // Seed the historical columns explicitly, as in the verified CI upgrade
+        // fixture. Current Spatie Role::create is not the historical insert path.
+        $now = now();
+        $managerId = DB::table('roles')->insertGetId([
+            'name' => 'manager', 'guard_name' => 'web', 'alias_name' => 'مدير',
+            'is_active' => true, 'created_at' => $now, 'updated_at' => $now,
+        ]);
+        $receptionId = DB::table('roles')->insertGetId([
+            'name' => 'reception', 'guard_name' => 'web', 'alias_name' => 'استقبال',
+            'is_active' => true, 'created_at' => $now, 'updated_at' => $now,
+        ]);
+        $this->assertSame('مدير', DB::table('roles')->where('id', $managerId)->value('alias_name'));
+        $this->assertSame('استقبال', DB::table('roles')->where('id', $receptionId)->value('alias_name'));
         $permissions = collect();
         foreach (IdentityPermissions::CATALOGUE as $name => $alias) {
-            $permissions->push(Permission::create(['name' => $name, 'guard_name' => 'web', 'alias_name' => $alias]));
+            $id = DB::table('permissions')->insertGetId([
+                'name' => $name, 'guard_name' => 'web', 'alias_name' => $alias,
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+            $permissions->push(Permission::query()->findOrFail($id));
         }
-        $manager->syncPermissions($permissions);
+        $this->assertEquals(IdentityPermissions::CATALOGUE, DB::table('permissions')->pluck('alias_name', 'name')->all());
+        Role::findById($managerId, 'web')->syncPermissions($permissions);
         $user = User::factory()->create(['username' => 'Existing.Staff', 'phone' => '00012345678']);
         $user->syncRoles([Role::findByName('manager', 'web')]);
         $before = $user->fresh();
