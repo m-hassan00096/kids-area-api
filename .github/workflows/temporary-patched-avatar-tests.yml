@@ -67,3 +67,19 @@ jobs:
         run: |
           test -x vendor/bin/pint
           vendor/bin/pint --test
+      - name: Verify routes, module scope and artifact constraints
+        run: |
+          php artisan module:list --no-ansi
+          php artisan route:list --no-ansi
+          php artisan route:cache
+          php artisan route:list --no-ansi
+          php artisan route:clear
+          test -d Modules
+          test -d Modules/Identity
+          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' -print -quit)"
+          test -z "$(git ls-files .env)"
+          test ! -e app/Models/User.php
+          test ! -e database/migrations/0001_01_01_000000_create_users_table.php
+          test ! -e database/migrations/0001_01_01_000002_create_jobs_table.php
+          test ! -e package.json
+          test ! -e vite.config.js
