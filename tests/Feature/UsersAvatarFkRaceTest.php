@@ -147,17 +147,17 @@ class UsersAvatarFkRaceTest extends AuthenticationHttpTestCase
             $table->foreign('user_id', 'fixture_user_protected_fk')->references('id')->on('users')->restrictOnDelete();
         });
         try {
-            $deadlocks = (int) DB::selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value;
             [$first, $second] = $this->race(
                 $external->prepare('POST', '/api/v1/__fixture-user-link/'.$target->id, options: $this->raceOptions('hold-fk-deadlock', 'first')),
-                $admin->prepare('POST', $path, options: $this->upload(array_replace($fields, ['name' => 'Must not retry']), AvatarFixtures::image('png', 16, 8), 'observe', 'second')),
+                $admin->prepare('POST', $path, options: $this->upload(array_replace($fields, ['name' => 'Must not retry']), AvatarFixtures::image('png', 16, 8), 'observe-deadlock', 'second')),
                 'users',
             );
             $this->assertSame(201, $first->status);
             $this->assertSame(503, $second->status, $second->header('X-Test-Exception-Class') ?? '');
             $this->assertSame('rolled_back', $second->header('X-Test-Users-Outcome'));
             $this->assertSame('1', $second->header('X-Test-Redacted'));
-            $this->assertSame($deadlocks + 1, (int) DB::selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value);
+            $this->assertSame('1213', $second->header('X-Test-Users-Deadlock-Code'));
+            $this->assertSame('1', $second->header('X-Test-Users-Deadlock-Count'));
             $this->assertSame(100, DB::table('fixture_user_links')->where('user_id', $target->id)->count());
             $this->assertSame($before, $target->fresh()->getAttributes());
             $this->assertSame($bytes, file_get_contents($this->barrierDir.'/avatars/'.$key));

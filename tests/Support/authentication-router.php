@@ -22,6 +22,7 @@ use Modules\Identity\Services\LoginThrottle;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\AuthenticationCommitFault;
 use Tests\Support\UsersBoundaryProbe;
+use Tests\Support\UsersObservedStatement;
 
 require __DIR__.'/../../vendor/autoload.php';
 
@@ -408,6 +409,9 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
+if ($mode === 'observe-deadlock') {
+    $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
+}
 $commitFault = null;
 if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
@@ -419,6 +423,10 @@ if ($commitFault !== null) {
     $response->headers->set('X-Test-Actual-Commit-Count', (string) $commitFault->commits);
 }
 $response->headers->set('X-Test-Query-Count', (string) $count);
+$response->headers->set('X-Test-Users-Deadlock-Count', (string) $request->attributes->get('_test_users_deadlock_count', 0));
+if ($request->attributes->has('_test_users_deadlock_code')) {
+    $response->headers->set('X-Test-Users-Deadlock-Code', (string) $request->attributes->get('_test_users_deadlock_code'));
+}
 $response->headers->set('X-Test-Users-Touches', (string) $staffTouches);
 $response->headers->set('X-Test-Users-Self-Revoked', $request->attributes->get('staff_self_revoked') ? '1' : '0');
 $outcome = $request->attributes->get('identity_users_outcome');
