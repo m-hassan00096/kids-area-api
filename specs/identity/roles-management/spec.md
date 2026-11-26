@@ -1,6 +1,6 @@
 # Feature 04 — Roles & Permissions Management
 
-> **Status:** Specification review draft. User approved the 12 business decisions and explicitly corrected naming on 2026-11-26: remove Role alias, retain Permission alias. Other contract details below are proposed unless already required by the canonical sources. No implementation or migration execution.
+> **Status:** Specification review draft; proposed technical plan and tasks authored for review. User approved the 12 business decisions and explicitly corrected naming on 2026-11-26: remove Role alias, retain Permission alias. Other contract details below are proposed unless already required by the canonical sources. No implementation or migration execution.
 > **Baseline:** develop `41b5eeca7e9b04eb7b064f93464b290754fea16a`, PR #10 merged; [exact final CI 45811979133](https://github.com/m-hassan00096/kids-area-api/actions/runs/45811979133) 174 tests / 9101 assertions, Pint 159. Existing schema and historical F01–F03 evidence are not proof of this change.
 > **Sources:** [Identity](../../../docs/03-modules/identity.md), [Permissions](../../../docs/02-standards/permissions-standards.md), [Localization](../../../docs/02-standards/localization-standards.md), [API](../../../docs/02-standards/api-standards.md), [Workflow](../../../docs/02-standards/ai-workflow-rules.md).
 
@@ -71,6 +71,23 @@ Actual source dependencies on role alias at baseline: SeedIdentityCatalogueActio
 | F04-11 | Forward migration preserves Role IDs/names/grants/membership, User credentials/session data and Permission aliases; no Role alias in schema/resources; safe preflight and backup/rollback review. |
 | F04-12 | F01–F03 complete regression with intentional updated Role label contract, additive seeders, no unexpected schema/routes/permissions/dependencies, safe errors, Pint and CI. |
 
-## 6. Gate
+## 6. Contract review defaults proposed with the technical plan
 
-Naming correction and the previously approved business decisions are recorded. Remaining API details and Store grant scope require review before the complete specification is approved. Then review technical plan, ordered tasks and exact protected-operation authorization for disposable migration tests. No code, migration execution, merge or deployment authorized by this documentation-only checkpoint.
+These defaults are recommendations for approval, not newly approved requirements:
+
+| ID | Decision | Recommended default |
+| --- | --- | --- |
+| D01 | Store grant authority | Like the already-approved roles.update, roles.store may assign any existing approved web catalogue permission, even if the actor lacks it. Treat this as a privileged delegation capability; it does not itself change the actor's grants. User create/update combined with Role store can establish a more privileged account, so grant these capabilities deliberately. No direct grants. |
+| D02 | Name validation / uniqueness | Single trimmed, nonblank Arabic/English-capable Unicode name, maximum 255 characters, no invalid UTF-8, control characters or invisible directional formatting; retain normal spaces, digits and ordinary punctuation. Reject reserved-name variants under actual DB collation; permanent exact names immutable. Use existing unique (name, guard_name) and its actual case/accent equivalence (default utf8mb4_unicode_ci); confirm on MySQL 8 rather than assuming binary equality or adding a second index. |
+| D03 | Create active state | Optional strict JSON boolean isActive, default true; allow explicit false for a custom role. Required permissions array, including []. |
+| D04 | PUT / protected roles | Full JSON body name, isActive, permissions. For permanent roles the unchanged exact reserved name and true are required; grant replacement permitted. Protected rename/deactivation/deletion and assigned-role deletion: 409 business conflict; malformed fields, reserved names on create/custom rename and duplicate names/permissions: 422; unauthenticated 401, unauthorized 403 before lookup, missing 404. |
+| D05 | List / detail | ID DESC fixed, page 15 default / 100 clamp, literal name search max 255 characters, filter[isActive] accepts canonical 0/1; reject unsupported sort/include/filter keys, malformed array/object values. Count actual assigned Users regardless of their state, do not multiply through permission joins. Detail grants sorted by stable technical name and return name/aliasName. |
+| D06 | Select bounds | Max three registered keys per request, each provider max 200 options with explicit 409 overflow and no silent truncation. Preserve all-or-nothing authorization and requested order. Permission options ordered by stable technical name. No grouping or new lookup endpoint. Review a future large catalogue before increasing the bound. |
+| D07 | Legacy name migration | Preserve current roles.name and all IDs/pivots, no automatic alias-to-name rename; inspect and back up legacy alias mapping and separately approve disposition of real custom names that differ from aliases before dropping. Permanent roles display manager/reception literally under the backend contract. |
+| D08 | Role disable semantics | On a true-to-false transition, advance auth_version for every associated User including inactive Users, once, delete their authoritative sessions in the same transaction, keep assignments and User is_active unchanged. Repeat false->false and true reactivation do not advance versions. Same behavior for actor if authorized self-role disable leaves another viable admin; clear browser only after known commit. Grant/rename-only changes preserve sessions. |
+
+D08 refines the already approved role-disable/re-enable behavior. The exact transaction, cache and failure design is in plan.md. If a proposal is rejected, revise these documents before implementation.
+
+## 7. Gate
+
+Naming correction and previously approved business decisions are recorded. Full specification defaults above, technical plan and task breakdown are supplied for review together; Store grant authority remains a distinct security decision. Approval of documents does not authorize destructive execution: specifically approve the forward drop and any reset/rollback testing only in verified disposable MySQL 8 CI before adding an automatically executed migration to an implementation PR. Real DB inspection, data transformation, migration, production deployment and merge require their own authorization. No application implementation or test execution for Feature 04 yet.
