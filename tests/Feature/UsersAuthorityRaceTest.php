@@ -43,7 +43,7 @@ class UsersAuthorityRaceTest extends AuthenticationHttpTestCase
         $this->assertSame(200, $a->login($one->username)->status);
         $old = $a->sessionId();
         [$first, $second] = $this->race(
-            $b->prepare('PUT', '/api/v1/users/'.$one->id, $this->fields($one, 'reception'), $this->raceOptions('hold-users-update', 'first')),
+            $b->prepare('PUT', '/api/v1/users/'.$one->id, array_replace($this->fields($one, 'reception'), ['name' => 'Role changed']), $this->raceOptions('hold-users-update', 'first')),
             $a->prepare('DELETE', '/api/v1/users/'.$two->id, options: $this->raceOptions('observe', 'second')),
             'manager',
         );
@@ -56,7 +56,7 @@ class UsersAuthorityRaceTest extends AuthenticationHttpTestCase
         $this->assertSame(200, $b->me()->status);
     }
 
-    public function test_delete_first_or_disable_first_never_eliminates_remaining_admin(): void
+    public function test_delete_first_revokes_waiting_actor_without_eliminating_remaining_admin(): void
     {
         $this->user('Fixture.Founder', 'reception');
         $one = $this->user('Fixture.One');
