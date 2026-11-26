@@ -2,6 +2,8 @@
 
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\QueryException;
+use Illuminate\Hashing\HashManager;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
@@ -151,7 +153,7 @@ Route::middleware('api')->post('/api/v1/__fixture-user-link/{user}', static func
                 $pause();
             }
         }, 1);
-    } catch (\Illuminate\Database\QueryException $failure) {
+    } catch (QueryException $failure) {
         if ((int) ($failure->errorInfo[1] ?? 0) === 1452) {
             return response()->json(['fixture' => 'parent_missing'], 409);
         }
@@ -167,7 +169,7 @@ if (in_array($mode, ['hold-avatar-before-read', 'hold-avatar-after-read', 'fault
 
         public function __construct(private string $mode, private Closure $pause) {}
 
-        public function stage(#[\SensitiveParameter] NormalizedAvatar $image): string
+        public function stage(#[SensitiveParameter] NormalizedAvatar $image): string
         {
             if ($this->mode === 'fault-avatar-stage') {
                 throw new RuntimeException('Synthetic storage unavailable.');
@@ -193,7 +195,15 @@ if (in_array($mode, ['hold-avatar-before-read', 'hold-avatar-after-read', 'fault
     });
 }
 if ($mode === 'fault-users-hash') {
-    Hash::shouldReceive('make')->once()->andThrow(new RuntimeException('Synthetic hash failure.'));
+    // No mock framework in the cli-server bootstrap. Fail only the
+    // actual hashing call; the other native HashManager methods are intact.
+    Hash::swap(new class($app) extends HashManager
+    {
+        public function make(#[SensitiveParameter] $value, array $options = []): string
+        {
+            throw new RuntimeException('Synthetic hash failure.');
+        }
+    });
 }
 if (in_array($mode, ['fault-avatar-write', 'fault-avatar-close'], true)) {
     require __DIR__.'/avatar-io-faults.php';

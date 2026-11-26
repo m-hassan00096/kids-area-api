@@ -15,7 +15,8 @@ class UsersActualFaultTest extends AuthenticationHttpTestCase
     {
         $founder = $this->user('Fixture.Founder');
         $target = $this->user('Fixture.Target', 'reception');
-        $browser = $this->browser($this->server());
+        $server = $this->server();
+        $browser = $this->browser($server);
         $this->assertSame(200, $browser->login($founder->username)->status);
         $path = '/api/v1/users/'.$target->id;
         $fields = $this->fields($target) + ['_method' => 'PUT'];
@@ -26,11 +27,15 @@ class UsersActualFaultTest extends AuthenticationHttpTestCase
         foreach (['fault-avatar-stage', 'fault-avatar-write', 'fault-avatar-close', 'fault-users-hash'] as $mode) {
             $response = $browser->request('POST', '/api/v1/users', options: $this->upload($this->createFields('Fixture.MustNotExist'), AvatarFixtures::image('png'), $mode));
             $this->assertSame(500, $response->status, $mode.' '.($response->header('X-Test-Exception-Class') ?? ''));
-            $this->assertSame('1', $response->header('X-Test-Redacted'));
+            $this->assertSame('1', $response->header('X-Test-Redacted'), $mode.' '.$server->diagnostic());
+            $this->assertSame('1', $response->header('X-Test-Correlated-Report'), $mode);
+            $this->assertSame(['success' => false, 'message' => __('api.errors.internal'), 'errors' => []], $response->json(), $mode);
             $update = array_replace($fields, ['name' => 'Must not commit', 'password' => 'synthetic-fault-reset', 'passwordConfirmation' => 'synthetic-fault-reset']);
             $response = $browser->request('POST', $path, options: $this->upload($update, AvatarFixtures::image('png', 24, 8), $mode));
             $this->assertSame(500, $response->status, $mode.' '.($response->header('X-Test-Exception-Class') ?? ''));
-            $this->assertSame('1', $response->header('X-Test-Redacted'));
+            $this->assertSame('1', $response->header('X-Test-Redacted'), $mode.' '.$server->diagnostic());
+            $this->assertSame('1', $response->header('X-Test-Correlated-Report'), $mode);
+            $this->assertSame(['success' => false, 'message' => __('api.errors.internal'), 'errors' => []], $response->json(), $mode);
             $this->assertSame($before, $target->fresh()->getAttributes());
             $this->assertSame($bytes, file_get_contents($this->barrierDir.'/avatars/'.$key));
             $this->assertCount(1, glob($this->barrierDir.'/avatars/*'));
