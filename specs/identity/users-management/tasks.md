@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 37/49 complete (T01–T37); standard CI 45804312638 success (§24.2). T38–T43 race/fault matrix next when authorized; 19 full acceptance scenarios Not Run; no merge.
+> **Progress:** 37/49 complete T01–T37; user authorized T38–T43; deterministic race and fault matrix in progress. 19 full acceptance scenarios Not Run; no merge.
 
 ## 1. Gates and evidence rules
 
@@ -374,3 +374,7 @@ Actual T34–T37 verification (2026-11-26). Exact feature source `5c9e86bc09df3d
 ### 24.2 Standard regression and closure
 
 Standard CI [45804312638](https://github.com/m-hassan00096/kids-area-api/actions/runs/45804312638), job 139855388971, exact source `5c9e86bc09df3d4ffd3577c5a181a3da033b6797`, completed Success. Actual logs: No security vulnerability advisories found.; Tests:    41 passed (1443 assertions); Tests:    56 passed (825 assertions); Tests:    157 passed (4941 assertions); PASS   ......................................................... 149 files; INFO  Routes cached successfully.. All required standard steps passed. Compared checkpoint `c0bf4e836491e108e07f607b97811a96113fa80c` to tested source; documentation-only delta. T34–T37 verified/closed; 37/49. T38–T43 broader deterministic race/fault matrix next when authorized; T44–T49 remain open; all 19 complete acceptance scenarios Not Run. No merge or production operation.
+
+## 25. T38–T43 concurrency and fault matrix
+
+User authorized T38–T43. Prior verified source CI 45804312638 success; docs closure 733649df checked. Extend existing independent real HTTP/MySQL barrier harness with per-interleaving fresh barrier files and parent connection check, actual Users write/session/FK contention, guarded private read barriers and synthetic native write/close faults. No new production routes, dependencies, schema or config. Test-only FK route/table belongs to disposable synthetic tests. Verification pending.

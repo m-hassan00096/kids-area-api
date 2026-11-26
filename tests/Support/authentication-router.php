@@ -14,6 +14,7 @@ use Modules\Identity\Http\Middleware\FinalizeLoginSession;
 use Modules\Identity\Http\Middleware\RequireStaffSession;
 use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
 use Modules\Identity\Services\Avatar\AvatarStorage;
+use Modules\Identity\Services\Avatar\NormalizedAvatar;
 use Modules\Identity\Services\LoginThrottle;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\AuthenticationCommitFault;
@@ -73,7 +74,7 @@ if (is_string($mode) && str_starts_with($mode, 'users-probe-') && $request->is('
 }
 
 // The fixture FK is a reviewed test-only dependency, never a production table.
-if ($mode === 'users-action-protected-fk') {
+if (in_array($mode, ['users-action-protected-fk', 'hold-users-delete-fk'], true)) {
     $app->when(DeleteUserAction::class)->needs('$protectedUserForeignKeys')->give(['fixture_user_protected_fk']);
 }
 
@@ -139,6 +140,60 @@ $pause = static function () use ($prefix): void {
     throw new RuntimeException('Synthetic barrier timed out.');
 };
 
+// A fixture-only FK writer models a future owning module, without adding
+// a real production route or table. This route runs only in this guarded router.
+Route::middleware('api')->post('/api/v1/__fixture-user-link/{user}', static function (int $user) use ($mode, $pause) {
+    try {
+        DB::transaction(function () use ($user, $mode, $pause): void {
+            DB::table('fixture_user_links')->insert(['user_id' => $user]);
+            if ($mode === 'hold-fk-insert') {
+                $pause();
+            }
+        }, 1);
+    } catch (\Illuminate\Database\QueryException $failure) {
+        if ((int) ($failure->errorInfo[1] ?? 0) === 1452) {
+            return response()->json(['fixture' => 'parent_missing'], 409);
+        }
+        throw $failure;
+    }
+
+    return response()->json(['fixture' => 'linked'], 201);
+});
+if (in_array($mode, ['hold-avatar-before-read', 'hold-avatar-after-read', 'fault-avatar-stage'], true)) {
+    $app->bind(AvatarStorage::class, static fn () => new class($mode, $pause) extends AvatarStorage
+    {
+        private bool $held = false;
+
+        public function __construct(private string $mode, private Closure $pause) {}
+
+        public function stage(#[\SensitiveParameter] NormalizedAvatar $image): string
+        {
+            if ($this->mode === 'fault-avatar-stage') {
+                throw new RuntimeException('Synthetic storage unavailable.');
+            }
+
+            return parent::stage($image);
+        }
+
+        public function read(string $key): NormalizedAvatar
+        {
+            if (! $this->held && $this->mode === 'hold-avatar-before-read') {
+                $this->held = true;
+                ($this->pause)();
+            }
+            $image = parent::read($key);
+            if (! $this->held && $this->mode === 'hold-avatar-after-read') {
+                $this->held = true;
+                ($this->pause)();
+            }
+
+            return $image;
+        }
+    });
+}
+if (in_array($mode, ['fault-avatar-write', 'fault-avatar-close'], true)) {
+    require __DIR__.'/avatar-io-faults.php';
+}
 $diagnostic = null;
 Log::listen(static function (MessageLogged $event) use (&$diagnostic): void {
     if (is_string($event->context['exception_class'] ?? null)) {
@@ -242,7 +297,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
             app()->forgetInstance(PermissionRegistrar::class);
             app()->bind(PermissionRegistrar::class, static fn () => throw new RuntimeException('Synthetic postcommit cache failure.'));
         }
-        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore'], true)) {
+        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
     }
@@ -273,13 +328,22 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     $nativeSave = str_starts_with($sql, 'update sessions set') && str_contains($sql, 'payload');
     $nativeInsert = str_starts_with($sql, 'insert into sessions');
 
+    $userWrite = str_starts_with($sql, 'update users set');
+    $userInsert = str_starts_with($sql, 'insert into users');
+    $userDelete = str_starts_with($sql, 'delete from users');
+    $roleInsert = str_starts_with($sql, 'insert into model_has_roles');
     if ($mode === 'users-action-final-save' && $request->attributes->get('staff_self_revoked') && ($nativeSave || $nativeInsert)) {
         $armed = false;
         throw new RuntimeException('Synthetic postcommit native save failure.');
     }
     $hit = match ($mode) {
         'hold-credentials', 'fault-report' => $credentialRead,
-        'hold-manager' => $managerLock,
+        'hold-manager', 'hold-manager-expire' => $managerLock,
+        'hold-users-insert' => $userInsert,
+        'hold-users-update' => $userWrite,
+        'hold-users-delete-fk' => $userDelete,
+        'fault-users-pivot' => $roleInsert,
+        'fault-users-reference' => $userWrite && str_contains($sql, 'avatar_key'),
         'hold-marker', 'fault-marker' => $marker,
         'hold-password', 'fault-password' => $passwordWrite,
         'fault-revoke' => $revoke,
@@ -302,6 +366,9 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         app('session')->driver()->setExists(false);
     }
     $pause();
+    if ($mode === 'hold-manager-expire') {
+        Carbon::setTestNow(now()->addSecond());
+    }
 });
 
 if ($mode === 'cleanup') {
@@ -382,6 +449,8 @@ if ($inspect) {
     $response->headers->set('X-Test-Users-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
         && is_string($outcome) && ($log[1]['mutation_outcome'] ?? null) === $outcome) ? '1' : '0');
+    $response->headers->set('X-Test-Users-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Users lock timeout restoration failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Users-Cache-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Users permission cache invalidation failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Avatar-Cleanup-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Avatar lifecycle retained file.'

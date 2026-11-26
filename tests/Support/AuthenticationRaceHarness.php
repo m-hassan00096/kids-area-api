@@ -19,6 +19,12 @@ trait AuthenticationRaceHarness
         $multi = curl_multi_init();
         $done = [];
         $prefix = $this->barrierDir.DIRECTORY_SEPARATOR;
+        // Each interleaving owns fresh barrier names even in a matrix test.
+        foreach (['first.ready', 'first.held', 'first.release', 'second.ready'] as $name) {
+            if (is_file($prefix.$name)) {
+                unlink($prefix.$name);
+            }
+        }
         curl_multi_add_handle($multi, $a->handle);
 
         try {
@@ -28,7 +34,9 @@ trait AuthenticationRaceHarness
             $firstId = json_decode(file_get_contents($prefix.'first.ready'), true)['connection_id'];
             $secondId = json_decode(file_get_contents($prefix.'second.ready'), true)['connection_id'];
             $this->assertNotSame($firstId, $secondId);
-            $this->assertNotSame((int) DB::selectOne('SELECT CONNECTION_ID() AS id')->id, $secondId);
+            $parentId = (int) DB::selectOne('SELECT CONNECTION_ID() AS id')->id;
+            $this->assertNotSame($parentId, $secondId);
+            $this->assertNotSame($parentId, $firstId);
             if ($contested !== null) {
                 $this->await($multi, $done, function () use ($secondId, $contested): bool {
                     foreach (DB::select('SHOW FULL PROCESSLIST') as $entry) {
@@ -40,6 +48,9 @@ trait AuthenticationRaceHarness
                         $match = match ($contested) {
                             'manager' => str_contains($sql, 'from roles') && str_contains($sql, 'for update'),
                             'throttle' => str_contains($sql, 'identity_login_throttles') && (str_starts_with($sql, 'insert') || str_contains($sql, 'for update')),
+                            'session' => str_contains($sql, 'from sessions') && str_contains($sql, 'for update'),
+                            'users' => str_contains($sql, 'from users') && str_contains($sql, 'for update'),
+                            'fk' => str_starts_with($sql, 'insert into fixture_user_links'),
                             'cleanup' => str_contains($sql, 'identity_login_throttles') && str_contains($sql, 'for update'),
                         };
                         if ($match) {
