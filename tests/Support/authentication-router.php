@@ -52,6 +52,13 @@ if (is_string($time) && ctype_digit($time)) {
 }
 
 $barrierDir = getenv('IDENTITY_TEST_BARRIER_DIR');
+if (is_string($barrierDir) && dirname($barrierDir) === sys_get_temp_dir()
+    && str_starts_with(basename($barrierDir), 'kids-auth-') && is_dir($barrierDir) && ! is_link($barrierDir)) {
+    config()->set('filesystems.disks.identity-avatars.root', $barrierDir.DIRECTORY_SEPARATOR.'avatars');
+} else {
+    http_response_code(503);
+    exit;
+}
 $barrier = $request->headers->get('X-Identity-Test-Barrier');
 $mode = $request->headers->get('X-Identity-Test-Mode');
 if (is_string($mode) && str_starts_with($mode, 'users-probe-') && $request->is('api/v1/users', 'api/v1/users/*')) {
@@ -289,6 +296,9 @@ $response->headers->set('X-Test-Users-Page-Limit', $usersPageLimit);
 $response->headers->set('X-Test-Users-Snapshot', (string) $usersSnapshot);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);
 $response->headers->set('X-Test-Select-Limit', $selectLimit);
+if ($request->attributes->get('_test_avatar_validated')) {
+    $response->headers->set('X-Test-Avatar-Validated', '1');
+}
 if ($request->attributes->has('_test_users_fingerprint')) {
     $response->headers->set('X-Test-Users-Fingerprint', $request->attributes->get('_test_users_fingerprint'));
 }

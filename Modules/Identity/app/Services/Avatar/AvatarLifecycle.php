@@ -30,8 +30,14 @@ final readonly class AvatarLifecycle
         if (! in_array($outcome, ['committed', 'rolled_back', 'unknown'], true)) {
             throw new LogicException('Unknown avatar lifecycle outcome.');
         }
-        if ($outcome === 'unknown' || DB::connection()->transactionLevel() !== 0) {
-            $this->warn('retained_uncertain');
+        try {
+            if ($outcome === 'unknown' || DB::connection()->transactionLevel() !== 0) {
+                $this->warn('retained_uncertain');
+
+                return;
+            }
+        } catch (Throwable) {
+            $this->warn('cleanup_failed');
 
             return;
         }
@@ -52,9 +58,13 @@ final readonly class AvatarLifecycle
 
     private function warn(string $outcome): void
     {
-        Log::warning('Avatar lifecycle retained file.', [
-            'request_id' => app()->bound('request') ? RequestId::id(request()) : null,
-            'outcome' => $outcome,
-        ]);
+        try {
+            Log::warning('Avatar lifecycle retained file.', [
+                'request_id' => app()->bound('request') ? RequestId::id(request()) : null,
+                'outcome' => $outcome,
+            ]);
+        } catch (Throwable) {
+            // A diagnostic outage must not reinterpret a known commit.
+        }
     }
 }

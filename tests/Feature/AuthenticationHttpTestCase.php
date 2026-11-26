@@ -33,6 +33,13 @@ abstract class AuthenticationHttpTestCase extends IdentityDatabaseTestCase
             $server->stop();
         }
         if (isset($this->barrierDir) && is_dir($this->barrierDir)) {
+            $avatars = $this->barrierDir.DIRECTORY_SEPARATOR.'avatars';
+            if (is_dir($avatars) && ! is_link($avatars)) {
+                foreach (glob($avatars.DIRECTORY_SEPARATOR.'*') ?: [] as $file) {
+                    unlink($file);
+                }
+                rmdir($avatars);
+            }
             foreach (glob($this->barrierDir.DIRECTORY_SEPARATOR.'*') ?: [] as $file) {
                 unlink($file);
             }

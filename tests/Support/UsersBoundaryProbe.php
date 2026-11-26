@@ -3,11 +3,13 @@
 namespace Tests\Support;
 
 use Illuminate\Support\Facades\DB;
+use Modules\Identity\Services\Avatar\AvatarImageNormalizer;
 use RuntimeException;
 use Spatie\QueryBuilder\Exceptions\InvalidFieldQuery;
 use Spatie\QueryBuilder\Exceptions\InvalidFilterQuery;
 use Spatie\QueryBuilder\Exceptions\InvalidIncludeQuery;
 use Spatie\QueryBuilder\Exceptions\InvalidSortQuery;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class UsersBoundaryProbe
 {
@@ -52,6 +54,13 @@ final class UsersBoundaryProbe
         $request = request();
         $mode = $request->headers->get('X-Identity-Test-Mode');
         $body = $request->isJson() ? $request->json()->all() : $request->request->all();
+        if ($mode === 'users-probe-avatar-validation') {
+            $file = $request->files->get('avatar');
+            abort_unless($file instanceof UploadedFile, 422);
+            app(AvatarImageNormalizer::class)->fromUpload($file);
+            $request->attributes->set('_test_avatar_validated', true);
+            abort(503);
+        }
         if ($mode === 'users-probe-normalized') {
             $request->attributes->set('_test_users_fingerprint', hash('sha256', serialize([
                 $body, $request->query->all(), $request->attributes->get('users_target')?->id,
