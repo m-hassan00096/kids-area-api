@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 13/49 complete (T01–T13); T11–T13 verified (§19.1). T14–T20 implementation and verification in progress; 19/19 full acceptance scenarios Not Run. No production or merge.
+> **Progress:** 20/49 complete (T01–T20); Phase C verified (§20.1). Next T21–T25 approved private avatar infrastructure. 19/19 full acceptance scenarios Not Run. No production or merge.
 
 ## 1. Gates and evidence rules
 
@@ -42,19 +42,19 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 ## 4. Phase C — Users reads and Select Registry (T14–T20)
 
-- [ ] **T14 — Index query validation.** Dependencies: T11,T12. Allow only scalar search/roleId/isActive, page/perPage, max255 search, positive integer overflow check, default15 clamp100, preserve 0/false, reject unknown filters/query/sort/include/fields 422. Evidence: Input matrix F03-02/03.
+- [x] **T14 — Index query validation.** Dependencies: T11,T12. Allow only scalar search/roleId/isActive, page/perPage, max255 search, positive integer overflow check, default15 clamp100, preserve 0/false, reject unknown filters/query/sort/include/fields 422. Evidence: Input matrix F03-02/03.
 
-- [ ] **T15 — Spatie allowed filters and bounded query.** Dependencies: T06,T08,T14. Validated custom callbacks preserve comma/true/false/0 despite package coercion; literal escaped LIKE !/%/_ grouped name/username/phone AND role EXISTS/status, exact morph/guard, primary read, id DESC, identical count/page predicates and eager role load; short consistent read snapshot if needed, no global delimiter changes. Evidence: MySQL literal semantics/SQL assertions F03-02/03.
+- [x] **T15 — Spatie allowed filters and bounded query.** Dependencies: T06,T08,T14. Validated custom callbacks preserve comma/true/false/0 despite package coercion; literal escaped LIKE !/%/_ grouped name/username/phone AND role EXISTS/status, exact morph/guard, primary read, id DESC, identical count/page predicates and eager role load; short consistent read snapshot if needed, no global delimiter changes. Evidence: MySQL literal semantics/SQL assertions F03-02/03.
 
-- [ ] **T16 — Explicit resources.** Dependencies: T08,T11,T15. Exact userId/avatarUrl/name/username/phone/isActive/role, email only detail, no timestamp/secret, role null on anomaly, no arbitrary first/no per-row file stat; approved pagination, Me unchanged. Evidence: Exact key sets and query evidence F03-01/03.
+- [x] **T16 — Explicit resources.** Dependencies: T08,T11,T15. Exact userId/avatarUrl/name/username/phone/isActive/role, email only detail, no timestamp/secret, role null on anomaly, no arbitrary first/no per-row file stat; approved pagination, Me unchanged. Evidence: Exact key sets and query evidence F03-01/03.
 
-- [ ] **T17 — Index/detail HTTP tests.** Dependencies: T14–T16. Arabic/name, exact username case, phone leading zero, wildcard/comma/boolean words, inactive role/state/false, filters AND, unknown role, malformed, empty/out-of-range/default/max100, permission before lookup. Evidence: Real HTTP/MySQL assertions F03-01/02/03/07.
+- [x] **T17 — Index/detail HTTP tests.** Dependencies: T14–T16. Arabic/name, exact username case, phone leading zero, wildcard/comma/boolean words, inactive role/state/false, filters AND, unknown role, malformed, empty/out-of-range/default/max100, permission before lookup. Evidence: Real HTTP/MySQL assertions F03-01/02/03/07.
 
-- [ ] **T18 — Core Select Registry.** Dependencies: T10–T12. Explicit registered providers, validate exact ordered unique keys max2, all authorized before dispatch, no partial results/dynamic classes/new permissions. Evidence: Registry authorization/dispatch proof F03-17.
+- [x] **T18 — Core Select Registry.** Dependencies: T10–T12. Explicit registered providers, validate exact ordered unique keys max2, all authorized before dispatch, no partial results/dynamic classes/new permissions. Evidence: Registry authorization/dispatch proof F03-17.
 
-- [ ] **T19 — Identity role options.** Dependencies: T18. roles active web create OR update; userFilterRoles all web view; numeric ID/stored alias ordered ID ASC, max200 per provider limit201 probe, overflow409 entire response, no permissions key. Evidence: Provider SQL/options/bounds tests F03-17.
+- [x] **T19 — Identity role options.** Dependencies: T18. roles active web create OR update; userFilterRoles all web view; numeric ID/stored alias ordered ID ASC, max200 per provider limit201 probe, overflow409 entire response, no permissions key. Evidence: Provider SQL/options/bounds tests F03-17.
 
-- [ ] **T20 — Select HTTP tests.** Dependencies: T18,T19. Create-only/update-only/view-only, mixed forbidden no provider executes, unknown/duplicate/malformed, requested order, empty and limit+1, no partial output. Evidence: Actual response/provider checks F03-17/18.
+- [x] **T20 — Select HTTP tests.** Dependencies: T18,T19. Create-only/update-only/view-only, mixed forbidden no provider executes, unknown/duplicate/malformed, requested order, empty and limit+1, no partial output. Evidence: Actual response/provider checks F03-17/18.
 
 ## 5. Phase D — Private Avatar infrastructure (T21–T25)
 
@@ -158,7 +158,7 @@ All approved cases in spec §11 and plan §8 remain Not Run.
 | T05 documentation merge and implementation | Complete; PR #9 merged and implementation branch approved |
 | T06 package/platform | Verified approved additions, CI 45673916280 success |
 | T07–T09 guarded DB/FS/migration | T07 verified 45678335241; T08/T09 verified 45678811050 |
-| T10–T37 HTTP/reads/selects/avatar/writes | T10 verified 45679742034; T11–T37 Not Run |
+| T10–T37 HTTP/reads/selects/avatar/writes | T10–T20 verified; T21–T37 Not Run |
 | T38–T46 races/faults/performance/scope | Not Run |
 | T47–T49 full tests/Pint/CI | Not Run |
 | Implementation merge / deployment | Not authorized |
@@ -304,3 +304,7 @@ Approved scope: query-only index FormRequest, typed allowlist and overflow-safe 
 ### Phase C first regression attempt
 
 CI 45713619929 failed 1 of 124 tests; literal search returned HTTP 500, remaining 123 passed. Candidate correction: skip impossible ASCII username/phone matches for non-ASCII search literals, retaining name search and original literal semantics. Add synthetic search case and exception-class context to assertion. Root cause not confirmed until fresh CI; T14–T20 remain unchecked.
+
+### 20.1 Phase C actual verification
+
+T14–T20 verified on exact `8e3a1f9d4dd54cc530897424aaf0f1ac46813500`, [CI 45719749580](https://github.com/m-hassan00096/kids-area-api/actions/runs/45719749580), job 139574786921 success, actual logs reviewed: Auth 41/1445 assertions, Identity 56/827, full 124/3559, Pint 122, route cache and module/scope checks passed. Four UsersManagementReadTest cases, three SelectRegistryHttpTest cases and one SelectRegistryProviderTest case passed. Verified literal Arabic/ASCII/wildcard/comma/boolean search, grouped role/state predicates, exact resources and Me unchanged, invalid input before domain reads, three domain SQL reads per nonempty page and bounded pagination, independent provider authorization, zero provider reads on mixed forbidden, exact 200 options/201 overflow409, empty options. Earlier CI 45713619929 failed literal search HTTP500; Unicode/ASCII comparison avoidance corrected the tested failure, exact original exception not independently captured. No schema/index/package change. Full scale EXPLAIN/load T45 still due; all 19 feature acceptance scenarios Not Run. T14–T20 complete, 20/49. User authorized T21–T25 only next, no production or merge.

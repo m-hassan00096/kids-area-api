@@ -1,8 +1,8 @@
 # Kids Area - Conversation Handoff
 
-> Snapshot: 2026-11-25 (Africa/Cairo)
+> Snapshot: 2026-11-26 (Africa/Cairo)
 > Purpose: Resume the Kids Area backend architecture and Identity implementation discussions in a new ChatGPT conversation.
-> Status: F03 draft PR #10; 13/49 T01–T13 verified (CI 45706014872 attempt 2). T14–T20 Users reads/Select Registry in progress, verification pending. All 19 full acceptance scenarios Not Run. No production or merge.
+> Status: F03 active draft PR #10, 20/49 complete T01–T20; CI 45719749580 success (124 tests, 3559 assertions, Pint 122). User approved T21–T25 next; all 19 acceptance scenarios Not Run. No production or merge.
 > Canonical handoff path in GitHub: `docs/00-overview/kids-area-conversation-handoff.md` on `develop` once the documentation PR is merged.
 > Reading rule: Every new Kids Area conversation/AI assistant should start by fetching and reading the latest GitHub handoff, then verifying the relevant source-of-truth docs and live repository status; the handoff is a navigation/progress snapshot, not an authority overriding approved specs.
 > Maintenance rule: Update this **single** handoff on each major approved decision, milestone, or meaningful blocker. Commit changes on the current approved feature/documentation branch and review them through the normal PR process; **never merge without explicit user approval**. New chats with GitHub access can fetch this file instead of reattaching it.
@@ -179,7 +179,7 @@ Final reviewed code [`3c06a957`](https://github.com/m-hassan00096/kids-area-api/
 
 ## 8. Next action and restrictions
 
-1. F03 implementation authorized; T01–T10 verified. Next T11 capability before target lookup, then T12/T13. No feature merge.
+1. F03 implementation authorized; T01–T20 verified. Next T21–T25 private avatar infrastructure only; no feature merge.
 2. After material feasibility resolution, obtain explicit docs merge, implementation, dependency/platform and protected-operation authorizations. No code before gates; no deployment.
 
 ### Follow-up decisions and evidence (2026-11-25)
@@ -221,3 +221,7 @@ T11–T13 verified at `b7dc09cd953530c82ea84403ba8b0fb46013039e`, [CI 4570601487
 Next T14–T20 only; Users index/detail and Select Registry, no avatar storage/writes, no deployment or merge.
 
 Phase C CI 45713619929: 123 passed, one literal search HTTP 500; candidate ASCII coercion correction and diagnostic assertion pending verification. No task closure yet.
+
+### Phase C verified (2026-11-26)
+
+T14–T20 verified on exact `8e3a1f9d4dd54cc530897424aaf0f1ac46813500`, [CI 45719749580](https://github.com/m-hassan00096/kids-area-api/actions/runs/45719749580), job 139574786921 success, actual logs reviewed: Auth 41/1445 assertions, Identity 56/827, full 124/3559, Pint 122, route cache and module/scope checks passed. Four UsersManagementReadTest cases, three SelectRegistryHttpTest cases and one SelectRegistryProviderTest case passed. Verified literal Arabic/ASCII/wildcard/comma/boolean search, grouped role/state predicates, exact resources and Me unchanged, invalid input before domain reads, three domain SQL reads per nonempty page and bounded pagination, independent provider authorization, zero provider reads on mixed forbidden, exact 200 options/201 overflow409, empty options. Earlier CI 45713619929 failed literal search HTTP500; Unicode/ASCII comparison avoidance corrected the tested failure, exact original exception not independently captured. No schema/index/package change. Full scale EXPLAIN/load T45 still due; all 19 feature acceptance scenarios Not Run. T14–T20 complete, 20/49. User authorized T21–T25 only next, no production or merge.
