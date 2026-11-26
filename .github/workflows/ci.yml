@@ -124,13 +124,14 @@ jobs:
           set -o pipefail
           php tests/Support/activity-schema-forward.php | tee "$RUNNER_TEMP/activity-forward.log"
           grep -q '^ACTIVITY_FORWARD_MIGRATIONS {' "$RUNNER_TEMP/activity-forward.log"
-      - name: Verify focused Activity schema test discovery
+      - name: Verify focused Activity foundation test discovery
         run: |
-          vendor/bin/phpunit --list-tests --filter=ActivitySchema > "$RUNNER_TEMP/activity-tests.txt"
+          vendor/bin/phpunit --list-tests --filter='ActivitySchema|ActivityConstraintErrors' > "$RUNNER_TEMP/activity-tests.txt"
           grep -Fq 'Tests\Feature\ActivitySchemaTest::' "$RUNNER_TEMP/activity-tests.txt"
+          grep -Fq 'Tests\Feature\ActivityConstraintErrorsTest::' "$RUNNER_TEMP/activity-tests.txt"
           cat "$RUNNER_TEMP/activity-tests.txt"
-      - name: Run focused Activity schema tests
-        run: php artisan test --filter=ActivitySchema
+      - name: Run focused Activity foundation tests
+        run: php artisan test --filter='ActivitySchema|ActivityConstraintErrors'
       - name: Run focused Authentication tests
         run: php artisan test --filter=Authentication
       - name: Run focused Identity tests
