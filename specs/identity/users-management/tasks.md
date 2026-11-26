@@ -4,7 +4,7 @@
 > **Approved inputs:** [spec.md](spec.md) and [plan.md](plan.md). Technical plan accepted by user reply “تمام” to the preceding plan review; not proof of feasibility.
 > **Owner:** Identity and shared Core HTTP/Select Registry.
 > **Baseline:** develop `aa931b65fb4799086151e9d32d9a7371773dadb5` (PR #9 merged); active `feature/identity-users-management` created from that exact ref. Pre-merge CI 45652428628: 102 tests / 2268 assertions; Pint 101.
-> **Progress:** 44/49 task-level verified T01–T44; T45–T49 open. See §25.1 and T43–T44 closure. Full feature gate not met; 19 full acceptance scenarios Not Run; no merge.
+> **Progress:** 45/49 task-level verified T01–T45; T46–T49 open. See §25.1, T43–T44 closure and T45 measured performance evidence. Full feature gate not met; 19 full acceptance scenarios Not Run; no merge.
 
 ## 1. Gates and evidence rules
 
@@ -110,7 +110,7 @@ Task-list review explicitly approved on 2026-11-25. User subsequently authorized
 
 - [x] **T44 — Security and log regression.** Dependencies: T13,T20,T25,T35–T37,T43. Real origin/CSRF/override/DELETE/permission ordering, forbidden mixed selects, no public path, malformed input, Arabic Request ID and no secrets/path/raw SQL/multipart log; preserve native session redaction and business events. Evidence: Actual safe boundary assertions F03-07/14/15/17/18.
 
-- [ ] **T45 — Measure performance and EXPLAIN.** Dependencies: T15–T17,T22,T38–T44. Synthetic 100/1000/10000 accounts; count/page/order/offset and search/role/state EXPLAIN, 15/100 records max3 domain queries, auth separate, no N+1/file stat; image IO/peak memory full Argon2id, lock metrics. New index only measured need + reviewed approval. Evidence: Actual plans/counts/times/memory; no SLA F03-03/19.
+- [x] **T45 — Measure performance and EXPLAIN.** Dependencies: T15–T17,T22,T38–T44. Synthetic 100/1000/10000 accounts; count/page/order/offset and search/role/state EXPLAIN, 15/100 records max3 domain queries, auth separate, no N+1/file stat; image IO/peak memory full Argon2id, lock metrics. New index only measured need + reviewed approval. Evidence: Actual plans/counts/times/memory; no SLA F03-03/19.
 
 - [ ] **T46 — Scope and F01/F02 regression.** Dependencies: T09,T17,T20,T35–T45. Only adjust superseded exact schema/routes absence checks; preserve auth and all ten permissions, approved column/index/route inventory, no new table/module/role CRUD/permissions select/token/audit/HR/queue/Redis/cron. Evidence: Legacy regression/schema/diff/route cache proof F03-19.
 
@@ -389,7 +389,7 @@ Second focused CI 45806707607: 40 passed, 1 failed (2393 assertions). All prior 
 
 ### 25.1 Race/fault verification checkpoint
 
-T38–T42 task-level verification (2026-11-26). Original standard CI [45806056628](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806056628), job 139861492364: 169 passed, 1 failed, 6094 assertions; original focused [45806086048](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806086048), job 139861596318: 38 passed, 1 failed, 2243 assertions; failure in actual fault test missing redaction header on HTTP500. Revised focused [45806707607](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806707607), job 139863750016, exact feature source `5ac6f2d6f608d62797ed95bf551175316e86d1de` plus temporary workflow: 40 passed, 1 failed, 2393 assertions. Actual stage/native write/close/hash and pivot/reference/password/revoke fault tests all passed, as did timeout plus restore failure, all uniqueness/role/authority/login/profile races, both last-admin disable/delete commit orders, real concurrent avatar replace/read/delete and FK insert/delete both orders. T38 independent server and parent connection IDs/observed contested queries verified; T39 real DB uniqueness and singular roles; T40 current authority/idle/logout/last admin; T41 both Login vs disable/reset/delete and Profile vs reset orders; T42 actual DB/FS avatar and FK races all verified. Extra real deadlock test failed before interleaving because SHOW GLOBAL STATUS did not expose Innodb_deadlocks; no 1213 proof from that run. Pint reported named argument whitespace. Final authored source `2c9246232030b182aa89bcd5c5d1c86e7e65a5b4` changes only guarded test instrumentation for observe-deadlock (native PDOStatement catches actual 1213/count), added headers and exact formatting; no prior assertions waived, no application code changed. Latest standard [45807182228](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807182228) in_progress and focused [45807220043](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807220043) in_progress. 44/49 task-level verified T01–T44; T45–T49 open. Full latest CI required before feature review; no merge, no production, no new dependencies/schema/routes/permissions. Test-only deliberate lock-order inversion is not a production design. All 19 full acceptance scenarios Not Run.
+T38–T42 task-level verification (2026-11-26). Original standard CI [45806056628](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806056628), job 139861492364: 169 passed, 1 failed, 6094 assertions; original focused [45806086048](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806086048), job 139861596318: 38 passed, 1 failed, 2243 assertions; failure in actual fault test missing redaction header on HTTP500. Revised focused [45806707607](https://github.com/m-hassan00096/kids-area-api/actions/runs/45806707607), job 139863750016, exact feature source `5ac6f2d6f608d62797ed95bf551175316e86d1de` plus temporary workflow: 40 passed, 1 failed, 2393 assertions. Actual stage/native write/close/hash and pivot/reference/password/revoke fault tests all passed, as did timeout plus restore failure, all uniqueness/role/authority/login/profile races, both last-admin disable/delete commit orders, real concurrent avatar replace/read/delete and FK insert/delete both orders. T38 independent server and parent connection IDs/observed contested queries verified; T39 real DB uniqueness and singular roles; T40 current authority/idle/logout/last admin; T41 both Login vs disable/reset/delete and Profile vs reset orders; T42 actual DB/FS avatar and FK races all verified. Extra real deadlock test failed before interleaving because SHOW GLOBAL STATUS did not expose Innodb_deadlocks; no 1213 proof from that run. Pint reported named argument whitespace. Final authored source `2c9246232030b182aa89bcd5c5d1c86e7e65a5b4` changes only guarded test instrumentation for observe-deadlock (native PDOStatement catches actual 1213/count), added headers and exact formatting; no prior assertions waived, no application code changed. Latest standard [45807182228](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807182228) in_progress and focused [45807220043](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807220043) in_progress. 45/49 task-level verified T01–T45; T46–T49 open. Full latest CI required before feature review; no merge, no production, no new dependencies/schema/routes/permissions. Test-only deliberate lock-order inversion is not a production design. All 19 full acceptance scenarios Not Run.
 
 
 ### T43–T44 verification and closure (2026-11-26)
@@ -397,3 +397,53 @@ T38–T42 task-level verification (2026-11-26). Original standard CI [4580605662
 Verified standard [45807182228](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807182228), job 139865405577, exact code head `2c9246232030b182aa89bcd5c5d1c86e7e65a5b4`, Success: 172 tests / 6201 assertions, Pint 157 files, locked Composer audit/platform, migrations, route cache, module/scope all passed. Focused [45807220043](https://github.com/m-hassan00096/kids-area-api/actions/runs/45807220043), job 139865532823, probe head `fa454626363542c09d14ab768e1b87f09f5dbd34`, Success: 11 tests / 730 assertions (targeted subset, not all race classes), Pint 157. Both logs show the real InnoDB deadlock test passed: native driver 1213 observed, one attempt, rollback and original file preserved. The full regression is on the feature source itself; checkpoint `1924e626ffdbc4f2d43b99dccf2cc0cb0fab0129` differs only in four documentation files. T43 closed, including prior verified real commit/lost-ack, cache, file, session, constraint and timeout/restore cases.
 
 T44 reviewed against its approved evidence and successful full run: UsersManagementTransportTest (origin, native CSRF, DELETE preflight, allowed/denied override); UsersHttpIntegrationTest (actual controller/action independent capabilities before lookup, native CSRF/origin/guest, actual multipart and delete); UsersManagementBoundaryTest (malformed input, safe envelopes, request IDs, synthetic redaction and nested restoration, unrelated events and native session suppression); SelectRegistryHttpTest (all-or-nothing authorization and no provider dispatch); AvatarHttpTest (private paths and headers, missing file safe failure); UsersActualFaultTest and UsersPostCommitIntegrationTest (actual write/storage/session errors, correlated safe reports and preserved state). Authentication regression also passed. Existing guarded probes intentionally inject synthetic failures; actual CRUD integration and fault tests separately exercise production dispatch. No claim of universal penetration testing or production hosting certification. No test requirement waived. T44 closed at task level; 44/49. T45 scale/EXPLAIN measurements, T46–T49 still open; all 19 complete acceptance scenarios remain Not Run. No merge/deploy, new dependency, migration or production-code change.
+
+
+### T45 measured performance evidence (2026-11-26)
+
+Actual [CI 45808834262](https://github.com/m-hassan00096/kids-area-api/actions/runs/45808834262), job 139871059521, exact source `a9e80026fbadce4d12892bbf667bdaadec5ce1a5`: Authentication 41/1455, Identity 56/825, full 174 tests / 9089 assertions passed. Both UsersManagementPerformanceTest cases passed. All 27 real list scenarios and 81 actual SELECT plans (EXPLAIN and EXPLAIN ANALYZE), 4 real create measurements and 3 actual private avatar fetches were emitted. Pint reported 1 file with a style issue (authentication-router.php), therefore overall CI failed and following route/module scope steps were skipped. T45 measured task itself verified; T46–T49 remain unchecked pending corrected exact-source verification and acceptance reconciliation. Fix only import/style in test router; add exact table/index/route inventory and approved explicit CI preflight/discovery/focused checks. No new production code, dependencies, migrations, routes, permissions or indexes.
+
+Each of the 27 nonempty list scenarios returned the exact expected IDs, total, role and avatar URL (including absent synthetic files, no storage directory created), 3 domain SELECTs (count, page, roles), 1 read snapshot setup, 7 other HTTP SQL statements (authentication/session/permission etc.; total 11). Source review confirms the list resource constructs the URL from the key without filesystem calls. Single measurements, not p95, capacity, production SLA or real hosting data. PHP8.2/GitHub Actions/MySQL8 only; low-entropy synthetic image fixture does not represent every image's peak memory.
+
+| Accounts | Case | Total | Returned | HTTP ms | Direct service ms | SQL ms count/page/roles |
+| ---: | --- | ---: | ---: | ---: | ---: | --- |
+| 100 | first15 | 100 | 15 | 30.666 | 4.491 | 0.31 / 0.29 / 0.53 |
+| 100 | first100 | 100 | 100 | 22.76 | 5.124 | 0.28 / 0.46 / 0.95 |
+| 100 | deep15 | 100 | 10 | 16.646 | 2.448 | 0.28 / 0.32 / 0.53 |
+| 100 | arabic | 50 | 15 | 15.943 | 2.649 | 0.3 / 0.33 / 0.52 |
+| 100 | username | 99 | 99 | 18.588 | 4.993 | 0.33 / 0.46 / 0.88 |
+| 100 | phone | 99 | 15 | 16.176 | 2.718 | 0.38 / 0.32 / 0.51 |
+| 100 | role | 50 | 15 | 23.848 | 3.036 | 0.56 / 0.48 / 0.51 |
+| 100 | inactive | 33 | 33 | 15.947 | 2.972 | 0.29 / 0.33 / 0.63 |
+| 100 | combined | 34 | 15 | 16.923 | 3.218 | 0.58 / 0.55 / 0.5 |
+| 1000 | first15 | 1000 | 15 | 16.56 | 2.627 | 0.34 / 0.28 / 0.58 |
+| 1000 | first100 | 1000 | 100 | 17.253 | 5.236 | 0.34 / 0.38 / 1.13 |
+| 1000 | deep15 | 1000 | 10 | 17.084 | 2.681 | 0.35 / 0.53 / 0.49 |
+| 1000 | arabic | 500 | 15 | 15.565 | 3.214 | 0.56 / 0.34 / 0.72 |
+| 1000 | username | 999 | 100 | 17.161 | 5.3 | 0.59 / 0.43 / 1.12 |
+| 1000 | phone | 999 | 15 | 14.71 | 2.89 | 0.64 / 0.33 / 0.53 |
+| 1000 | role | 500 | 15 | 15.301 | 3.63 | 1.01 / 0.59 / 0.53 |
+| 1000 | inactive | 333 | 100 | 17.149 | 5.28 | 0.43 / 0.5 / 1.18 |
+| 1000 | combined | 334 | 15 | 16.403 | 4.151 | 1.61 / 0.55 / 0.51 |
+| 10000 | first15 | 10000 | 15 | 114.305 | 3.654 | 1.14 / 0.3 / 0.62 |
+| 10000 | first100 | 10000 | 100 | 18.501 | 5.723 | 1.05 / 0.43 / 1.17 |
+| 10000 | deep15 | 10000 | 10 | 21.159 | 6.067 | 1.06 / 3.06 / 0.5 |
+| 10000 | arabic | 5000 | 15 | 17.172 | 4.515 | 2.18 / 0.33 / 0.51 |
+| 10000 | username | 9999 | 100 | 19.516 | 7.799 | 3.07 / 0.44 / 1.13 |
+| 10000 | phone | 9999 | 15 | 18.556 | 5.941 | 3.52 / 0.33 / 0.54 |
+| 10000 | role | 5000 | 15 | 30.073 | 16.423 | 5.8 / 8.31 / 0.63 |
+| 10000 | inactive | 3333 | 100 | 23.589 | 7.642 | 1.79 / 0.72 / 1.31 |
+| 10000 | combined | 3334 | 15 | 30.357 | 14.975 | 12.03 / 0.64 / 0.53 |
+
+At 10,000 users, unfiltered count used users_phone_unique covering index; page used PRIMARY reverse scan, role eager query identity_single_role_unique and two-row role table. Deep OFFSET 9990 examined 10,000 index rows to return 10, actual iterator end 2.88ms; direct page SQL 3.06ms. Contains LIKE count scanned 10,000 users (actual count iterator 2.50ms Arabic, 3.52ms username, 3.87ms phone); low-selectivity inactive scan count 1.86ms. Role filter count used indexed PRIMARY role_id and 5,000 PK lookups; page optimizer chose the role-first join and sort of 5,000 rows (actual page 9.09ms, observed page SQL 8.31ms). Combined count scanned 10,000 users and 6,666 membership lookups (13.6ms iterator, 12.03ms SQL); page used reverse PRIMARY with bounded 43 user rows. First request after bulk fill of 10,000 was 114.305ms (direct 3.654ms), other HTTP cases 17.172–30.357ms; cause of isolated outlier not established. The role and combined count/offset growth are future watch points. Ordinary B-tree indexes cannot accelerate arbitrary contains LIKE; a speculative new index, cursor pagination, full-text or contract change is not justified by these measurements and remains unapproved.
+
+Full native Argon2id verified for new users (65536 KiB, 4 iterations, one thread). Actual real HTTP creates all 34 SQL statements; lock acquisition elapsed includes SQL round trip, acquired-to-commit-ack is measured using guarded native PDO observation, not exact server lock hold. Avatar image dimensions 2048x2048 input -> 512x512 output, private file bytes matched. PHP allocator peak reset before request; RSS is Linux high-water process memory including bootstrap/login and native allocation, not simply PHP heap.
+
+| Format | Input bytes | Stored bytes | Create ms | Manager acquire ms | Acquired-to-ack ms | PHP peak bytes | Linux RSS KiB | Read ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| none | 0 | — | 171.425 | 0.203 | 35.647 | 4194304 | 170112 | — |
+| png | 21254 | 2225 | 278.986 | 0.211 | 29.256 | 6295552 | 187296 | 16.302 |
+| jpg | 66226 | 4786 | 236.023 | 0.233 | 25.241 | 6295552 | 170900 | 17.119 |
+| webp | 7760 | 602 | 252.893 | 0.192 | 25.82 | 6295552 | 191380 | 17.01 |
+
+No hosting SLA: validate actual cPanel GD/fileinfo/Argon2id/native memory and private storage, PHP request limits, worker memory/concurrency, backup/reconciliation before deployment. 45/49 task-level verified; T46–T49 and 19 complete scenario statuses remain open until exact final evidence.

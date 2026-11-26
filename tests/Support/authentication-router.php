@@ -22,6 +22,7 @@ use Modules\Identity\Services\LoginThrottle;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\AuthenticationCommitFault;
 use Tests\Support\UsersBoundaryProbe;
+use Tests\Support\UsersMeasuredCommit;
 use Tests\Support\UsersObservedStatement;
 
 require __DIR__.'/../../vendor/autoload.php';
@@ -413,7 +414,7 @@ if (in_array($mode, ['observe-deadlock', 'users-performance'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
 }
 if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
-    $connection->setPdo(new \Tests\Support\UsersMeasuredCommit($connection->getPdo()));
+    $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
 }
 $commitFault = null;
 if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack'], true)) {

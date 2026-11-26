@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
@@ -16,6 +17,14 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
         app(SeedIdentityCatalogueAction::class)->execute();
 
         $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), Permission::pluck('name')->all());
+        $this->assertSame(10, Permission::count());
+        $this->assertEqualsCanonicalizing([
+            'migrations', 'users', 'roles', 'permissions', 'model_has_roles',
+            'model_has_permissions', 'role_has_permissions', 'sessions', 'identity_login_throttles',
+        ], DB::table('information_schema.TABLES')->whereRaw('TABLE_SCHEMA = DATABASE()')->pluck('TABLE_NAME')->all());
+        $this->assertEqualsCanonicalizing([
+            'PRIMARY', 'users_username_unique', 'users_email_unique', 'users_phone_unique', 'users_avatar_key_unique',
+        ], collect(DB::select('SHOW INDEX FROM users'))->pluck('Key_name')->unique()->values()->all());
         $this->assertTrue(class_exists(Sanctum::class));
         $this->assertFalse(Schema::hasTable('audit_logs'));
         $this->assertFalse(Schema::hasTable('identity_access_guard'));
@@ -30,6 +39,8 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
         $this->assertFileDoesNotExist(app_path('Models/User.php'));
 
         $approvedRoutes = [
+            'up' => ['GET', 'HEAD'],
+            'api/v1/__foundation-route-probe' => ['GET', 'HEAD'],
             'sanctum/csrf-cookie' => ['GET', 'HEAD'],
             'api/v1/auth/login' => ['POST'],
             'api/v1/auth/logout' => ['POST'],
@@ -50,7 +61,7 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
 
                 continue;
             }
-            $this->assertDoesNotMatchRegularExpression('#^(?:api/v1/)?(?:auth|login|logout|profile|users|roles|selects|audit|sanctum)(?:/|$)#', $route->uri());
+            $this->fail('Unexpected route in approved F01/F02/F03 inventory: '.$route->uri());
         }
         // Only the approved F01/F02 and F03 inventory may be registered.
         $this->assertSame([], $approvedRoutes);
