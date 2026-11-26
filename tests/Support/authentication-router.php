@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Modules\Activities\Models\Activity;
 use Modules\Identity\Actions\DeleteUserAction;
 use Modules\Identity\Http\Controllers\UsersController;
 use Modules\Identity\Http\Middleware\FinalizeLoginSession;
@@ -333,6 +334,17 @@ if ($inspect) {
     $connection->enableQueryLog();
 }
 
+// Real Eloquent DML occurs before these test-only injected failures.
+if ($mode === 'activity-fault-after-insert') {
+    Activity::created(static fn () => throw new RuntimeException('Synthetic activity failure: synthetic-redaction-sentinel'));
+}
+if ($mode === 'activity-fault-after-update') {
+    Activity::updated(static fn () => throw new RuntimeException('Synthetic activity failure: synthetic-redaction-sentinel'));
+}
+if ($mode === 'activity-fault-after-delete') {
+    Activity::deleted(static fn () => throw new RuntimeException('Synthetic activity failure: synthetic-redaction-sentinel'));
+}
+
 $count = 0;
 $credentialReads = 0;
 $usersTargetReads = 0;
@@ -446,7 +458,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
             app()->forgetInstance(PermissionRegistrar::class);
             app()->bind(PermissionRegistrar::class, static fn () => throw new RuntimeException('Synthetic postcommit cache failure.'));
         }
-        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore', 'roles-action-timeout-restore'], true)) {
+        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore', 'roles-action-timeout-restore', 'activity-timeout-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
     }
@@ -494,6 +506,11 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         $statement->execute(['Fixture Constraint Collision', 'web', 1]);
 
         return;
+    }
+    if ($mode === 'activity-native-save-fault' && $request->attributes->get('activities_outcome') === 'committed'
+        && ($nativeSave || $nativeInsert)) {
+        $armed = false;
+        throw new RuntimeException('Synthetic native save failure: synthetic-redaction-sentinel');
     }
     if (in_array($mode, ['users-action-final-save', 'roles-action-final-save'], true) && $request->attributes->get('staff_self_revoked') && ($nativeSave || $nativeInsert)) {
         $armed = false;
@@ -558,7 +575,7 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
-if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore'], true)) {
+if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore', 'activity-observe-mysql', 'activity-timeout-restore'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
 }
 if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
@@ -571,7 +588,7 @@ if (in_array($mode, ['roles-cache-hold-commit', 'roles-cache-hold-rollback'], tr
     $connection->setPdo(new RolesCacheBarrier($connection->getPdo(), $pause, $mode === 'roles-cache-hold-commit'));
 }
 $commitFault = null;
-if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack'], true)) {
+if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack', 'activity-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }
@@ -631,6 +648,11 @@ $response->headers->set('X-Test-Roles-Target-Reads', (string) $rolesTargetReads)
 $response->headers->set('X-Test-Activity-Reads', (string) $activityReads);
 $response->headers->set('X-Test-Activity-Target-Reads', (string) $activityTargetReads);
 $response->headers->set('X-Test-Activity-Writes', (string) $activityWrites);
+if ($request->attributes->has('_test_activity_mysql_code')) {
+    $response->headers->set('X-Test-Activity-MySQL-Code', (string) $request->attributes->get('_test_activity_mysql_code'));
+    $response->headers->set('X-Test-Activity-MySQL-Count', (string) $request->attributes->get('_test_activity_mysql_count'));
+}
+$response->headers->set('X-Test-Activity-Timeout-Statements', (string) $restoreStatements);
 $response->headers->set('X-Test-Activity-Page-Limit', $activityPageLimit);
 $activityOutcome = $request->attributes->get('activities_outcome');
 if (is_string($activityOutcome)) {
@@ -679,6 +701,11 @@ if ($inspect) {
     $response->headers->set('X-Test-Roles-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
         && is_string($rolesOutcome) && ($log[1]['mutation_outcome'] ?? null) === $rolesOutcome) ? '1' : '0');
+    $response->headers->set('X-Test-Activity-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
+        && is_string($activityOutcome) && ($log[1]['mutation_outcome'] ?? null) === $activityOutcome) ? '1' : '0');
+    $response->headers->set('X-Test-Activity-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Activity lock timeout restoration failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Roles-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Roles lock timeout restoration failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Roles-Cache-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Roles permission cache invalidation failed.'

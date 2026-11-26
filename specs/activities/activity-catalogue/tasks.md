@@ -147,6 +147,10 @@ Authored native HTTP read/transport, permission matrix, all filters/sorts/query 
 - [ ] **T33 — Actual fault and uncertain outcome matrix** (T27–T32; AC04, AC14). Real 1205/1213, known/unknown constraint faults, rollback after write, lost acknowledgement and postcommit session failure, timeout restoration/disconnect; distinguish acknowledged commit/rollback/unknown, no blind replay or leaked SQL. Evidence: actual DB and test-only PDO/barrier outcomes, snapshots, safe responses/logs.
 - [ ] **T34 — Write checkpoint** (T28–T33; AC02–AC06, AC11, AC14). Run focused create/update/delete, validation/authority/fault/concurrency suites; no partial writes; future dependent protection not misreported as tested. Evidence: exact head test logs and outstanding gaps.
 
+### Write race/fault source checkpoint
+
+T31–T33 tests authored with guarded independent HTTP/MySQL connections: duplicate creates including approved Arabic equivalences, create/rename both orders, competing renames, update/delete/update/update/delete/delete, live revoke/disable versus already admitted writes, native observed 1062/1205/1213, actual post-DML rollback, lost COMMIT acknowledgement and native postcommit session failure. Existing guarded deadlock fixture and PDO delegate reused; no production fault hooks or speculative dependencies. These tests are **Not Run** on new head and must pass before T34. All 19 previously verified tasks remain the only checkmarks.
+
 ## Phase F — End-to-end verification and release review (T35–T42)
 
 - [ ] **T35 — Independent RBAC and security matrix** (T18,T26,T34; AC10–AC14). Five separate permissions incl Manager/Reception defaults/custom subsets, forbidden target enumeration, disabled/revoked session, CSRF and forged grants, existing no direct grants/last-admin/founder constraints. Evidence: actual browser requests, data/session/grant snapshots.
