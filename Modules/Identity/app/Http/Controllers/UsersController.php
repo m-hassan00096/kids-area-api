@@ -5,6 +5,9 @@ namespace Modules\Identity\Http\Controllers;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Identity\Actions\CreateUserAction;
+use Modules\Identity\Actions\DeleteUserAction;
+use Modules\Identity\Actions\UpdateUserAction;
 use Modules\Identity\Http\Requests\CreateUserRequest;
 use Modules\Identity\Http\Requests\UpdateUserRequest;
 use Modules\Identity\Http\Requests\UsersIndexRequest;
@@ -32,22 +35,25 @@ final class UsersController
         return ApiResponse::success($query->detail($target, $request));
     }
 
-    // Mutations remain fail closed until their
-    // respective reviewed implementation tasks.
-
-    public function store(CreateUserRequest $request): never
+    public function store(CreateUserRequest $request, CreateUserAction $action): JsonResponse
     {
-        abort(503);
+        $action->execute(request(), $request->fields(), $request->normalizedAvatar());
+
+        return ApiResponse::success(message: ApiResponse::text('identity.user_created'), status: 201);
     }
 
-    public function update(UpdateUserRequest $request): never
+    public function update(UpdateUserRequest $request, UpdateUserAction $action): JsonResponse
     {
-        abort(503);
+        $action->execute(request(), $request->fields(), $request->normalizedAvatar());
+
+        return ApiResponse::success(message: ApiResponse::text('identity.user_updated'));
     }
 
-    public function destroy(): never
+    public function destroy(Request $request, DeleteUserAction $action): JsonResponse
     {
-        abort(503);
+        $action->execute($request);
+
+        return ApiResponse::success(message: ApiResponse::text('identity.user_deleted'));
     }
 
     public function avatar(Request $request, ReadUserAvatar $read): Response
