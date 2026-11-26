@@ -80,7 +80,6 @@ emitActivityPreflight('ACTIVITY_PREFLIGHT_ENV', [
 ]);
 
 // Existing additive baseline migrations only, in this dedicated service.
-requireActivityPreflight(Artisan::call('migrate', ['--force' => true]) === 0, 'Existing baseline migration failed.');
 $expectedMigrations = [
     '2026_11_25_000001_create_users_table',
     '2026_11_25_000002_create_permission_tables',
@@ -91,6 +90,8 @@ $expectedMigrations = [
     '2026_11_25_000007_add_avatar_key_to_users',
     '2026_11_26_000008_remove_alias_name_from_roles',
 ];
+$baselinePaths = array_map(static fn (string $migration): string => 'Modules/Identity/database/migrations/'.$migration.'.php', $expectedMigrations);
+requireActivityPreflight(Artisan::call('migrate', ['--force' => true, '--path' => $baselinePaths]) === 0, 'Existing baseline migration failed.');
 $migrations = $db->table('migrations')->orderBy('migration')->pluck('migration')->all();
 requireActivityPreflight($migrations === $expectedMigrations, 'Unexpected baseline migration inventory.');
 $baselineTables = ['identity_login_throttles', 'migrations', 'model_has_permissions', 'model_has_roles', 'permissions', 'role_has_permissions', 'roles', 'sessions', 'users'];

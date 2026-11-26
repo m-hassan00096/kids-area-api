@@ -119,6 +119,18 @@ jobs:
           php tests/Support/roles-migration-preflight.php | tee "$RUNNER_TEMP/roles-forward.log"
           grep -q '^ROLES_LEGACY_FIXTURE {' "$RUNNER_TEMP/roles-forward.log"
           grep -q '^ROLES_FORWARD_MIGRATION {' "$RUNNER_TEMP/roles-forward.log"
+      - name: Verify additive Activity migrations preserve populated Identity fixture
+        run: |
+          set -o pipefail
+          php tests/Support/activity-schema-forward.php | tee "$RUNNER_TEMP/activity-forward.log"
+          grep -q '^ACTIVITY_FORWARD_MIGRATIONS {' "$RUNNER_TEMP/activity-forward.log"
+      - name: Verify focused Activity schema test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter=ActivitySchema > "$RUNNER_TEMP/activity-tests.txt"
+          grep -Fq 'Tests\Feature\ActivitySchemaTest::' "$RUNNER_TEMP/activity-tests.txt"
+          cat "$RUNNER_TEMP/activity-tests.txt"
+      - name: Run focused Activity schema tests
+        run: php artisan test --filter=ActivitySchema
       - name: Run focused Authentication tests
         run: php artisan test --filter=Authentication
       - name: Run focused Identity tests
@@ -147,7 +159,7 @@ jobs:
         run: php artisan test
       - name: Check Laravel Pint
         run: vendor/bin/pint --test -v
-      - name: Verify modular package CLI and Identity only
+      - name: Verify modular package CLI and approved Identity and Activities only
         run: |
           php artisan module:list --no-ansi
           php artisan route:list --no-ansi
@@ -156,7 +168,8 @@ jobs:
           php artisan route:clear
           test -d Modules
           test -d Modules/Identity
-          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' -print -quit)"
+          test -d Modules/Activities
+          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' ! -name 'Activities' -print -quit)"
       - name: Ensure out-of-scope artifacts were not generated
         run: |
           test -z "$(git ls-files .env)"
