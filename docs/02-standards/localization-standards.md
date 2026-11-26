@@ -3,7 +3,7 @@
 > **Status:** Approved V1 conventions; implementation not yet started.  
 > **Canonical path:** `docs/02-standards/localization-standards.md`  
 > **Stack:** Laravel 12 API-first hybrid modular monolith, MySQL 8, `nwidart/laravel-modules` (version compatible with installed Laravel).  
-> **Scope:** System-owned text, validation, fixed labels, role/permission display aliases, API presentation boundaries, future frontend integration, and generated documents.  
+> **Scope:** System-owned text, validation, fixed labels, role names and permission display aliases, API presentation boundaries, future frontend integration, and generated documents.  
 > **Related:** [Project Overview](../00-overview/project-overview.md), [Backend Architecture](../01-architecture/backend-architecture.md), [Code Standards](code-standards.md), [API Standards](api-standards.md), [Database Standards](database-standards.md), [Error Handling Standards](error-handling-standards.md), and future [Permissions Standards](permissions-standards.md).
 
 ## 1. Purpose and Explicit Boundary
@@ -16,14 +16,14 @@ This standard defines **Arabic-first application localization**, without transla
 - Authentication, authorization, validation and generic safe failure text.
 - Module-owned business success and failure messages.
 - Human-readable labels for **fixed integer-backed enums** and system-generated descriptions.
-- Arabic display metadata for system-defined roles and permissions, specifically **`roles.alias_name` and `permissions.alias_name`**, which are **stored display values**, not language-file translations.
+- Stored Role names and Arabic permission display metadata **`permissions.alias_name`**, which are stored values, not language-file translations.
 - Static frontend interface text and RTL presentation ownership once frontend development begins.
 - Backend-created PDF, Excel and any approved synchronous reports.
 - Safe missing-translation behavior and PHPUnit localization tests.
 
 **Out of scope in V1:** translating child, guardian, coach, employee, activity, group, cafe product or other persisted user-entered records; multilingual CMS; `*_translations` data tables; multilingual slugs; user language preferences; language-switching endpoints; a locale negotiation middleware; multi-branch/tenant locale policies; queued localization jobs.
 
-**Nonnegotiable distinction:** **Laravel translation files are for system-owned messages and fixed labels. Business data stored in MySQL is returned as recorded, without automatic translation.** The permission/role `alias_name` values are themselves business display data and are **not translated by this localization layer**.
+**Nonnegotiable distinction:** **Laravel translation files are for system-owned messages and fixed labels. Business data stored in MySQL is returned as recorded, without automatic translation.** Role `name` and permission `alias_name` values are themselves business display data and are **not translated by this localization layer**.
 
 ## 2. Approved Decisions Summary
 
@@ -38,7 +38,7 @@ This standard defines **Arabic-first application localization**, without transla
 | Missing translation | Safe Arabic fallback plus bounded warning and PHPUnit coverage; no raw key leak or change to transaction/status |
 | Formatting | API machine values are invariant; frontend formats presentation; backend formats its own Select labels/documents |
 | RTL | Frontend owns screen RTL/mixed text; backend owns localized messages and generated PDF/Excel layout |
-| Roles and permissions | **DB `alias_name` is the display label.** `name` is the stable technical identifier for authorization. **No translation-key mapping for role/permission aliases.** |
+| Roles and permissions | **Role `name` is the display label; permission `alias_name` is the display label.** Permission `name` is the stable technical capability identifier. No translation-key mapping for these stored values. |
 | Testing | Shared Laravel/API localization tests **plus module-specific tests** for messages, parameters, enums and alias display; PHPUnit/MySQL 8 where relevant |
 
 These decisions implement the approved API/Code/Database/Error Handling standards; they do not replace those contracts.
@@ -165,7 +165,7 @@ __('activities::messages.errors.group_capacity_reached', [
 | Child/guardian/employee/coach name | User-entered Arabic or English | **No:** return as stored |
 | Activity/group/cafe product name | E.g. `Swimming Academy` | **No:** return as stored |
 | Notes and custom descriptions | Staff-entered text | **No:** return as stored |
-| Role/permission `alias_name` | E.g. "إغلاق الجلسات" | **No translation:** stored display value, returned as stored |
+| Role `name` / permission `alias_name` | E.g. "مشرف الأنشطة" / "إغلاق الجلسات" | **No translation:** stored display value, returned as stored |
 | Role/permission `name` | `sessions.close` | **No translation:** security identifier |
 
 Example: an activity saved as `Swimming Academy` is **not** automatically changed to "أكاديمية السباحة" in either the database or the API because the application language is Arabic.
@@ -250,30 +250,29 @@ Never change names of public fields merely to make them read naturally in Arabic
 
 - The outer `label` (e.g., `activities`) is the **technical requested Select key**, not an Arabic category heading.
 - `options[].value` is the approved stable ID or technical key, depending on the Select.
-- `options[].label` is a **display value from its owning source**: stored name, DB `alias_name` for roles/permissions, or a localized/computed fixed system label. It is **not automatically Arabic** if the user entered English.
+- `options[].label` is a **display value from its owning source**: stored name, DB `roles.name` / `permissions.alias_name`, or a localized/computed fixed system label. It is **not automatically Arabic** if the user entered English.
 - The Select Registry remains **all-or-nothing for authorization**: an unauthorized key means `403` for the entire request; an unknown key means `422`. Localization must not weaken these rules.
 - Do not translate Select Registry option values, numeric identifiers or underlying technical permission keys.
 
-## 9. Roles and Permissions: DB `alias_name` Is the Display Source
+## 9. Roles and Permissions: Stored Display Sources
 
-**User-approved final decision:** For Spatie roles and permissions, the persisted field **`alias_name`** (exact database identifier) is what the user sees. This **overrides the earlier preliminary suggestion** to derive these labels from language-file keys and differs from the printing reference's `alias` naming.
+**Approved naming correction (2026-11-26, Feature 04):** Role `name` is the single stored and displayed role name; remove `roles.alias_name` through a reviewed forward migration. Permission `name` stays a stable technical key and `permissions.alias_name` stays the stored display label. Permanent `manager` and `reception` names, IDs, active-state/deletion protections and mutex identity remain unchanged; authorized custom roles use unique Arabic/English names and can be renamed without changing their ID, assignments or permissions. Role resources omit `aliasName`; role Select labels use `roles.name`. The old F01–F03 implementation and historical test evidence still describe the pre-change schema until Feature 04 is implemented and verified.
 
-| Spatie model/table | Technical identifier | Display source |
+| Spatie model/table | Identity / identifier | Display source |
 |---|---|---|
-| `roles` | `roles.name` (e.g. `manager`, `reception`) | **`roles.alias_name`** (e.g. "المدير", "الاستقبال") |
+| `roles` | Stable record ID; reserved names `manager`, `reception` stay immutable | **`roles.name`** (e.g. "مشرف الأنشطة", "manager") |
 | `permissions` | `permissions.name` (e.g. `sessions.close`) | **`permissions.alias_name`** (e.g. "إغلاق الجلسات") |
 
 **Rules**
 
-1. **`name` is the stable technical key** used in Spatie permission assignments/checks, policies and application logic. Never authorize or branch on `alias_name`.
-2. **`alias_name` is human-visible display text** stored in the database; return it exactly as stored, with no `__()` or automatic language conversion.
-3. Add/maintain `alias_name` on the **actual Spatie `roles` and `permissions` tables** when implementing the relevant schema changes, using reviewed app migrations. Do not edit already-run vendor migrations in production. Exact schema/backfill and any allowed editing rules belong to [Permissions Standards](permissions-standards.md).
-4. Seeders for system-defined roles/permissions must provide meaningful **nonempty Arabic `alias_name`** values from the approved catalogue. Their technical names remain unchanged.
-5. If the product later permits custom roles, their user-supplied `alias_name` must remain as entered; validate the display field as a data attribute, **not** a localization key. The allowed role-management behavior will be specified in Permissions Standards.
-6. Do not create `role_translations`, `permission_translations`, `alias` instead of `alias_name`, per-locale JSON maps, or duplicate role/permission label translation keys in V1.
-7. Changing `alias_name` is a **controlled database metadata change**, subject to the eventual permissions/admin validation and audit policy, not a language-file deployment.
-8. Missing/blank `alias_name` is a **data integrity/seed/validation defect**, not a missing Laravel translation. Reject invalid new definitions and test seed completeness; do not silently substitute technical `name` as the expected Arabic display label.
-9. Adding English `lang/en` later will **not** translate database `alias_name`. Supporting multilingual role/permission display labels requires a separate approved data/design decision that preserves technical keys and assignments.
+1. Permission technical `name` is the stable capability key. Never authorize by role display name or permission alias.
+2. Role `name` and Permission `alias_name` are returned exactly as stored, with no automatic translation. The protected role names display literally as `manager` and `reception` under the approved backend contract.
+3. Feature 04 removes the historical Role alias via a reviewed forward migration. Keep permission aliases on the actual Spatie permissions table; no modification of already-applied migrations.
+4. Seed permission definitions with nonempty Arabic aliases. Preserve permanent role names and previously assigned IDs/grants.
+5. Authorized custom role names may be Arabic or English, unique and editable; retain them as stored after validation.
+6. No translation tables, per-locale maps or alternate role label column.
+7. Missing permission alias is a data-integrity defect; Role Resources and Role Selects do not use aliasName.
+8. Future multilingual stored labels need a separate design decision.
 
 **Illustrative Resource**
 
@@ -284,7 +283,7 @@ Never change names of public fields merely to make them read naturally in Arabic
 }
 ```
 
-- `aliasName` is the **camelCase API representation of DB `alias_name`**, when that field is included.
+- `aliasName` is the **camelCase API representation of permission DB `alias_name`**, when included; Role Resources omit it.
 - For a permission Select Provider, use `options[].value = name` and `options[].label = alias_name`, matching the existing Select Registry contract, rather than adding a second name translation layer.
 - Any endpoint/permission model that should expose the `aliasName` field requires normal backend authorization and explicit Resource mapping. This is **not** a requirement to expose permission metadata on every response.
 

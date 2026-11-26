@@ -5,6 +5,8 @@
 > **User decisions approved:** six functional decisions from the Users Management discussion, plus subsequent correction: avatar PNG/JPG/WebP max 2 MB; list shows image/name/username/phone/state/role; search includes phone; filter by role/state using Laravel Query Builder; return `userId`; omit `createdAt`. The approved specification supersedes the earlier proposed list shape.
 > **Delivery gate:** PR #9 merged; active draft PR #10; 49/49 tasks verified on tested source a133f4c; 19/19 automated acceptance criteria verified; documentation-only closure checkpoint CI pending. Requirements unchanged; exact tested implementation CI 45810669555 green. See tasks.md final reconciliation. No deployment/merge.
 
+> **Feature 04 supersession (approved 2026-11-26):** Historical F01–F03 schema, payload examples, tests and evidence below document the version merged before this change. The target contract in [Roles & Permissions Management](../roles-management/spec.md) removes `roles.alias_name` and nested Role `aliasName`, uses `roles.name` for Role Select labels, preserves permission `alias_name` and all other previous access/session/Users rules. Do not treat older examples as a new requirement or rewrite the historical verified results. The target requires its own migration, implementation and regression evidence.
+
 ## 1. Purpose and scope
 
 Manage individual staff application accounts owned by `Modules/Identity`. “Employees” in the requested Users table means staff login accounts, not the future Employees/HR entity: no employment linkage, contracts, attendance or payroll fields here. Each User holds one assigned role; only an active User with exactly one active `web` role and no direct grants is eligible for protected access.

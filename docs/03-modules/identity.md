@@ -63,7 +63,7 @@ An effective technical permission authorizes an attempted action. Required recor
 - **Approved 2026-11-25:** Use database-backed sessions on MySQL 8, viable on cPanel, without Redis, queues, workers or cron. Exact session table, indexes, cleanup and cross-session revocation mechanism belong to the Auth plan.
 - Enforce HTTPS, secure cookie flags, correct SameSite/domain scope, explicitly allowed stateful frontend origins, credentials-aware CORS, CSRF failure mapping (including `419` where applicable), and no HTML redirect for Laravel-handled API errors.
 - **Domain names and exact Cookie/CORS settings remain deployment-specific**, to be configured when the frontend origin is known. They do not reopen the approved Cookie/Session transport decision.
-- **Approved 2026-11-25:** The authenticated `me` Resource omits the top-level User `id`. This is a public payload choice only, not a schema change. Keep the canonical internal User ID and founding ID-1 protection unchanged. The approved [Authentication spec](../../specs/identity/authentication/spec.md) defines the remaining Resource fields, including nested Role id, stored name/username/alias and actual permission keys; no top-level User id.
+- **Approved 2026-11-25:** The authenticated `me` Resource omits the top-level User `id`. This is a public payload choice only, not a schema change. Keep the canonical internal User ID and founding ID-1 protection unchanged. The approved [Authentication spec](../../specs/identity/authentication/spec.md) defines the remaining Resource fields, including nested Role id, stored User name/username, Role name and actual permission keys (Feature 04 removes nested Role aliasName); no top-level User id.
 
 ### 3.4 Initial Manager bootstrap and loss of access
 
@@ -72,7 +72,7 @@ An effective technical permission authorizes an attempted action. Required recor
 - **Approved prerequisites rule (option A, 2026-11-25):** Bootstrap must **only read and validate** the required existing seeded RBAC prerequisites before creating the founding User: both seeded active Roles, the ten approved Identity Permission definitions under the `web` guard and the complete first-install `manager` grant set. If required Role/Permission rows or Manager grants are missing/inconsistent, **stop with an actionable operator message to run the approved additive seeders first or use a separately reviewed correction process**. Bootstrap must **never invoke a seeder or silently create/repair/grant Role/Permission records**. Failure must leave all data unchanged. Routine seeders remain a separate, explicit operator step.
 - **Approved bootstrap precondition:** the entire `users` table **must be empty**. If **any User row exists**, regardless of its ID, role or active state, the command must **reject the run without changing data**. It must never overwrite, reuse or reset an existing User, nor create a second founding account. Re-running bootstrap after the first successful provisioning fails safely; this differs from the intentionally repeatable permission/role seeders.
 - Because special protection uses **`users.id = 1`**, bootstrap must verify that the founding account will in fact have ID 1, or **fail safely**. An empty table alone does not guarantee the auto-increment next ID is 1 (e.g. previously removed rows). The implementation must not silently reset an existing table's auto-increment state or write a different founding ID; the precise safe check/creation and concurrent-run serialization belong in the approved plan.
-- Normal reseeding never resets passwords, activation, role aliases or live customized grants.
+- Normal reseeding never resets passwords, activation, role names, permission aliases or live customized grants.
 - If the last usable administrative credentials are lost, the system has **no separate automated emergency-recovery command or hidden API**. Operators contact the technical owner for a **controlled manual server-side recovery**, with safe password hashing and appropriate documented audit evidence. This does not create a new user-facing feature.
 
 ## 4. Staff User management
@@ -132,13 +132,15 @@ Deactivation remains the alternative for any otherwise nondeletable account. **A
 
 ## 5. Roles and permission catalogue
 
+**Approved naming correction (2026-11-26, Feature 04):** Role `name` is the single stored and displayed role name; remove `roles.alias_name` through a reviewed forward migration. Permission `name` stays a stable technical key and `permissions.alias_name` stays the stored display label. Permanent `manager` and `reception` names, IDs, active-state/deletion protections and mutex identity remain unchanged; authorized custom roles use unique Arabic/English names and can be renamed without changing their ID, assignments or permissions. Role resources omit `aliasName`; role Select labels use `roles.name`. The old F01–F03 implementation and historical test evidence still describe the pre-change schema until Feature 04 is implemented and verified.
+
 ### 5.1 Role lifecycle
 
-The seeded technical roles are **`manager` and `reception`**. Both are permanently present, **must remain active**, and **cannot be disabled or deleted**, even if unassigned. Their display aliases and explicit role grants may be edited subject to authorization and the last viable administrative path invariant.
+The seeded technical roles are **`manager` and `reception`**. Both are permanently present, **must remain active**, and **cannot be disabled or deleted**, even if unassigned. Their names cannot be renamed. Their explicit role grants may be edited subject to authorization and the last viable administrative path invariant.
 
 Custom roles may be created, assigned to Users, edited, activated/deactivated and **hard-deleted if and only if they have zero assigned Users**, including inactive accounts. Role deletion removes its permission pivots, **not the shared Permission catalogue or historical audit**. Reject deletion of a used custom role with `409`. No auto-reassignment occurs when a custom role is deactivated.
 
-Role technical `name` and `guard_name` are stable after creation; `alias_name` is the display name stored in MySQL. `roles.is_active` determines eligibility for new role assignments and protected access. A custom role can be disabled while assigned, but its Users then lose protected access until the role is reactivated or they are reassigned.
+Role `name` is the stored display name, unique within `web`; a custom role may be renamed by an authorized update, but the permanent role names are immutable. `guard_name` remains stable. There is no role alias column in the Feature 04 target schema. `roles.is_active` determines eligibility for new role assignments and protected access. A custom role can be disabled while assigned, but its Users then lose protected access until the role is reactivated or they are reassigned.
 
 ### 5.2 Role CRUD and technical capabilities
 
@@ -150,7 +152,7 @@ Role technical `name` and `guard_name` are stable after creation; `alias_name` i
 | PUT | `/roles/{role}` | `identity.roles.update` |
 | DELETE | `/roles/{role}` | `identity.roles.delete` |
 
-The `PUT` edits the permitted display data, activation for custom roles, and the role's selected Permission identifiers. All five role operations are **independently permissioned**. `identity.roles.update` allows the actor to grant/revoke **any predefined catalogue Permission** to a Role, **even when the actor does not personally hold that permission**, subject to the protected baseline roles and last viable administrator rule. There is no separate `identity.roles.manage` shortcut and no unrestricted Manager bypass.
+The `PUT` edits the custom role's unique name, activation for custom roles, and the role's selected Permission identifiers; protected role names stay unchanged. All five role operations are **independently permissioned**. `identity.roles.update` allows the actor to grant/revoke **any predefined catalogue Permission** to a Role, **even when the actor does not personally hold that permission**, subject to the protected baseline roles and last viable administrator rule. There is no separate `identity.roles.manage` shortcut and no unrestricted Manager bypass.
 
 These are intentionally powerful administrative permissions. Grant them explicitly, apply all security invariants, and record the required audit **after the deferred Audit feature is implemented**; no synthetic authority is derived just from the role's name. Before then, sensitive changes lack the central audit trail and must not be described as fully audited.
 
@@ -160,9 +162,9 @@ These are intentionally powerful administrative permissions. Grant them explicit
 - Identity aggregates and **idempotently seeds** the catalogue, initial Role records and the **explicitly approved first-install** role-to-permission mapping.
 - Initial `manager` receives **all approved permissions at first installation**, explicitly, not through a wildcard or unconditional Laravel Gate.
 - Initial `reception` receives the separately approved **routine operating capabilities**, not sensitive administration by default.
-- On later deploy/reseed, **add missing definitions only**; do not reset aliases, active flags, custom role grants, passwords or any existing role's permissions; new catalogue entries are **not automatically granted to existing manager/reception roles**.
+- On later deploy/reseed, **add missing definitions only**; do not reset role names, permission aliases, active flags, custom role grants, passwords or any existing role's permissions; new catalogue entries are **not automatically granted to existing manager/reception roles**.
 - The UI may assign/revoke existing Permission records **through role editing only**. It cannot create, rename or delete arbitrary technical Permission keys, and direct User grants are unsupported.
-- `permissions.alias_name` and `roles.alias_name` are persisted display text. Do not use aliases for authorization or introduce translation tables for them.
+- `permissions.alias_name` is persisted permission display text; roles display their own `name` directly. Do not use display text as authority or introduce translation tables.
 - Permission-cache coherence, post-commit revocation visibility and consistent Laravel/Spatie guard configuration are required and verified in the RBAC plan.
 
 ### 5.4 Initial reception scope
@@ -194,7 +196,7 @@ Apply one consistent MySQL InnoDB serialization/locking strategy across mutation
 When the separate Audit feature is implemented, Identity must synchronously record **actual successful sensitive changes** with actor/system identity, target identity, action type, UTC instant, request ID when available, and minimal safe before/after fields:
 
 - User creation, meaningful metadata edits, password changed (event only; **never the password/hash**), role assignment, activation/deactivation and permitted hard deletion.
-- Role creation, alias/activation changes, permission grants/revocations and deletion.
+- Role creation, name/activation changes, permission grants/revocations and deletion.
 - First Manager bootstrap and approved privileged setup/grant changes.
 
 **Once implemented**, required audit writes are **atomic** with their sensitive Identity mutation; failure of the audit write rolls the mutation back. Audit records are append-only to ordinary application roles and remain interpretable after a permitted User/Role deletion. Access to audit listing/details requires `identity.audit.view`. Until then, this capability is a reserved technical permission with **no active Audit read API**. There are no interactive audit create/edit/delete APIs.
@@ -215,7 +217,7 @@ Authorized filters may include actor, target, event type and date range. Never r
 Use the **approved central** `GET /api/v1/selects?selects=...` contract, not an Identity-specific dropdown endpoint or a different envelope. Feature 03 first implements the registry and only `roles` (Users create OR update; active assignment options) and `userFilterRoles` (Users view; active/inactive filter options). The `permissions` provider is deferred to Feature 04:
 
 - The requested `roles` options for **assignment** contain only active eligible roles; the administrator's full role list can show inactive roles.
-- Role option `value` is the role ID and `label` comes from stored `roles.alias_name`.
+- Role option `value` is the role ID and `label` comes directly from stored `roles.name` after Feature 04; no role alias or translation lookup.
 - Permission option `value` is the stable technical name (e.g. `identity.users.update`); `label` comes from stored `permissions.alias_name`.
 - Any unknown Select key causes `422`; **any unauthorized requested key denies the entire request with `403`**, no partially returned options.
 - Each Select Provider authorizes based on its purpose. A User-creation form needing role choices must not gratuitously require the independent permission to view the entire role-management screen.
@@ -249,7 +251,7 @@ The feature specs and plans must concretize migrations, payloads, role/permissio
 13. Role `index/store/show/update/delete` permissions work independently; `identity.roles.update` may grant predefined permissions not held by the actor, but cannot remove last viable management.
 14. Concurrent grant revocation, role assignment/deletion, activation changes and the Spatie permission cache do not leave a committed forbidden grant usable in a subsequent request.
 15. **When the deferred Audit feature is delivered**, mandatory audit-write failures roll back protected mutations and deleted actors/targets retain interpretable history; these tests are **out of scope for Feature 01**.
-16. Select Registry request with unknown key returns `422`, forbidden key returns all-or-nothing `403`, and legitimate role/permission options use stored aliases.
+16. Select Registry request with unknown key returns `422`, forbidden key returns all-or-nothing `403`, and legitimate role options use stored names and permission options use stored aliases.
 17. API envelopes, Arabic safe errors, `camelCase` serialization, target authorization and DB foreign-key restrictions are consistent with shared standards.
 
 **Verification gate:** PHPUnit (Feature/Integration), real MySQL 8 for locking/uniqueness/cache races, Laravel Pint, and GitHub Actions checks when configured. This document **does not assert that Identity implementation or its tests have been run**.
@@ -268,7 +270,7 @@ Feature ordering is based on dependencies; each substantial feature gets separat
 
 ## 12. Open technical details (not new business decisions)
 
-The subsequent feature specs/plans must verify the installed Laravel 12, Sanctum and Spatie package versions and define the exact table/index shape, unique username implementation, database-session schema/configuration, race-safe all-session invalidation mechanism, CSRF `419` JSON mapping, Role technical-name validation, complete initial role-to-permission mapping, last-viable-essential permission set/lock strategy, and exact request/Resource/filter contracts. **The shared Audit table, writer, historical actor/target preservation model and its tests belong to the deferred Audit feature**, while future per-module protected deletion dependencies still need explicit planning.
+The subsequent feature specs/plans must verify the installed Laravel 12, Sanctum and Spatie package versions and define the exact table/index shape, unique username implementation, database-session schema/configuration, race-safe all-session invalidation mechanism, CSRF `419` JSON mapping, Role name validation and protected permanent names, complete initial role-to-permission mapping, last-viable-essential permission set/lock strategy, and exact request/Resource/filter contracts. **The shared Audit table, writer, historical actor/target preservation model and its tests belong to the deferred Audit feature**, while future per-module protected deletion dependencies still need explicit planning.
 
 These implementation details must respect the approved rules above. If an actual conflict with a previously approved standard emerges, update the owning source explicitly through the documented review process; do not silently loosen invariants.
 

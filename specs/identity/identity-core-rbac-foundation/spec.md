@@ -6,6 +6,8 @@
 > **Sources:** `docs/03-modules/identity.md`, `docs/02-standards/permissions-standards.md`, `docs/02-standards/database-standards.md`, `docs/02-standards/api-standards.md`, `docs/02-standards/ai-workflow-rules.md`.
 > **Delivery gate:** `spec.md`, `plan.md` and `tasks.md` approved on 2026-11-25. Documentation PR #5 merged; user subsequently authorized scoped implementation and approved dependency installation. No implementation merge or production deployment authorized.
 
+> **Feature 04 supersession (approved 2026-11-26):** Historical F01–F03 schema, payload examples, tests and evidence below document the version merged before this change. The target contract in [Roles & Permissions Management](../roles-management/spec.md) removes `roles.alias_name` and nested Role `aliasName`, uses `roles.name` for Role Select labels, preserves permission `alias_name` and all other previous access/session/Users rules. Do not treat older examples as a new requirement or rewrite the historical verified results. The target requires its own migration, implementation and regression evidence.
+
 ## 1. Goal
 
 Establish the minimum reliable Identity data model and Spatie RBAC foundation, and provision **one first Manager User (ID 1)** on a new installation. Future Authentication, Users Management and Roles Management features must be able to reuse these rules instead of creating parallel identity models or authorization engines. Keep V1 simple for shared hosting.
