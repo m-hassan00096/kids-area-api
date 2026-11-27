@@ -82,7 +82,7 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
             $this->assertSame($allowed ? '1' : '0', $response->header('X-Test-Select-Reads'));
             if ($allowed) {
                 $this->assertSame([['label' => 'permissions', 'options' => $expected]], $response->json()['data']);
-                $this->assertSame('201', $response->header('X-Test-Select-Limit'));
+                $this->assertSame('0', $response->header('X-Test-Select-Has-Limit'));
             } else {
                 $this->assertArrayNotHasKey('data', $response->json());
             }
@@ -117,6 +117,8 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
             '?selects=roles,unknown', '?selects=roles,userFilterRoles,permissions,roles', '?selects=roles,userFilterRoles,roles', '?selects=Roles',
             '?selects=roles,', '?selects=,roles', '?selects=roles,%20userFilterRoles', '?selects=%20roles',
             '?selects=roles&sort=id', '?selects=roles&filter[isActive]=1',
+            '?selects=roles&search=test', '?selects=roles&page=1', '?selects=roles&perPage=20',
+            '?selects=roles&params[roles][search]=test', '?selects=roles,userFilterRoles,permissions,activities,activeActivities,roles',
         ] as $query) {
             $response = $browser->request('GET', '/api/v1/selects'.$query);
             $this->assertSame(422, $response->status, $query);
@@ -129,35 +131,40 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
         $this->assertSame('0', $response->header('X-Test-Select-Reads'));
     }
 
-    public function test_exact_cap_and_overflow_are_bounded_without_partial_results(): void
+    public function test_complete_role_options_preserve_independent_active_visibility(): void
     {
         $actor = $this->user('Fixture.Manager');
         $browser = $this->browser($this->server());
         $this->assertSame(200, $browser->login($actor->username)->status);
         $rows = [];
         for ($i = 1; $i <= 198; $i++) {
-            $rows[] = ['name' => 'fixture-cap-'.$i, 'guard_name' => 'web', 'is_active' => true];
+            $rows[] = ['name' => 'fixture-complete-'.$i, 'guard_name' => 'web', 'is_active' => true];
         }
         DB::table('roles')->insert($rows);
-        $response = $this->select($browser, 'roles,userFilterRoles');
-        $this->assertSame(200, $response->status);
-        $this->assertCount(200, $response->json()['data'][0]['options']);
-        $this->assertCount(200, $response->json()['data'][1]['options']);
-        $this->assertSame('2', $response->header('X-Test-Select-Reads'));
-        $this->assertSame('201', $response->header('X-Test-Select-Limit'));
-        $overflow = Role::create(['name' => 'fixture-cap-overflow', 'guard_name' => 'web', 'is_active' => false]);
-        $this->assertSame(200, $this->select($browser, 'roles')->status);
-        $response = $this->select($browser, 'roles,userFilterRoles');
-        $this->assertSame(409, $response->status);
-        $this->assertSame(['success' => false, 'message' => __('identity.select_options_limit'), 'errors' => ['code' => 'SELECT_OPTIONS_LIMIT']], $response->json());
-        $this->assertSame('2', $response->header('X-Test-Select-Reads'));
-        $this->assertSame('201', $response->header('X-Test-Select-Limit'));
-        $overflow->update(['is_active' => true]);
+        foreach ([200, 201, 202] as $count) {
+            if ($count === 201) {
+                Role::create(['name' => 'fixture-inactive-extra', 'guard_name' => 'web', 'is_active' => false]);
+            } elseif ($count === 202) {
+                Role::create(['name' => 'fixture-active-extra', 'guard_name' => 'web', 'is_active' => true]);
+            }
+            $response = $this->select($browser, 'roles,userFilterRoles');
+            $this->assertSame(200, $response->status);
+            $this->assertSame(['success' => true, 'message' => '', 'data' => [
+                ['label' => 'roles', 'options' => $this->expected(true)],
+                ['label' => 'userFilterRoles', 'options' => $this->expected(false)],
+            ]], $response->json());
+            $this->assertCount($count, $response->json()['data'][1]['options']);
+            $this->assertCount($count === 200 ? 200 : $count - 1, $response->json()['data'][0]['options']);
+            $this->assertSame('2', $response->header('X-Test-Select-Reads'));
+            $this->assertSame('0', $response->header('X-Test-Select-Has-Limit'));
+        }
+        Role::query()->where('name', 'fixture-inactive-extra')->update(['is_active' => true]);
         $response = $this->select($browser, 'roles');
-        $this->assertSame(409, $response->status);
-        $this->assertArrayNotHasKey('data', $response->json());
+        $this->assertSame(200, $response->status);
+        $this->assertSame([['label' => 'roles', 'options' => $this->expected(true)]], $response->json()['data']);
+        $this->assertCount(202, $response->json()['data'][0]['options']);
         $this->assertSame('1', $response->header('X-Test-Select-Reads'));
-        $this->assertSame('201', $response->header('X-Test-Select-Limit'));
+        $this->assertSame('0', $response->header('X-Test-Select-Has-Limit'));
     }
 
     private function expected(bool $active): array

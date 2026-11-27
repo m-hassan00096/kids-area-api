@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Exceptions\BusinessException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Activities\Enums\ActivityBillingMode;
@@ -192,32 +191,18 @@ class ActivityPerformanceTest extends AuthenticationHttpTestCase
 
     private function measureSelect(int $size, $admin, string $key, bool $activeOnly): void
     {
-        $query = DB::table('activities')->when($activeOnly, fn ($q) => $q->where('is_active', true));
-        $count = $query->count();
-        $overflow = $count > 200;
-        [$http, $metrics] = $this->sampleHttp($admin, '/api/v1/selects?selects='.$key, $overflow ? 409 : 200, 1);
-        $this->assertSame('201', $http->header('X-Test-Select-Limit'));
-        [$direct, $plans, $ms] = $this->measureSql(function () use ($activeOnly): array {
-            try {
-                return (new ActivityOptionsProvider($activeOnly))->options();
-            } catch (BusinessException $failure) {
-                $this->assertSame(409, $failure->httpStatus);
-
-                return ['error' => $failure->errorCode];
-            }
-        }, 1, ['provider']);
-        if ($overflow) {
-            $this->assertSame(['error' => 'SELECT_OPTIONS_LIMIT'], $direct);
-            $this->assertSame('SELECT_OPTIONS_LIMIT', $http->json()['errors']['code']);
-            $this->assertArrayNotHasKey('data', $http->json());
-        } else {
-            $expected = $query->orderBy('name')->orderBy('id')->get(['id', 'name'])
-                ->map(static fn ($row) => ['value' => (int) $row->id, 'label' => $row->name])->all();
-            $this->assertSame($expected, $direct);
-            $this->assertSame([['label' => $key, 'options' => $expected]], $http->json()['data']);
-        }
-        $this->emit('ACTIVITY_SELECT_PERF', ['size' => $size, 'key' => $key, 'matching' => $count, 'overflow' => $overflow,
-            'materialized' => min($count, 201), 'cap_plus_one' => 201, 'direct_ms' => $ms, 'plans' => $plans] + $metrics);
+        $expected = DB::table('activities')->when($activeOnly, fn ($q) => $q->where('is_active', true))
+            ->orderBy('name')->orderBy('id')->get(['id', 'name'])
+            ->map(static fn ($row) => ['value' => (int) $row->id, 'label' => $row->name])->all();
+        [$http, $metrics] = $this->sampleHttp($admin, '/api/v1/selects?selects='.$key, 200, 1);
+        $this->assertSame('1', $http->header('X-Test-Select-Reads'));
+        $this->assertSame('0', $http->header('X-Test-Select-Has-Limit'));
+        [$direct, $plans, $ms] = $this->measureSql(fn () => (new ActivityOptionsProvider($activeOnly))->options(), 1, ['provider']);
+        $this->assertDoesNotMatchRegularExpression('/\blimit\b/i', $plans[0]['sql']);
+        $this->assertSame($expected, $direct);
+        $this->assertSame([['label' => $key, 'options' => $expected]], $http->json()['data']);
+        $this->emit('ACTIVITY_SELECT_PERF', ['size' => $size, 'key' => $key, 'matching' => count($expected),
+            'materialized' => count($direct), 'response_bytes' => strlen($http->body), 'direct_ms' => $ms, 'plans' => $plans] + $metrics);
     }
 
     private function sampleHttp($admin, string $uri, int $status, int $domainSelects): array

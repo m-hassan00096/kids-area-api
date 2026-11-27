@@ -38,20 +38,27 @@ class ActivitySelectHttpTest extends AuthenticationHttpTestCase
                 $this->assertSame(200, $response->status);
                 $this->assertSame(array_map(static fn ($key) => ['label' => $key, 'options' => $options($key === 'activeActivities')], explode(',', $keys)), $response->json()['data']);
                 $this->assertSame('2', $response->header('X-Test-Select-Reads'));
-                $this->assertSame('201', $response->header('X-Test-Select-Limit'));
+                $this->assertSame('0', $response->header('X-Test-Select-Has-Limit'));
             }
         }
-        foreach (['activities,roles', 'roles,activities', 'activeActivities,permissions'] as $keys) {
+        foreach (['activities,roles', 'roles,activities', 'activeActivities,permissions', 'activities,activeActivities,roles,userFilterRoles,permissions', 'permissions,userFilterRoles,roles,activeActivities,activities'] as $keys) {
             $response = $reception->request('GET', '/api/v1/selects?selects='.$keys);
             $this->assertSame(403, $response->status);
             $this->assertSame('0', $response->header('X-Test-Select-Reads'));
             $this->assertArrayNotHasKey('data', $response->json());
         }
-        $mixed = $admin->request('GET', '/api/v1/selects?selects=permissions,activities,activeActivities');
-        $this->assertSame(200, $mixed->status);
-        $this->assertSame(['permissions', 'activities', 'activeActivities'], array_column($mixed->json()['data'], 'label'));
-        $this->assertSame('3', $mixed->header('X-Test-Select-Reads'));
-        foreach (['activities,activities', 'Activities', 'activities,unknown', 'activities,activeActivities,roles,permissions'] as $keys) {
+        foreach ([
+            ['permissions', 'activities', 'activeActivities'],
+            ['activities', 'activeActivities', 'roles', 'permissions'],
+            ['activeActivities', 'permissions', 'userFilterRoles', 'activities', 'roles'],
+        ] as $keys) {
+            $mixed = $admin->request('GET', '/api/v1/selects?selects='.implode(',', $keys));
+            $this->assertSame(200, $mixed->status);
+            $this->assertSame($keys, array_column($mixed->json()['data'], 'label'));
+            $this->assertSame((string) count($keys), $mixed->header('X-Test-Select-Reads'));
+            $this->assertSame('0', $mixed->header('X-Test-Select-Has-Limit'));
+        }
+        foreach (['activities,activities', 'Activities', 'activities,unknown', 'activities,activeActivities,roles,permissions,userFilterRoles,activities'] as $keys) {
             $response = $admin->request('GET', '/api/v1/selects?selects='.$keys);
             $this->assertSame(422, $response->status);
             $this->assertSame('0', $response->header('X-Test-Select-Reads'));
@@ -59,39 +66,37 @@ class ActivitySelectHttpTest extends AuthenticationHttpTestCase
         $this->assertSame($before, $this->activitySnapshot());
     }
 
-    public function test_exact_200_cap_201_overflow_and_independent_active_visibility(): void
+    public function test_complete_activity_options_preserve_independent_active_visibility(): void
     {
-        $staff = $this->user('Activity.Select.Cap', 'reception');
+        $staff = $this->user('Activity.Select.Complete', 'reception');
         $browser = $this->browser($this->server());
         $this->assertSame(200, $browser->login($staff->username)->status);
         $rows = [];
         for ($i = 1; $i <= 200; $i++) {
-            $rows[] = ['name' => 'Cap '.str_pad((string) $i, 3, '0', STR_PAD_LEFT),
+            $rows[] = ['name' => 'Fixture '.str_pad((string) $i, 3, '0', STR_PAD_LEFT),
                 'supports_hourly' => true, 'supports_subscription' => false, 'hourly_rate' => '1.00'];
         }
         DB::table('activities')->insert($rows);
-        foreach (['activities', 'activeActivities'] as $key) {
-            $response = $browser->request('GET', '/api/v1/selects?selects='.$key);
+        foreach ([200, 201, 202] as $count) {
+            if ($count === 201) {
+                $this->activityFixture('Inactive extra', ['is_active' => false]);
+            } elseif ($count === 202) {
+                $this->activityFixture('Active extra');
+            }
+            $options = static fn (bool $active): array => DB::table('activities')->when($active, fn ($q) => $q->where('is_active', true))
+                ->orderBy('name')->orderBy('id')->get(['id', 'name'])
+                ->map(static fn ($row) => ['value' => (int) $row->id, 'label' => $row->name])->all();
+            $response = $browser->request('GET', '/api/v1/selects?selects=activeActivities,activities');
             $this->assertSame(200, $response->status);
-            $this->assertCount(200, $response->json()['data'][0]['options']);
-            $this->assertSame('1', $response->header('X-Test-Select-Reads'));
-            $this->assertSame('201', $response->header('X-Test-Select-Limit'));
+            $this->assertSame(['success' => true, 'message' => '', 'data' => [
+                ['label' => 'activeActivities', 'options' => $options(true)],
+                ['label' => 'activities', 'options' => $options(false)],
+            ]], $response->json());
+            $this->assertCount($count === 200 ? 200 : $count - 1, $response->json()['data'][0]['options']);
+            $this->assertCount($count, $response->json()['data'][1]['options']);
+            $this->assertSame('2', $response->header('X-Test-Select-Reads'));
+            $this->assertSame('0', $response->header('X-Test-Select-Has-Limit'));
         }
-        $this->activityFixture('Inactive extra', ['is_active' => false]);
-        foreach (['activities', 'activeActivities,activities'] as $keys) {
-            $response = $browser->request('GET', '/api/v1/selects?selects='.$keys);
-            $this->assertSame(409, $response->status);
-            $this->assertSame('SELECT_OPTIONS_LIMIT', $response->json()['errors']['code']);
-            $this->assertArrayNotHasKey('data', $response->json());
-        }
-        $response = $browser->request('GET', '/api/v1/selects?selects=activeActivities');
-        $this->assertSame(200, $response->status);
-        $this->assertCount(200, $response->json()['data'][0]['options']);
-        $this->activityFixture('Active extra');
-        $response = $browser->request('GET', '/api/v1/selects?selects=activeActivities');
-        $this->assertSame(409, $response->status);
-        $this->assertSame('SELECT_OPTIONS_LIMIT', $response->json()['errors']['code']);
-        $this->assertSame('201', $response->header('X-Test-Select-Limit'));
         $this->assertSame(202, DB::table('activities')->count());
     }
 }

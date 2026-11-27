@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Exceptions\BusinessException;
+use App\Services\Select\SelectProvider;
 use App\Services\Select\SelectRegistry;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use LogicException;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 
 class SelectRegistryProviderTest extends IdentityDatabaseTestCase
@@ -15,10 +17,14 @@ class SelectRegistryProviderTest extends IdentityDatabaseTestCase
             ['label' => 'userFilterRoles', 'options' => []],
             ['label' => 'roles', 'options' => []],
             ['label' => 'permissions', 'options' => []],
-        ], app(SelectRegistry::class)->resolve('userFilterRoles,roles,permissions', ['identity.users.view', 'identity.users.create', 'identity.roles.store']));
+            ['label' => 'activeActivities', 'options' => []],
+            ['label' => 'activities', 'options' => []],
+        ], app(SelectRegistry::class)->resolve('userFilterRoles,roles,permissions,activeActivities,activities', [
+            'identity.users.view', 'identity.users.create', 'identity.roles.store', 'activities.index',
+        ]));
     }
 
-    public function test_permission_provider_exact_name_and_bounded_overflow(): void
+    public function test_permission_provider_exact_catalogue_and_missing_alias_integrity(): void
     {
         app(SeedIdentityCatalogueAction::class)->execute();
         DB::table('permissions')->where('name', 'identity.audit.view')->update(['name' => 'IDENTITY.AUDIT.VIEW']);
@@ -26,15 +32,61 @@ class SelectRegistryProviderTest extends IdentityDatabaseTestCase
         $options = $registry->resolve('permissions', ['identity.roles.update'])[0]['options'];
         $this->assertCount(14, $options);
         $this->assertNotContains('IDENTITY.AUDIT.VIEW', array_column($options, 'value'));
-        config()->set('selects.max_options', 14);
-        $this->assertCount(14, $registry->resolve('permissions', ['identity.roles.store'])[0]['options']);
-        config()->set('selects.max_options', 13);
+        $this->assertSame($options, $registry->resolve('permissions', ['identity.roles.store'])[0]['options']);
+
+        DB::table('permissions')->where('name', 'identity.users.view')->update(['alias_name' => ' ']);
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Missing stored permission label.');
+        $registry->resolve('permissions', ['identity.roles.store']);
+    }
+
+    public function test_five_distinct_registered_keys_are_allowed_but_six_are_rejected_before_any_dispatch(): void
+    {
+        $registry = new SelectRegistry;
+        $providers = [];
+        for ($i = 1; $i <= 6; $i++) {
+            $provider = new class implements SelectProvider
+            {
+                public int $authorizationCalls = 0;
+
+                public int $optionCalls = 0;
+
+                public function allows(array $permissions): bool
+                {
+                    $this->authorizationCalls++;
+
+                    return true;
+                }
+
+                public function options(): array
+                {
+                    $this->optionCalls++;
+
+                    return [];
+                }
+            };
+            $providers['fixture'.$i] = $provider;
+            $registry->register('fixture'.$i, $provider);
+        }
+
+        $keys = ['fixture5', 'fixture2', 'fixture1', 'fixture4', 'fixture3'];
+        $this->assertSame(array_map(static fn ($key) => ['label' => $key, 'options' => []], $keys), $registry->resolve(implode(',', $keys), []));
+        foreach ($providers as $key => $provider) {
+            $this->assertSame((int) in_array($key, $keys, true), $provider->authorizationCalls);
+            $this->assertSame((int) in_array($key, $keys, true), $provider->optionCalls);
+            $provider->authorizationCalls = 0;
+            $provider->optionCalls = 0;
+        }
+
         try {
-            $registry->resolve('permissions', ['identity.roles.store']);
-            $this->fail('Expected bounded permission options conflict.');
-        } catch (BusinessException $exception) {
-            $this->assertSame(409, $exception->httpStatus);
-            $this->assertSame('SELECT_OPTIONS_LIMIT', $exception->errorCode);
+            $registry->resolve(implode(',', array_keys($providers)), []);
+            $this->fail('Six registered keys must fail validation.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('selects', $exception->errors());
+        }
+        foreach ($providers as $provider) {
+            $this->assertSame(0, $provider->authorizationCalls);
+            $this->assertSame(0, $provider->optionCalls);
         }
     }
 }
