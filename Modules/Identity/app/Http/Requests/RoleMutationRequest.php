@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Validator;
 use JsonException;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 use stdClass;
 
 abstract class RoleMutationRequest extends FormRequest
@@ -71,11 +71,11 @@ abstract class RoleMutationRequest extends FormRequest
                 $invalid('isActive');
             }
             $permissions = $data['permissions'] ?? null;
-            if (! is_array($permissions) || ! array_is_list($permissions) || count($permissions) > count(IdentityPermissions::keys())) {
+            if (! is_array($permissions) || ! array_is_list($permissions) || count($permissions) > count(PermissionCatalogue::keys())) {
                 $invalid('permissions');
             } else {
                 foreach ($permissions as $permission) {
-                    if (! is_string($permission) || ! in_array($permission, IdentityPermissions::keys(), true)) {
+                    if (! is_string($permission) || ! in_array($permission, PermissionCatalogue::keys(), true)) {
                         $invalid('permissions');
 
                         break;

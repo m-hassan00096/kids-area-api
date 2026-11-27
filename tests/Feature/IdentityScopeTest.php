@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\Sanctum;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 
 class IdentityScopeTest extends IdentityDatabaseTestCase
 {
@@ -16,16 +16,19 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
     {
         app(SeedIdentityCatalogueAction::class)->execute();
 
-        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), Permission::pluck('name')->all());
-        $this->assertSame(10, Permission::count());
+        $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), Permission::pluck('name')->all());
+        $this->assertSame(15, Permission::count());
         $this->assertEqualsCanonicalizing([
             'migrations', 'users', 'roles', 'permissions', 'model_has_roles',
             'model_has_permissions', 'role_has_permissions', 'sessions', 'identity_login_throttles',
+            'activities', 'identity_feature_provisions',
         ], DB::table('information_schema.TABLES')->whereRaw('TABLE_SCHEMA = DATABASE()')->pluck('TABLE_NAME')->all());
         $this->assertEqualsCanonicalizing([
             'PRIMARY', 'users_username_unique', 'users_email_unique', 'users_phone_unique', 'users_avatar_key_unique',
         ], collect(DB::select('SHOW INDEX FROM users'))->pluck('Key_name')->unique()->values()->all());
         $this->assertTrue(class_exists(Sanctum::class));
+        $this->assertTrue(Schema::hasTable('activities'));
+        $this->assertTrue(Schema::hasTable('identity_feature_provisions'));
         $this->assertFalse(Schema::hasTable('audit_logs'));
         $this->assertFalse(Schema::hasTable('identity_access_guard'));
         $this->assertTrue(Schema::hasTable('sessions'));
@@ -52,6 +55,8 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
             'api/v1/selects' => ['GET', 'HEAD'],
             'api/v1/roles' => ['GET', 'HEAD', 'POST'],
             'api/v1/roles/{role}' => ['GET', 'HEAD', 'PUT', 'DELETE'],
+            'api/v1/activities' => ['GET', 'HEAD', 'POST'],
+            'api/v1/activities/{activity}' => ['GET', 'HEAD', 'PUT', 'DELETE'],
         ];
         foreach (Route::getRoutes() as $route) {
             if (isset($approvedRoutes[$route->uri()])) {
@@ -63,9 +68,9 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
 
                 continue;
             }
-            $this->fail('Unexpected route in approved Identity checkpoint inventory: '.$route->uri());
+            $this->fail('Unexpected route in approved Identity and Activities checkpoint inventory: '.$route->uri());
         }
-        // Only the approved implemented Identity routes may be registered.
+        // Only the approved implemented Identity and Activities routes may be registered.
         $this->assertSame([], $approvedRoutes);
     }
 }

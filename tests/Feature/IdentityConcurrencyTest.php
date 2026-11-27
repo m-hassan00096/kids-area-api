@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Modules\Identity\Actions\ProvisionActivityCatalogueAction;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
@@ -10,11 +12,15 @@ use Modules\Identity\Models\User;
 use Modules\Identity\Services\IdentityAccess;
 use Modules\Identity\Services\IdentityMutex;
 use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
+use Tests\Support\ActivityProvisionFixtures;
 
 class IdentityConcurrencyTest extends IdentityDatabaseTestCase
 {
+    use ActivityProvisionFixtures;
+
     public function test_concurrent_first_seeders_produce_one_catalogue_and_explicit_grants(): void
     {
         [$first, $second] = $this->race(['mode' => 'seed'], ['mode' => 'seed']);
@@ -22,10 +28,115 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $this->assertSame('ok', $first['code']);
         $this->assertSame('ok', $second['code']);
         $this->assertSame(2, Role::count());
-        $this->assertSame(10, Permission::count());
-        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), Role::findByName('manager', 'web')->permissions()->pluck('name')->all());
-        $this->assertSame(0, Role::findByName('reception', 'web')->permissions()->count());
+        $this->assertSame(15, Permission::count());
+        $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), Role::findByName('manager', 'web')->permissions()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(['activities.index', 'activities.show'], Role::findByName('reception', 'web')->permissions()->pluck('name')->all());
+        $this->assertSame(1, DB::table('identity_feature_provisions')->count());
         $this->assertSame(0, User::count());
+    }
+
+    public function test_overlapping_activity_provisions_serialize_once(): void
+    {
+        [$manager, $reception] = $this->legacyActivityRoles();
+        [$first, $second] = $this->race(['mode' => 'provision'], ['mode' => 'provision']);
+        $this->assertTrue($first['applied']);
+        $this->assertFalse($second['applied']);
+        $this->assertSame(1, DB::table('identity_feature_provisions')->count());
+        $this->assertCount(14, $this->grantKeys($manager));
+        $this->assertSame(['activities.index', 'activities.show'], $this->grantKeys($reception));
+        $this->assertNotContains('identity.audit.view', $this->grantKeys($manager));
+    }
+
+    public function test_provision_and_routine_seed_serialize_without_replacing_grants(): void
+    {
+        [$manager, $reception] = $this->legacyActivityRoles();
+        [$first, $second] = $this->race(['mode' => 'provision'], ['mode' => 'seed']);
+        $this->assertTrue($first['applied']);
+        $this->assertSame('ok', $second['code']);
+        $this->assertSame(1, DB::table('identity_feature_provisions')->count());
+        $this->assertCount(14, $this->grantKeys($manager));
+        $this->assertSame(['activities.index', 'activities.show'], $this->grantKeys($reception));
+    }
+
+    public function test_activity_revocation_after_provision_and_before_replay_both_win(): void
+    {
+        [$manager] = $this->legacyActivityRoles();
+        $actor = User::factory()->create();
+        $actor->syncRoles([$manager]);
+        $change = ['mode' => 'access', 'actor' => $actor->id, 'permission' => 'identity.roles.update',
+            'change' => 'revoke-activity', 'target' => $manager->id];
+        [$first, $second] = $this->race(['mode' => 'provision'], $change);
+        $this->assertTrue($first['applied']);
+        $this->assertSame('ok', $second['code']);
+        $this->assertNotContains('activities.store', $this->grantKeys($manager));
+        $marker = (array) DB::table('identity_feature_provisions')->sole();
+
+        $manager->fresh()->givePermissionTo(Permission::findByName('activities.store', 'web'));
+        [$first, $second] = $this->race($change, ['mode' => 'provision']);
+        $this->assertSame('ok', $first['code']);
+        $this->assertFalse($second['applied']);
+        $this->assertNotContains('activities.store', $this->grantKeys($manager));
+        $this->assertSame($marker, (array) DB::table('identity_feature_provisions')->sole());
+        $this->assertFalse(app(ProvisionActivityCatalogueAction::class)->execute());
+    }
+
+    #[DataProvider('provisionOutcomes')]
+    public function test_shared_native_permission_cache_repopulated_before_provision_outcome_is_evicted(bool $commit): void
+    {
+        [$manager] = $this->legacyActivityRoles();
+        $barrier = sys_get_temp_dir().DIRECTORY_SEPARATOR.'identity-race-'.bin2hex(random_bytes(12));
+        $cache = sys_get_temp_dir().DIRECTORY_SEPARATOR.'identity-provision-cache-'.bin2hex(random_bytes(12));
+        $this->assertTrue(mkdir($cache, 0700));
+        $common = ['barrier' => $barrier, 'cache_directory' => $cache];
+        $probe = function () use ($common, $manager): array {
+            $process = $this->worker(['mode' => 'provision-cache-probe', 'hold' => false, 'target' => $manager->id] + $common);
+            $this->assertSame(0, $process->run());
+            $result = $this->event($process, 'result');
+            $this->assertNotNull($result);
+            $this->assertSame('ok', $result['code']);
+
+            return $result;
+        };
+        $writer = $this->worker(['mode' => 'provision', 'hold' => true, 'fault_marker' => ! $commit] + $common);
+        try {
+            $warm = $probe();
+            $this->assertFalse($warm['cachedBefore']);
+            $this->assertTrue($warm['cachedAfter']);
+            $this->assertFalse($warm['granted']);
+            $writer->start();
+            $this->awaitEvent($writer, 'ready');
+            $this->awaitEvent($writer, 'held');
+            $during = $probe();
+            $this->assertFalse($during['cachedBefore'], 'Native grants must evict the old cache before commit.');
+            $this->assertTrue($during['cachedAfter']);
+            $this->assertFalse($during['granted'], 'Observer reads the old committed grant set during the transaction.');
+            file_put_contents($barrier, 'release');
+            $this->assertSame($commit ? 0 : 10, $writer->wait());
+            $outcome = $this->event($writer, 'result');
+            $this->assertSame($commit ? 'ok' : 'unexpected-query', $outcome['code']);
+            if (! $commit) {
+                $this->assertSame(1062, $outcome['native_code']);
+            }
+            $after = $probe();
+            $this->assertFalse($after['cachedBefore'], 'Post-outcome eviction removes independently repopulated old cache.');
+            $this->assertTrue($after['cachedAfter']);
+            $this->assertSame($commit, $after['granted']);
+            $this->assertSame($commit ? 1 : 0, DB::table('identity_feature_provisions')->count());
+        } finally {
+            file_put_contents($barrier, 'release');
+            if ($writer->isRunning()) {
+                $writer->stop(2);
+            }
+            unlink($barrier);
+            if (is_dir($cache) && ! is_link($cache)) {
+                File::deleteDirectory($cache);
+            }
+        }
+    }
+
+    public static function provisionOutcomes(): array
+    {
+        return [[true], [false]];
     }
 
     #[DataProvider('founderNames')]
@@ -47,7 +158,7 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $this->assertSame(['manager'], $founder->roles()->pluck('name')->all());
         $this->assertSame(1, DB::table('model_has_roles')->count());
         $this->assertSame(0, DB::table('model_has_permissions')->count());
-        $this->assertEqualsCanonicalizing(IdentityPermissions::keys(), $founder->getAllPermissions()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), $founder->getAllPermissions()->pluck('name')->all());
     }
 
     public static function founderNames(): array
@@ -241,7 +352,7 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
                 $contested = match ($mode) {
                     'seed' => str_starts_with($query, 'insert into roles'),
                     'unique' => str_starts_with($query, 'insert into users'),
-                    'access', 'bootstrap' => str_contains($query, 'from roles') && str_contains($query, 'for update'),
+                    'access', 'bootstrap', 'provision' => str_contains($query, 'from roles') && str_contains($query, 'for update'),
                 };
                 if ($contested) {
                     $this->assertTrue($process->isRunning());

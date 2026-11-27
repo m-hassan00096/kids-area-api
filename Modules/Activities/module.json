@@ -1,0 +1,11 @@
+{
+    "name": "Activities",
+    "alias": "activities",
+    "description": "Activity catalogue foundation",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Activities\\Providers\\ActivitiesServiceProvider"
+    ],
+    "files": []
+}

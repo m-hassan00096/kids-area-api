@@ -24,11 +24,11 @@ class SelectRegistryProviderTest extends IdentityDatabaseTestCase
         DB::table('permissions')->where('name', 'identity.audit.view')->update(['name' => 'IDENTITY.AUDIT.VIEW']);
         $registry = app(SelectRegistry::class);
         $options = $registry->resolve('permissions', ['identity.roles.update'])[0]['options'];
-        $this->assertCount(9, $options);
+        $this->assertCount(14, $options);
         $this->assertNotContains('IDENTITY.AUDIT.VIEW', array_column($options, 'value'));
-        config()->set('selects.max_options', 9);
-        $this->assertCount(9, $registry->resolve('permissions', ['identity.roles.store'])[0]['options']);
-        config()->set('selects.max_options', 8);
+        config()->set('selects.max_options', 14);
+        $this->assertCount(14, $registry->resolve('permissions', ['identity.roles.store'])[0]['options']);
+        config()->set('selects.max_options', 13);
         try {
             $registry->resolve('permissions', ['identity.roles.store']);
             $this->fail('Expected bounded permission options conflict.');

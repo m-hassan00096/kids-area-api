@@ -3,7 +3,9 @@
 use App\Exceptions\BusinessException;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Modules\Identity\Actions\ProvisionActivityCatalogueAction;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
@@ -53,9 +55,25 @@ try {
 
     $input = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR);
     $mode = $input['mode'];
+    if (in_array($mode, ['provision', 'provision-cache-probe'], true) && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1')) {
+        throw new RuntimeException('Unsafe provisioning worker.');
+    }
     $barrier = $input['barrier'];
     if (dirname($barrier) !== sys_get_temp_dir() || ! str_starts_with(basename($barrier), 'identity-race-')) {
         throw new RuntimeException('Invalid test barrier');
+    }
+
+    if (isset($input['cache_directory'])) {
+        $cachePath = $input['cache_directory'];
+        if (getenv('GITHUB_ACTIONS') !== 'true' || dirname($cachePath) !== sys_get_temp_dir()
+            || ! str_starts_with(basename($cachePath), 'identity-provision-cache-')
+            || ! is_dir($cachePath) || is_link($cachePath)) {
+            throw new RuntimeException('Unsafe shared cache fixture.');
+        }
+        config()->set('cache.stores.file.path', $cachePath);
+        config()->set('cache.stores.file.lock_path', $cachePath);
+        config()->set('permission.cache.store', 'file');
+        $app->forgetInstance(PermissionRegistrar::class);
     }
 
     identityWorkerEvent('ready', ['connection_id' => (int) $server->connection_id]);
@@ -80,19 +98,20 @@ try {
     };
 
     // Warm each independent process's package cache before the serialized write.
-    if (in_array($mode, ['seed', 'bootstrap', 'access'], true)) {
+    if (in_array($mode, ['seed', 'bootstrap', 'access', 'provision'], true)) {
         app(PermissionRegistrar::class)->getPermissions();
     }
 
     $attempted = false;
     $held = false;
-    $connection->beforeExecuting(function (string $query) use ($mode, $input, $pause, &$attempted, &$held): void {
+    $connection->beforeExecuting(function (string $query) use ($mode, $input, $pause, $connection, &$attempted, &$held): void {
         $sql = strtolower(str_replace(chr(96), '', $query));
         $managerLock = str_contains($sql, 'from roles') && str_contains($sql, 'for update');
         $attempt = match ($mode) {
             'seed' => str_starts_with($sql, 'insert into roles'),
-            'bootstrap', 'access' => $managerLock,
+            'bootstrap', 'access', 'provision' => $managerLock,
             'unique' => str_starts_with($sql, 'insert into users'),
+            'provision-cache-probe' => false,
         };
 
         if ($attempt && ! $attempted) {
@@ -103,12 +122,17 @@ try {
         $holdPoint = match ($mode) {
             'seed' => str_starts_with($sql, 'insert into permissions'),
             'bootstrap' => str_starts_with($sql, 'insert into users'),
+            'provision' => str_starts_with($sql, 'insert into identity_feature_provisions'),
             default => false,
         };
 
         if ($input['hold'] && $holdPoint && ! $held) {
             $held = true;
             $pause();
+            if ($mode === 'provision' && ($input['fault_marker'] ?? false)) {
+                $stmt = $connection->getPdo()->prepare('INSERT INTO identity_feature_provisions(feature_key, completed_at) VALUES (?, ?)');
+                $stmt->execute(['activities.catalogue.v1', '2026-11-26 00:00:00']);
+            }
         }
     });
 
@@ -116,6 +140,20 @@ try {
         case 'seed':
             app(SeedIdentityCatalogueAction::class)->execute();
             break;
+        case 'provision-cache-probe':
+            $cache = Cache::store('file');
+            $key = config('permission.cache.key');
+            $cachedBefore = $cache->has($key);
+            $permission = app(PermissionRegistrar::class)->getPermissions(['name' => 'activities.store', 'guard_name' => 'web'])->sole();
+            identityWorkerEvent('result', [
+                'code' => 'ok', 'cachedBefore' => $cachedBefore, 'cachedAfter' => $cache->has($key),
+                'granted' => $permission->roles->contains(fn ($role) => (int) $role->id === $input['target']),
+            ]);
+            exit(0);
+        case 'provision':
+            $applied = app(ProvisionActivityCatalogueAction::class)->execute();
+            identityWorkerEvent('result', ['code' => 'ok', 'applied' => $applied]);
+            exit(0);
         case 'bootstrap':
             $command = new IdentityPrompts;
             $command->setLaravel(app());
@@ -144,9 +182,9 @@ try {
                 $input['permission'],
                 function () use ($input, $pause): void {
                     $pause();
-                    if ($input['change'] === 'revoke') {
+                    if (in_array($input['change'], ['revoke', 'revoke-activity'], true)) {
                         $role = Role::findOrFail($input['target']);
-                        $permission = Permission::where('name', 'identity.users.view')->sole();
+                        $permission = Permission::where('name', $input['change'] === 'revoke-activity' ? 'activities.store' : 'identity.users.view')->sole();
                         $role->revokePermissionTo($permission);
                     } else {
                         User::findOrFail($input['target'])->update(['is_active' => false]);
@@ -169,7 +207,8 @@ try {
         }
     }
 
-    identityWorkerEvent('result', ['code' => $index === null ? 'unexpected-query' : 'duplicate', 'index' => $index]);
+    identityWorkerEvent('result', ['code' => $index === null ? 'unexpected-query' : 'duplicate', 'index' => $index]
+        + (($mode ?? null) === 'provision' ? ['native_code' => (int) ($exception->errorInfo[1] ?? 0)] : []));
     exit(10);
 } catch (Throwable $exception) {
     identityWorkerEvent('result', ['code' => 'unexpected', 'class' => $exception::class]);

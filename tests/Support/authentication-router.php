@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Modules\Activities\Models\Activity;
 use Modules\Identity\Actions\DeleteUserAction;
 use Modules\Identity\Http\Controllers\UsersController;
 use Modules\Identity\Http\Middleware\FinalizeLoginSession;
@@ -75,6 +76,12 @@ if (is_string($barrierDir) && dirname($barrierDir) === sys_get_temp_dir()
 }
 $barrier = $request->headers->get('X-Identity-Test-Barrier');
 $mode = $request->headers->get('X-Identity-Test-Mode');
+// Activity-specific fault and barrier modes use the same guarded CI fixture.
+if (is_string($mode) && str_starts_with($mode, 'activity-')
+    && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1')) {
+    http_response_code(503);
+    exit;
+}
 // Role fault and barrier modes are confined to the authorized CI database.
 if (is_string($mode) && (str_contains($mode, 'roles-action-') || str_contains($mode, 'role-write')
     || str_contains($mode, 'role-insert') || str_contains($mode, 'role-delete') || str_contains($mode, 'role-grant')
@@ -327,6 +334,17 @@ if ($inspect) {
     $connection->enableQueryLog();
 }
 
+// Real Eloquent DML occurs before these test-only injected failures.
+if ($mode === 'activity-fault-after-insert') {
+    Activity::created(static fn () => throw new RuntimeException('Synthetic activity failure: synthetic-redaction-sentinel'));
+}
+if ($mode === 'activity-fault-after-update') {
+    Activity::updated(static fn () => throw new RuntimeException('Synthetic activity failure: synthetic-redaction-sentinel'));
+}
+if ($mode === 'activity-fault-after-delete') {
+    Activity::deleted(static fn () => throw new RuntimeException('Synthetic activity failure: synthetic-redaction-sentinel'));
+}
+
 $count = 0;
 $credentialReads = 0;
 $usersTargetReads = 0;
@@ -338,6 +356,10 @@ $usersPageLimit = '';
 $usersSnapshot = 0;
 $rolesReads = 0;
 $rolesTargetReads = 0;
+$activityReads = 0;
+$activityTargetReads = 0;
+$activityWrites = 0;
+$activityPageLimit = '';
 $roleGenerationWrites = 0;
 $roleSessionDeletes = 0;
 $selectReads = 0;
@@ -346,7 +368,7 @@ $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_
 $armed = true;
 $restoreStatements = 0;
 $staffTouches = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$activityReads, &$activityTargetReads, &$activityWrites, &$activityPageLimit, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -391,6 +413,30 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         $selectReads++;
         $selectLimit = $match[1];
     }
+    $activitySelect = str_starts_with($sql, 'select') && str_contains($sql, ' from activities');
+    $activityAdmission = $activitySelect && preg_match('/\Aselect id from activities where\b/', $sql) === 1;
+    $activityCount = $activitySelect && str_starts_with($sql, 'select count(*) as aggregate');
+    $activityProjection = $activitySelect && str_starts_with($sql, 'select id, name, supports_hourly, supports_subscription, hourly_rate, monthly_price, is_active from activities');
+    if ($activitySelect) {
+        $activityReads++;
+        if ($activityAdmission) {
+            $activityTargetReads++;
+        }
+        if ($activityProjection && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+            $activityPageLimit = $match[1];
+        }
+        if ($request->is('api/v1/selects') && str_starts_with($sql, 'select id, name from activities')
+            && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+            $selectReads++;
+            $selectLimit = $match[1];
+        }
+    }
+    $activityInsert = str_starts_with($sql, 'insert into activities ');
+    $activityUpdate = str_starts_with($sql, 'update activities set ');
+    $activityDelete = str_starts_with($sql, 'delete from activities ');
+    if ($activityInsert || $activityUpdate || $activityDelete) {
+        $activityWrites++;
+    }
     if ($mode === 'roles-performance') {
         if (str_starts_with($sql, 'update users set') && str_contains($sql, 'auth_version')) {
             $roleGenerationWrites++;
@@ -412,7 +458,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
             app()->forgetInstance(PermissionRegistrar::class);
             app()->bind(PermissionRegistrar::class, static fn () => throw new RuntimeException('Synthetic postcommit cache failure.'));
         }
-        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore', 'roles-action-timeout-restore'], true)) {
+        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore', 'roles-action-timeout-restore', 'activity-timeout-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
     }
@@ -461,6 +507,11 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
 
         return;
     }
+    if ($mode === 'activity-native-save-fault' && $request->attributes->get('activities_outcome') === 'committed'
+        && ($nativeSave || $nativeInsert)) {
+        $armed = false;
+        throw new RuntimeException('Synthetic native save failure: synthetic-redaction-sentinel');
+    }
     if (in_array($mode, ['users-action-final-save', 'roles-action-final-save'], true) && $request->attributes->get('staff_self_revoked') && ($nativeSave || $nativeInsert)) {
         $armed = false;
         throw new RuntimeException('Synthetic postcommit native save failure.');
@@ -469,6 +520,12 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         'hold-credentials', 'fault-report' => $credentialRead,
         'hold-manager', 'hold-manager-expire' => $managerLock,
         'hold-users-insert' => $userInsert,
+        'activity-hold-page' => $activityProjection && $request->is('api/v1/activities'),
+        'activity-hold-detail' => $activityProjection && $request->is('api/v1/activities/*'),
+        'activity-hold-insert' => $activityInsert,
+        'activity-hold-update', 'activity-performance-hold-update' => $activityUpdate,
+        'activity-hold-delete' => $activityDelete,
+        'activity-hold-manager' => $managerLock,
         'hold-role-insert' => $roleCreate,
         'hold-role-write', 'fault-role-write' => $roleWrite,
         'hold-role-delete', 'fault-role-delete' => $roleDelete,
@@ -518,7 +575,7 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
-if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore'], true)) {
+if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore', 'activity-observe-mysql', 'activity-timeout-restore'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
 }
 if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
@@ -530,17 +587,22 @@ if ($mode === 'roles-performance' && $request->isMethod('PUT') && $request->is('
 if (in_array($mode, ['roles-cache-hold-commit', 'roles-cache-hold-rollback'], true) && $request->isMethod('PUT') && $request->is('api/v1/roles/*')) {
     $connection->setPdo(new RolesCacheBarrier($connection->getPdo(), $pause, $mode === 'roles-cache-hold-commit'));
 }
+if (in_array($mode, ['activity-performance', 'activity-performance-hold-update'], true)
+    && ($request->is('api/v1/activities', 'api/v1/activities/*') || $request->is('api/v1/roles/*'))
+    && in_array($request->getMethod(), ['POST', 'PUT', 'DELETE'], true)) {
+    $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
+}
 $commitFault = null;
-if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack'], true)) {
+if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack', 'activity-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }
 
-if (in_array($mode, ['users-performance', 'roles-performance'], true)) {
+if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update'], true)) {
     memory_reset_peak_usage();
 }
 $response = $kernel->handle($request);
-if (in_array($mode, ['users-performance', 'roles-performance'], true)) {
+if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update'], true)) {
     $response->headers->set('X-Test-Php-Peak-Bytes', (string) memory_get_peak_usage(true));
     $usage = getrusage();
     if (is_array($usage) && isset($usage['ru_maxrss'])) {
@@ -549,7 +611,12 @@ if (in_array($mode, ['users-performance', 'roles-performance'], true)) {
     foreach (['lock_wait_ms' => 'Lock-Wait-Ms', 'lock_span_ms' => 'Lock-Span-Ms', 'commit_ms' => 'Commit-Ms'] as $attribute => $header) {
         $value = $request->attributes->get('_test_users_'.$attribute);
         if (is_float($value)) {
-            $response->headers->set(($mode === 'roles-performance' ? 'X-Test-Roles-' : 'X-Test-Users-').$header, (string) round($value, 3));
+            $prefix = match ($mode) {
+                'roles-performance' => 'X-Test-Roles-',
+                'activity-performance', 'activity-performance-hold-update' => 'X-Test-Activity-',
+                default => 'X-Test-Users-',
+            };
+            $response->headers->set($prefix.$header, (string) round($value, 3));
         }
     }
 }
@@ -588,6 +655,19 @@ $response->headers->set('X-Test-Users-Page-Limit', $usersPageLimit);
 $response->headers->set('X-Test-Users-Snapshot', (string) $usersSnapshot);
 $response->headers->set('X-Test-Roles-Reads', (string) $rolesReads);
 $response->headers->set('X-Test-Roles-Target-Reads', (string) $rolesTargetReads);
+$response->headers->set('X-Test-Activity-Reads', (string) $activityReads);
+$response->headers->set('X-Test-Activity-Target-Reads', (string) $activityTargetReads);
+$response->headers->set('X-Test-Activity-Writes', (string) $activityWrites);
+if ($request->attributes->has('_test_activity_mysql_code')) {
+    $response->headers->set('X-Test-Activity-MySQL-Code', (string) $request->attributes->get('_test_activity_mysql_code'));
+    $response->headers->set('X-Test-Activity-MySQL-Count', (string) $request->attributes->get('_test_activity_mysql_count'));
+}
+$response->headers->set('X-Test-Activity-Timeout-Statements', (string) $restoreStatements);
+$response->headers->set('X-Test-Activity-Page-Limit', $activityPageLimit);
+$activityOutcome = $request->attributes->get('activities_outcome');
+if (is_string($activityOutcome)) {
+    $response->headers->set('X-Test-Activity-Outcome', $activityOutcome);
+}
 $response->headers->set('X-Test-Roles-Generation-Writes', (string) $roleGenerationWrites);
 $response->headers->set('X-Test-Roles-Session-Deletes', (string) $roleSessionDeletes);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);
@@ -631,6 +711,11 @@ if ($inspect) {
     $response->headers->set('X-Test-Roles-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
         && is_string($rolesOutcome) && ($log[1]['mutation_outcome'] ?? null) === $rolesOutcome) ? '1' : '0');
+    $response->headers->set('X-Test-Activity-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
+        && is_string($activityOutcome) && ($log[1]['mutation_outcome'] ?? null) === $activityOutcome) ? '1' : '0');
+    $response->headers->set('X-Test-Activity-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Activity lock timeout restoration failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Roles-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Roles lock timeout restoration failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Roles-Cache-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Roles permission cache invalidation failed.'

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 use Tests\Support\AuthenticationBrowser;
 use Tests\Support\AuthenticationHttpResponse;
 
@@ -67,9 +67,9 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
             ['name' => 'identity.unregistered', 'guard_name' => 'web', 'alias_name' => 'Unknown'],
         ]);
         $expected = DB::table('permissions')->whereRaw('BINARY guard_name = ?', ['web'])
-            ->whereIn('name', IdentityPermissions::keys())->orderBy('name')
+            ->whereIn('name', PermissionCatalogue::keys())->orderBy('name')
             ->get(['name', 'alias_name'])->map(fn ($row) => ['value' => $row->name, 'label' => $row->alias_name])->all();
-        $this->assertCount(10, $expected);
+        $this->assertCount(15, $expected);
         foreach (['index', 'show', 'store', 'update', 'delete'] as $capability) {
             $role = Role::create(['name' => 'fixture-permission-select-'.$capability, 'guard_name' => 'web']);
             $role->givePermissionTo(Permission::findByName('identity.roles.'.$capability, 'web'));

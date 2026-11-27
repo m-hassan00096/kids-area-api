@@ -12,7 +12,7 @@ use LogicException;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 
 final class RoleMutationData
 {
@@ -45,10 +45,10 @@ final class RoleMutationData
         // Lock all approved catalogue candidates in stable order, and check
         // actual stored grants before replacing them. Do not silently erase
         // an unregistered or foreign-guard assignment.
-        $definitions = Permission::query()->where('guard_name', 'web')->whereIn('name', IdentityPermissions::keys())
+        $definitions = Permission::query()->where('guard_name', 'web')->whereIn('name', PermissionCatalogue::keys())
             ->orderBy('id')->lockForUpdate()->get()->filter(
                 fn (Permission $permission) => $permission->guard_name === 'web'
-                    && in_array($permission->name, IdentityPermissions::keys(), true)
+                    && in_array($permission->name, PermissionCatalogue::keys(), true)
             )->keyBy('name');
         if ($target !== null) {
             $grants = DB::table('role_has_permissions')->where('role_id', $target->id)

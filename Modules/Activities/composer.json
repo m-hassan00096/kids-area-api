@@ -1,0 +1,9 @@
+{
+    "name": "kids-area/activities",
+    "description": "Activity catalogue",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Activities\\": "app/"
+        }
+    }
+}

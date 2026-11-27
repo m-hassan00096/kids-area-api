@@ -11,7 +11,7 @@ final class FirstPartyCors extends HandleCors
 {
     public function handle($request, Closure $next)
     {
-        if ($request->is('api/v1/auth/*', 'api/v1/profile/*', 'api/v1/users', 'api/v1/users/*', 'api/v1/roles', 'api/v1/roles/*', 'api/v1/selects', 'sanctum/csrf-cookie')) {
+        if ($request->is('api/v1/auth/*', 'api/v1/profile/*', 'api/v1/users', 'api/v1/users/*', 'api/v1/roles', 'api/v1/roles/*', 'api/v1/activities', 'api/v1/activities/*', 'api/v1/selects', 'sanctum/csrf-cookie')) {
             $this->assertBrowser($request);
             $this->assertMethodOverride($request);
         }

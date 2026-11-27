@@ -119,6 +119,37 @@ jobs:
           php tests/Support/roles-migration-preflight.php | tee "$RUNNER_TEMP/roles-forward.log"
           grep -q '^ROLES_LEGACY_FIXTURE {' "$RUNNER_TEMP/roles-forward.log"
           grep -q '^ROLES_FORWARD_MIGRATION {' "$RUNNER_TEMP/roles-forward.log"
+      - name: Verify additive Activity migrations preserve populated Identity fixture
+        run: |
+          set -o pipefail
+          php tests/Support/activity-schema-forward.php | tee "$RUNNER_TEMP/activity-forward.log"
+          grep -q '^ACTIVITY_FORWARD_MIGRATIONS {' "$RUNNER_TEMP/activity-forward.log"
+      - name: Verify focused Activity foundation test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter='ActivitySchema|ActivityConstraintErrors|ActivityProvisioning' > "$RUNNER_TEMP/activity-tests.txt"
+          grep -Fq 'Tests\Feature\ActivitySchemaTest::' "$RUNNER_TEMP/activity-tests.txt"
+          grep -Fq 'Tests\Feature\ActivityConstraintErrorsTest::' "$RUNNER_TEMP/activity-tests.txt"
+          grep -Fq 'Tests\Feature\ActivityProvisioningTest::' "$RUNNER_TEMP/activity-tests.txt"
+          cat "$RUNNER_TEMP/activity-tests.txt"
+      - name: Run focused Activity foundation tests
+        run: php artisan test --filter='ActivitySchema|ActivityConstraintErrors|ActivityProvisioning'
+      - name: Verify focused Activity API test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter='ActivityReadHttp|ActivitySelectHttp|ActivityWriteHttp|ActivityRaceHttp|ActivityFaultHttp' > "$RUNNER_TEMP/activity-api-tests.txt"
+          for source in tests/Feature/Activity*HttpTest.php; do
+            class="$(basename "$source" .php)"
+            grep -Fq "Tests\\Feature\\${class}::" "$RUNNER_TEMP/activity-api-tests.txt"
+          done
+          cat "$RUNNER_TEMP/activity-api-tests.txt"
+      - name: Run focused Activity API tests
+        run: php artisan test --filter='ActivityReadHttp|ActivitySelectHttp|ActivityWriteHttp|ActivityRaceHttp|ActivityFaultHttp'
+      - name: Verify Activity performance test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter=ActivityPerformance > "$RUNNER_TEMP/activity-perf-tests.txt"
+          grep -Fq 'Tests\Feature\ActivityPerformanceTest::' "$RUNNER_TEMP/activity-perf-tests.txt"
+          cat "$RUNNER_TEMP/activity-perf-tests.txt"
+      - name: Measure guarded Activity performance
+        run: php artisan test --filter=ActivityPerformance
       - name: Run focused Authentication tests
         run: php artisan test --filter=Authentication
       - name: Run focused Identity tests
@@ -147,7 +178,7 @@ jobs:
         run: php artisan test
       - name: Check Laravel Pint
         run: vendor/bin/pint --test -v
-      - name: Verify modular package CLI and Identity only
+      - name: Verify modular package CLI and approved Identity and Activities only
         run: |
           php artisan module:list --no-ansi
           php artisan route:list --no-ansi
@@ -156,7 +187,8 @@ jobs:
           php artisan route:clear
           test -d Modules
           test -d Modules/Identity
-          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' -print -quit)"
+          test -d Modules/Activities
+          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' ! -name 'Activities' -print -quit)"
       - name: Ensure out-of-scope artifacts were not generated
         run: |
           test -z "$(git ls-files .env)"
@@ -165,3 +197,65 @@ jobs:
           test ! -e database/migrations/0001_01_01_000002_create_jobs_table.php
           test ! -e package.json
           test ! -e vite.config.js
+
+  activity-preflight:
+    name: Activity Catalogue guarded MySQL preflight
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: kids_area_test
+          MYSQL_USER: kids_area_ci
+          MYSQL_PASSWORD: isolated_ci_only
+          MYSQL_ROOT_PASSWORD: isolated_root_ci_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_URL: ''
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: kids_area_test
+      DB_USERNAME: kids_area_ci
+      DB_PASSWORD: isolated_ci_only
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      ACTIVITY_PREFLIGHT_ISOLATED_JOB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, dom, simplexml, pdo_mysql, intl, bcmath, curl, zip, fileinfo, gd
+          coverage: none
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Set up isolated application key
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Inventory actual RBAC, migrations, route and test consumers
+        run: |
+          git grep -n -E 'IdentityPermissions::|PermissionCatalogue::|assertSame\(10,|assertCount\(10,|assertSame\(19,|assertCount\(19,|fixtureMigrationPaths|IdentityScopeTest|migrate:fresh|module:list|SHOW TABLES|TABLE_NAME.*\)|role_has_permissions' -- Modules app routes database tests .github/workflows/ci.yml
+          git ls-files 'Modules/*/module.json' 'Modules/*/composer.json' 'Modules/*/database/migrations/*' 'tests/Feature/*Test.php' 'tests/Support/*'
+      - name: Verify real MySQL collation and approved DDL fixture
+        run: |
+          set -o pipefail
+          php tests/Support/activity-catalogue-preflight.php | tee "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_ENV {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_BASELINE {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_DDL {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_COLLATION ' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_LITERAL_SEARCH ' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_PRICE_GRAMMAR {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_CONSTRAINTS {' "$RUNNER_TEMP/activity-preflight.log"
+          grep -q '^ACTIVITY_PREFLIGHT_RESULT {' "$RUNNER_TEMP/activity-preflight.log"

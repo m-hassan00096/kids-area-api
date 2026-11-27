@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Queries\RolesQuery;
-use Modules\Identity\Support\IdentityPermissions;
+use Modules\Identity\Support\PermissionCatalogue;
 
 class RolesPerformanceTest extends AuthenticationHttpTestCase
 {
@@ -133,7 +133,7 @@ class RolesPerformanceTest extends AuthenticationHttpTestCase
             $options = $selects->json()['data'];
             $this->assertSame(array_values(array_map(static fn ($role) => ['value' => $role['roleId'], 'label' => $role['name']], array_filter($roleFixtures, static fn ($role) => $role['isActive']))), $options[0]['options']);
             $this->assertSame(array_values(array_map(static fn ($role) => ['value' => $role['roleId'], 'label' => $role['name']], $roleFixtures)), $options[1]['options']);
-            $this->assertCount(count(IdentityPermissions::keys()), $options[2]['options']);
+            $this->assertCount(count(PermissionCatalogue::keys()), $options[2]['options']);
             $this->emit('ROLES_SELECT_PERF', ['roles' => $roles, 'users' => $users, 'options' => array_map(static fn ($item) => count($item['options']), $options),
                 'provider_selects' => 3, 'cap_plus_one' => 201, 'http_ms' => round((hrtime(true) - $start) / 1000000, 3)]);
         }
