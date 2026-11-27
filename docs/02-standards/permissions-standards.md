@@ -311,7 +311,7 @@ Route::middleware([
 | Laravel Policy / scoped query | Authorize this **particular** child, employee, session, payment, report or other record |
 | Action `execute()` | Enforce current-state business rules and transactions; additional trusted actor authorization when invoked outside the normal HTTP route |
 | Explicit API Resource | Return only authorized fields, including technical names / aliases as approved |
-| Select Provider | Authorize each key, bound query, option eligibility and visibility |
+| Select Provider | Authorize each key before any provider read; apply purpose-specific eligibility, visibility and minimal option projection (no per-provider cap under the approved V1 Select contract) |
 
 - Every protected GET, mutation, report, attachment/download, export, dashboard and dropdown needs appropriate permission/visibility enforcement.
 - Denied **feature-level capability** → `403`. Unseen/nonexistent **particular record** → consistent scoped `404` to avoid leaking existence. Do not mask unexpected failures as `404`.
