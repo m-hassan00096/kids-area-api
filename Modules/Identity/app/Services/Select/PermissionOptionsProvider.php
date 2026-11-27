@@ -17,7 +17,6 @@ final class PermissionOptionsProvider implements SelectProvider
 
     public function options(): array
     {
-
         $permissions = PermissionCatalogue::constrain(DB::table('permissions as p')->useWritePdo())
             ->orderBy('p.name')->get(['p.name', 'p.alias_name']);
 

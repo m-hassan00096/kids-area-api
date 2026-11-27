@@ -21,7 +21,6 @@ final readonly class RoleOptionsProvider implements SelectProvider
 
     public function options(): array
     {
-
         $query = Role::query()->useWritePdo()
             ->where('guard_name', 'web')->whereRaw('BINARY guard_name = ?', ['web']);
         if ($this->assignment) {

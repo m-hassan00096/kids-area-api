@@ -108,6 +108,21 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
         }
     }
 
+    public function test_corrupt_permission_alias_fails_safely_without_partial_results(): void
+    {
+        $manager = $this->user('Fixture.Select.AliasFailure');
+        $browser = $this->browser($this->server());
+        $this->assertSame(200, $browser->login($manager->username)->status);
+        DB::table('permissions')->where('name', 'identity.users.view')->where('guard_name', 'web')
+            ->update(['alias_name' => ' ']);
+
+        $response = $this->select($browser, 'roles,permissions,activities');
+        $this->assertSame(500, $response->status);
+        $this->assertSame(['success' => false, 'message' => __('api.errors.internal'), 'errors' => []], $response->json());
+        $this->assertSame('2', $response->header('X-Test-Select-Reads'));
+        $this->assertArrayNotHasKey('data', $response->json());
+    }
+
     public function test_malformed_unknown_and_duplicate_keys_never_dispatch(): void
     {
         $actor = $this->user('Fixture.Manager');
