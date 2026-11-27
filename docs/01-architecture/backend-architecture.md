@@ -202,7 +202,7 @@ A single `GET /api/v1/selects?selects=activities,groups,trainers` endpoint retur
 }
 ```
 
-Providers enforce authorization and accept only approved parameters/filters. The select service is not a way to bypass normal authorization, expose private lists, or introduce duplicated CRUD endpoints.
+Providers enforce authorization and their approved purpose/eligibility. The approved V1 Select Registry simplification accepts up to five distinct requested keys, returns all eligible options for each, without a per-provider cap, pagination, server-side search or response metadata, and retains the existing `label/options` envelope and authorization-first dispatch. The frontend searches locally. Ordinary lists remain paginated. See API Standards §8 and the reviewed Core feature; do not treat documentation as deployed behavior. The select service is not a way to bypass normal authorization, expose private lists, or introduce duplicated CRUD endpoints.
 
 ## 7. Authentication, Authorization & Identity Separation
 
@@ -368,7 +368,7 @@ Approved module reference (when applicable)
 
 This is an **order of dependencies, not a sequence of whole-module completions**. A module may be worked on across multiple phases to support end-to-end features. All eleven modules remain in V1 scope.
 
-**Approved Activities-specific order (2026-11-26):** Activity Catalogue first after Identity F04; People Core; Employees Core; Groups/Schedules/Class Generation; POS/Finance foundation; Subscriptions; Workforce trainer-attendance evidence; Classes/Child Attendance; Make-up Classes. Sessions/Café and other work follow their own prerequisites. No new placeholders or financial stub flow; only each approved feature's real tables/routes/permissions are added. Catalogue extends the existing central permission aggregation, with reviewed one-time initial grants for its new capabilities and additive routine reseeding. Shared Audit remains deferred; see [Activities](../03-modules/activities.md) for precise requirements and review gates.
+**Approved Activities-specific order (2026-11-26):** Activity Catalogue first after Identity F04; approved Select Registry Simplification Core feature; People F01 Customers and F02 Children & Guardians; Employees Core; Groups/Schedules/Class Generation; POS/Finance foundation; Subscriptions; Workforce trainer-attendance evidence; Classes/Child Attendance; Make-up Classes. Sessions/Café and other work follow their own prerequisites. No new placeholders or financial stub flow; only each approved feature's real tables/routes/permissions are added. Catalogue extends the existing central permission aggregation, with reviewed one-time initial grants for its new capabilities and additive routine reseeding. Shared Audit remains deferred; see [Activities](../03-modules/activities.md) for precise requirements and review gates.
 
 ## 17. Decisions Deferred to Feature Specifications
 

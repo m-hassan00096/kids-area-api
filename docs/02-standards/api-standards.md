@@ -257,7 +257,7 @@ This example illustrates the approved response **shape**, not a mandate to intro
 
 ## 6. Pagination
 
-All ordinary table/list endpoints should paginate, unless a feature explicitly defines a bounded unpaginated read-only lookup.
+All ordinary table/list endpoints paginate; the central Select Registry is an explicit unpaginated option-projection exception under §8.
 
 Request:
 
@@ -276,7 +276,7 @@ GET /api/v1/children?page=2&perPage=15
 - The pagination keys are `total`, `currentPage`, `perPage`, and `lastPage`. Other metadata requires an explicit contract change.
 - Keep a stable ordering; use newest-first for chronological lists where appropriate and include an ID tie-breaker when order stability matters.
 - Do not leak raw default Laravel paginator `links`/`meta` as additional public wrappers. Pagination shape is applied once.
-- Select Registry option sets are intentionally **small, bounded, and unpaginated**; large search/list operations use regular paginated endpoints.
+- Select Registry option sets return **all eligible, authorized options, without pagination or a per-provider row cap** (approved V1 simplification, §8). Ordinary table/list and history/search endpoints remain paginated.
 
 ```json
 {
@@ -344,18 +344,18 @@ The approved endpoint is:
 GET /api/v1/selects?selects=activities,groups,trainers
 ```
 
-This is **one read-only Core registry/aggregator**, not a separate business module. Each business module owns its own bounded Select Provider, data visibility, eligibility logic, authorization, and option labels.
+This is **one read-only Core registry/aggregator**, not a separate business module. Each business module owns its own purpose-specific Select Provider, data visibility, eligibility logic, authorization, and option labels.
 
 ### Request validation and dispatch
 
 - The `selects` query parameter is required and contains a comma-separated list of **registered, allowlisted keys**. Do not accept client-provided class names, methods, arbitrary SQL, or unrestricted lookup parameters.
-- Apply a reasonable configured limit to the number of keys and result sizes. The exact bound may be finalized in the Select Registry foundation feature; do not invent business-wide unbounded selects.
+- **Approved V1 change:** accept 1–5 distinct registered keys per request. No per-provider option limit, LIMIT+1 probe, silent truncation, count-for-cap, pagination or server-side search. Reject duplicate, empty, malformed or more than five keys with 422. Only the existing `selects` query parameter is supported; no search/page/perPage/params or request body/file. Return every eligible option for each authorized key. The previous three-key/200-option policy and `SELECT_OPTIONS_LIMIT` overflow error are superseded once the separately reviewed Core feature is implemented and merged. Until then the old runtime contract remains in effect.
 - Reject unsupported/unknown keys with **`422`** and an Arabic validation message.
 - **Authorize each requested key** for the signed-in operator. If any requested select is forbidden, reject the **entire request with `403`**, returning **no partial results**.
 - Authentication failure returns `401`; invalid syntax/keys return `422`; missing permissions for otherwise valid requested keys return `403`.
 - A clear evaluation order is **authenticate → validate keys/parameters → authorize all requested keys → execute providers**. No provider should release protected options while evaluating a mixed-access request.
 - Only fetch **requested** keys and only eligible option rows. Unknown keys must not be silently ignored; unauthorized keys must not be silently omitted.
-- No pagination wrapper for these deliberately bounded lists. If a dataset could be large (children, guardians, customers, transactions), expose a permission-controlled paginated/search endpoint instead.
+- No pagination wrapper or `meta`; the frontend searches locally in the complete option set. Fetch only columns needed for `value` and `label`, apply provider eligibility and permissions before projecting, preserve deterministic ordering and avoid N+1. Register only justified selectors, not generic exports or transaction history. This exception is an explicit small-single-location V1 trade-off: response size, memory and time grow with the eligible row count. Measure actual behavior; Adaptive Select/server-side search/pagination remain deferred until separately approved. Refresh options after changes; validate current authority and eligibility again on writes.
 
 ### Approved success payload
 

@@ -209,9 +209,9 @@ An **activity** can offer subscriptions priced per calendar month, hourly use, o
 
 ### People — Customers, Guardians & Children
 
-- Customer identity for sessions and payments.
-- Guardian details and one-to-many guardian/child relationships.
-- Child profiles that can exist without active subscriptions and retain activity history.
+- Independent Customers (name required, mobile optional, active flag), with a separate customer screen. Hourly sessions may use a written customer name without a permanent customer record or choose a registered customer; no child required. Customer and Guardian records have no relationship or cross-table uniqueness requirement.
+- Children are the UI entry point for Guardians: select an existing eligible Guardian by name and mobile, or create one with the child atomically. No standalone guardian-management screen; Guardian name/mobile required, address optional, active flag. One guardian to many children, each child has exactly one guardian.
+- Child profiles can exist without subscriptions: name and gender required, optional birth date, relationship, photo, one notes field, active flag. Names unique within the same guardian; mobile unique independently within each entity when present. Preserve historical operational/financial rights across status and relationship changes. See [People](../03-modules/people.md) for reviewed details and pending feature-level contracts.
 
 ### Employees — Jobs, Employees & Contracts
 

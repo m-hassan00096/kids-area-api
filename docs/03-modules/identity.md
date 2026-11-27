@@ -214,7 +214,7 @@ Authorized filters may include actor, target, event type and date range. Never r
 
 ## 8. Select Registry and authorization
 
-Use the **approved central** `GET /api/v1/selects?selects=...` contract, not an Identity-specific dropdown endpoint or a different envelope. Feature 03 first implements the registry and only `roles` (Users create OR update; active assignment options) and `userFilterRoles` (Users view; active/inactive filter options). Feature 04 adds the `permissions` provider (verified on PR #12), independently authorized by roles.store OR roles.update, and a maximum of three requested keys with the existing per-provider 200-option cap:
+Use the **approved central** `GET /api/v1/selects?selects=...` contract, not an Identity-specific dropdown endpoint or a different envelope. Feature 03 first implements the registry and only `roles` (Users create OR update; active assignment options) and `userFilterRoles` (Users view; active/inactive filter options). Feature 04 adds the `permissions` provider (verified on PR #12), independently authorized by roles.store OR roles.update, and historically used a maximum of three requested keys with the per-provider 200-option cap. The approved Select Registry Simplification (API Standards §8) supersedes those bounds after implementation/merge: up to five distinct keys and all eligible options without an option cap or pagination. Existing provider permissions and eligibility below remain unchanged:
 
 - The requested `roles` options for **assignment** contain only active eligible roles; the administrator's full role list can show inactive roles.
 - Role option `value` is the role ID and `label` comes directly from stored `roles.name` after Feature 04; no role alias or translation lookup.
