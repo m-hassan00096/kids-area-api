@@ -2,9 +2,14 @@
 
 namespace Modules\People\Providers;
 
+use App\Services\Select\SelectRegistry;
 use Illuminate\Support\ServiceProvider;
+use Modules\People\Services\Select\CustomerOptionsProvider;
 
 final class PeopleServiceProvider extends ServiceProvider
 {
-    // Select provider registration belongs to T22; routes belong to T20.
+    public function boot(): void
+    {
+        $this->app->make(SelectRegistry::class)->register('customers', new CustomerOptionsProvider);
+    }
 }

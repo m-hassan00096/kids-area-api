@@ -70,15 +70,23 @@ class CustomerApiFoundationHttpTest extends AuthenticationHttpTestCase
         $this->assertSame(200, $admin->login($actor->username)->status);
         $customer = Customer::query()->create(['name' => 'Synthetic original', 'mobile' => '00000000001']);
         $path = '/api/v1/customers/'.$customer->id;
-        $before = $customer->getRawOriginal();
+        // Compare two hydrated persisted rows, not Eloquent insertion order.
+        $before = $customer->fresh()->getRawOriginal();
         foreach ([
+            [['mobile' => null], 'name'],
+            [['name' => null], 'name'],
             [['name' => ' '], 'name'],
+            [['name' => "\u{00A0}\u{2003}"], 'name'],
+            [['name' => ['Synthetic']], 'name'],
             [['name' => str_repeat('س', 256)], 'name'],
             [['name' => 12], 'name'],
             [['name' => 'Synthetic', 'mobile' => 12345678901], 'mobile'],
             [['name' => 'Synthetic', 'mobile' => '٠٠٠٠٠٠٠٠٠٠١'], 'mobile'],
             [['name' => 'Synthetic', 'mobile' => '00000 00000'], 'mobile'],
             [['name' => 'Synthetic', 'mobile' => '123'], 'mobile'],
+            [['name' => 'Synthetic', 'mobile' => '000000000001'], 'mobile'],
+            [['name' => 'Synthetic', 'mobile' => '0000000000a'], 'mobile'],
+            [['name' => 'Synthetic', 'mobile' => ['00000000001']], 'mobile'],
             [['name' => 'Synthetic', 'isActive' => true], 'request'],
             [['name' => 'Synthetic', 'is_active' => 1], 'request'],
             [['name' => 'Synthetic', 'phone' => '00000000002'], 'request'],
@@ -106,5 +114,11 @@ class CustomerApiFoundationHttpTest extends AuthenticationHttpTestCase
         $this->assertSame(401, $guest->request('GET', $path)->status);
         $this->assertSame(1, Customer::count());
         $this->assertSame($before, $customer->fresh()->getRawOriginal());
+
+        $boundary = str_repeat('س', 255);
+        $response = $admin->request('POST', '/api/v1/customers', ['name' => $boundary]);
+        $this->assertSame(201, $response->status);
+        $this->assertSame($boundary, $response->json()['data']['name']);
+        $this->assertNull($response->json()['data']['mobile']);
     }
 }

@@ -351,3 +351,10 @@ jobs:
           done
       - name: Run focused Customer API foundation and privacy tests
         run: php artisan test --filter='CustomerConstraintErrors|CustomerApiFoundationHttp|CustomerPrivacy'
+      - name: Verify Customer Select and authorization test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter='CustomerSelectHttp|CustomerAuthorizationHttp' > "$RUNNER_TEMP/customer-select-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerSelectHttpTest::' "$RUNNER_TEMP/customer-select-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerAuthorizationHttpTest::' "$RUNNER_TEMP/customer-select-tests.txt"
+      - name: Run focused Customer Select and authorization tests
+        run: php artisan test --filter='CustomerSelectHttp|CustomerAuthorizationHttp'

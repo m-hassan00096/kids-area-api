@@ -364,11 +364,13 @@ $roleGenerationWrites = 0;
 $roleSessionDeletes = 0;
 $selectReads = 0;
 $selectHasLimit = false;
+$customerReads = 0;
+$customerWrites = 0;
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
 $staffTouches = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$activityReads, &$activityTargetReads, &$activityWrites, &$activityPageLimit, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectHasLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$activityReads, &$activityTargetReads, &$activityWrites, &$activityPageLimit, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectHasLimit, &$customerReads, &$customerWrites, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -410,6 +412,19 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     if ($request->is('api/v1/selects') && str_starts_with($sql, 'select p.name, p.alias_name from permissions as p')) {
         $selectReads++;
         $selectHasLimit = $selectHasLimit || preg_match('/\blimit\b/', $sql) === 1;
+    }
+    // Shape-only counters; never capture Customer SQL bindings or values.
+    // beforeExecuting remains active even inside SensitiveQueryScope.
+    $customerSelect = str_starts_with($sql, 'select') && preg_match('/\bfrom customers\b/', $sql) === 1;
+    if ($customerSelect) {
+        $customerReads++;
+        if ($request->is('api/v1/selects')) {
+            $selectReads++;
+            $selectHasLimit = $selectHasLimit || preg_match('/\blimit\b/', $sql) === 1;
+        }
+    }
+    if (preg_match('/\A(?:insert into|update|delete from) customers\b/', $sql) === 1) {
+        $customerWrites++;
     }
     $activitySelect = str_starts_with($sql, 'select') && str_contains($sql, ' from activities');
     $activityAdmission = $activitySelect && preg_match('/\Aselect id from activities where\b/', $sql) === 1;
@@ -669,6 +684,8 @@ $response->headers->set('X-Test-Roles-Generation-Writes', (string) $roleGenerati
 $response->headers->set('X-Test-Roles-Session-Deletes', (string) $roleSessionDeletes);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);
 $response->headers->set('X-Test-Select-Has-Limit', $selectHasLimit ? '1' : '0');
+$response->headers->set('X-Test-Customer-Reads', (string) $customerReads);
+$response->headers->set('X-Test-Customer-Writes', (string) $customerWrites);
 foreach (['state', 'file_outcome', 'calls', 'wait'] as $field) {
     $value = $request->attributes->get('_test_mutation_'.$field);
     if (is_string($value)) {
