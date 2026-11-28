@@ -129,13 +129,13 @@ class RolesPerformanceTest extends AuthenticationHttpTestCase
             $selects = $browser->request('GET', '/api/v1/selects?selects=roles,userFilterRoles,permissions');
             $this->assertSame(200, $selects->status);
             $this->assertSame('3', $selects->header('X-Test-Select-Reads'));
-            $this->assertSame('201', $selects->header('X-Test-Select-Limit'));
+            $this->assertSame('0', $selects->header('X-Test-Select-Has-Limit'));
             $options = $selects->json()['data'];
             $this->assertSame(array_values(array_map(static fn ($role) => ['value' => $role['roleId'], 'label' => $role['name']], array_filter($roleFixtures, static fn ($role) => $role['isActive']))), $options[0]['options']);
             $this->assertSame(array_values(array_map(static fn ($role) => ['value' => $role['roleId'], 'label' => $role['name']], $roleFixtures)), $options[1]['options']);
             $this->assertCount(count(PermissionCatalogue::keys()), $options[2]['options']);
             $this->emit('ROLES_SELECT_PERF', ['roles' => $roles, 'users' => $users, 'options' => array_map(static fn ($item) => count($item['options']), $options),
-                'provider_selects' => 3, 'cap_plus_one' => 201, 'http_ms' => round((hrtime(true) - $start) / 1000000, 3)]);
+                'provider_selects' => 3, 'response_bytes' => strlen($selects->body), 'http_ms' => round((hrtime(true) - $start) / 1000000, 3)]);
         }
     }
 

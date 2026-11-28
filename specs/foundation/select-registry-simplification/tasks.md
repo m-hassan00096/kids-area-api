@@ -1,9 +1,9 @@
 # Select Registry Simplification — Ordered Tasks
 
-> Draft for review. All 11 tasks unchecked / Not Run. No implementation or tests claimed. AC numbers refer to spec.md.
+> Implementation in progress after approved documentation merge. T01/T02 verified; T03–T08 code/tests authored but acceptance pending real CI; T09–T11 pending. AC numbers refer to spec.md.
 
-- [ ] **T01 — Approved contract and baseline** (AC01–12). Review spec/plan/tasks and docs updates, verify live develop and existing 5 keys. Record exact branch and prior CI as historical.
-- [ ] **T02 — Consumer and test inventory** (AC03, AC04, AC11). Exact live grep of cap settings/error/translation/SQL observers/performance and key validation; list affected code/tests/docs. Check no unrelated consumers before removal.
+- [x] **T01 — Approved contract and baseline** (AC01–12). Review spec/plan/tasks and docs updates, verify live develop and existing 5 keys. Record exact branch and prior CI as historical.
+- [x] **T02 — Consumer and test inventory** (AC03, AC04, AC11). Exact live grep of cap settings/error/translation/SQL observers/performance and key validation; list affected code/tests/docs. Check no unrelated consumers before removal.
 - [ ] **T03 — Registry key validation** (AC01–03, AC07–09). Allow 1–5 distinct registered keys; retain existing strict controller/authorization-before-read. Guarded isolated six-distinct-provider case.
 - [ ] **T04 — Provider changes** (AC04–07, AC10). Remove cap/limit+1 branches from all three classes, preserve actual eligibility, primary read, sort/projection and permission alias integrity. Keep interface and registered keys.
 - [ ] **T05 — Obsolete cap cleanup** (AC04, AC11). Remove unused config and obsolete translation only after consumer check; do not remove shared BusinessException or unrelated errors. Preserve historical evidence.
@@ -16,4 +16,6 @@
 
 ## Verification ledger
 
-All AC01–AC12 and T01–T11 Not Run; this documentation PR may run existing baseline CI only and is not new-contract evidence. Record actual command/environment, exact SHA, CI link/job and results when performed. 
+T01: user approved PR #16 documentation/implementation gates. [Exact baseline CI 46079772732](https://github.com/m-hassan00096/kids-area-api/actions/runs/46079772732) succeeded at docs head 6c50aa8870fa07d5eda7532b976f9c21156b6d8a: full 249 tests / 19,987 assertions, Pint, 24 routes, both migration preflights and Composer audit; this tests old runtime only. Merged docs at b32284f2169a0ae20bb924795f42a8019e2352b5; reviewed and merged trees exactly equal. Feature branch from that commit.
+
+T02: exact-ref connector tree/text inventory (152 non-test PHP/JSON/YAML/shell source paths, 78 PHP test/support paths; 72 unchanged test/support files separately scanned, six cap-related files inspected directly; no shell git grep asserted). Legacy runtime cap occurs in 3 provider classes, config/selects.php and Arabic identity translation; 3-key validation in SelectRegistry. Affected tests SelectRegistryProvider/Http, ActivitySelectHttp, ActivityPerformance, RolesPerformance and test-only authentication-router SQL observer. Other read/transport/provision/migration tests retained. Existing workflow discovers SelectRegistry* including new growth test. Source implementation commit 67a20d600e472404256c8e2fa99b6e1b048b104c; follow-up reviewed formatting and safe alias HTTP failure case. All AC01–AC12 remain Not Run on new contract until actual exact-head CI verified; T03–T08 authored, not yet proven; T09–T11 pending. Record real logs/results, metrics and residual host risk. 

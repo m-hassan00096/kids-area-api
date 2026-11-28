@@ -1,6 +1,6 @@
 # Select Registry Simplification — Technical Plan
 
-> Draft for review; proposed implementation only. No implementation, test or migration run is claimed.
+> Approved plan; implementation committed on feature/select-registry-simplification, exact-head CI not yet verified. No migration or production operation.
 > Base: develop 3220d56e3b1b7c7c9842907b2a0266544834c64f. Exact source checked: current registry max 3, config 200, three provider classes with limit+1 (five registered keys).
 
 ## 1. Change inventory and design
@@ -16,10 +16,11 @@
 | Modules/Activities/app/Services/Select/ActivityOptionsProvider.php | remove cap checks, limit+1 and overflow branch; retain primary, all/active filter, name/id ordering and id/name projection |
 | lang/ar/identity.php | remove retired select_options_limit translation only after exact live-consumer inventory; do not remove shared BusinessException |
 | tests/Feature/SelectRegistryProviderTest.php; SelectRegistryHttpTest.php; ActivitySelectHttpTest.php | replace historical cap tests with full-option assertions, keep authorization, filter/order, strict validation and empty/fault cases |
-| tests/Feature/ActivityPerformanceTest.php | replace cap/overflow expectations with full eligible materialization and actual plan/size/memory metrics; retain unrelated list/write/lock tests |
+| tests/Feature/ActivityPerformanceTest.php; RolesPerformanceTest.php | replace cap/overflow expectations with full eligible materialization and actual plan/size/memory metrics; retain unrelated list/write/lock tests |
+| tests/Feature/SelectRegistryGrowthTest.php | new guarded synthetic combined five-provider HTTP/direct SQL measurement at 200/201/500/501/1,000/2,000/10,000 rows per scalable catalogue; existing fixed permission set |
 | tests/Support/authentication-router.php | inspect actual limit-dependent SQL observation and X-Test-Select-Limit, maintain query detection for uncapped selects, preserve guarded instrumentation and no provider reads on denied request |
 
-T02 must inventory the exact live tree with git grep for selects.max_options, max_options, SELECT_OPTIONS_LIMIT, select_options_limit, X-Test-Select-Limit, cap_plus_one, relevant old three-key tests and limit-dependent SQL matchers, and update all affected consumers, including workflow test discovery if necessary. Inspect actual active code and CI; the above is observed inventory, not guarantee of every occurrence. Historical specs/CI remain intact. No new service abstraction, generic parameters, fallback, auto page, row count, shared error redesign or changes to authorization/session mechanism.
+T02 inventories the exact live tree (GitHub connector exact-ref content scan equivalent to git grep) for selects.max_options, max_options, SELECT_OPTIONS_LIMIT, select_options_limit, X-Test-Select-Limit, cap_plus_one, relevant old three-key tests and limit-dependent SQL matchers, and update all affected consumers, including workflow test discovery if necessary. Inspect actual active code and CI; the above is observed inventory, not guarantee of every occurrence. Historical specs/CI remain intact. No new service abstraction, generic parameters, fallback, auto page, row count, shared error redesign or changes to authorization/session mechanism.
 
 ## 2. Queries and security
 

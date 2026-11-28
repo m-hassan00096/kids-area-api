@@ -1,6 +1,6 @@
 # Core Feature — Select Registry Simplification
 
-> Status: Draft for specification review. User explicitly decided no option limit, no pagination or server-side search, up to five Select keys, unchanged response shape. Existing runtime still 3/200 until the reviewed change is merged.
+> Status: Approved for implementation after documentation PR #16 merge. User explicitly decided no option limit, no pagination or server-side search, up to five Select keys, unchanged response shape. Existing runtime still 3/200 until the reviewed change is merged.
 > Baseline: develop 3220d56e3b1b7c7c9842907b2a0266544834c64f, Activity Catalogue merged PR #15.
 
 ## 1. Goal and scope

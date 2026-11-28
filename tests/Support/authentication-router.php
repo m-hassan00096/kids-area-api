@@ -363,12 +363,12 @@ $activityPageLimit = '';
 $roleGenerationWrites = 0;
 $roleSessionDeletes = 0;
 $selectReads = 0;
-$selectLimit = '';
+$selectHasLimit = false;
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
 $staffTouches = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$activityReads, &$activityTargetReads, &$activityWrites, &$activityPageLimit, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$activityReads, &$activityTargetReads, &$activityWrites, &$activityPageLimit, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectHasLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -392,10 +392,9 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     if ($sql === 'set transaction isolation level repeatable read, read only') {
         $usersSnapshot++;
     }
-    if (str_starts_with($sql, 'select') && str_contains($sql, 'from roles') && preg_match('/\Aselect id, name from roles\b/', $sql) === 1
-        && str_contains($sql, 'order by id asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+    if ($request->is('api/v1/selects') && preg_match('/\Aselect id, name from roles\b/', $sql) === 1) {
         $selectReads++;
-        $selectLimit = $match[1];
+        $selectHasLimit = $selectHasLimit || preg_match('/\blimit\b/', $sql) === 1;
     }
     if ($request->is('api/v1/roles', 'api/v1/roles/*') && str_starts_with($sql, 'select')) {
         if (preg_match('/\Aselect id from roles where\b/', $sql) === 1) {
@@ -408,10 +407,9 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
             $rolesReads++;
         }
     }
-    if (str_starts_with($sql, 'select p.name, p.alias_name from permissions as p')
-        && str_contains($sql, 'order by p.name asc') && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+    if ($request->is('api/v1/selects') && str_starts_with($sql, 'select p.name, p.alias_name from permissions as p')) {
         $selectReads++;
-        $selectLimit = $match[1];
+        $selectHasLimit = $selectHasLimit || preg_match('/\blimit\b/', $sql) === 1;
     }
     $activitySelect = str_starts_with($sql, 'select') && str_contains($sql, ' from activities');
     $activityAdmission = $activitySelect && preg_match('/\Aselect id from activities where\b/', $sql) === 1;
@@ -425,10 +423,9 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         if ($activityProjection && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
             $activityPageLimit = $match[1];
         }
-        if ($request->is('api/v1/selects') && str_starts_with($sql, 'select id, name from activities')
-            && preg_match('/\blimit ([0-9]+)/', $sql, $match) === 1) {
+        if ($request->is('api/v1/selects') && str_starts_with($sql, 'select id, name from activities')) {
             $selectReads++;
-            $selectLimit = $match[1];
+            $selectHasLimit = $selectHasLimit || preg_match('/\blimit\b/', $sql) === 1;
         }
     }
     $activityInsert = str_starts_with($sql, 'insert into activities ');
@@ -671,7 +668,7 @@ if (is_string($activityOutcome)) {
 $response->headers->set('X-Test-Roles-Generation-Writes', (string) $roleGenerationWrites);
 $response->headers->set('X-Test-Roles-Session-Deletes', (string) $roleSessionDeletes);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);
-$response->headers->set('X-Test-Select-Limit', $selectLimit);
+$response->headers->set('X-Test-Select-Has-Limit', $selectHasLimit ? '1' : '0');
 foreach (['state', 'file_outcome', 'calls', 'wait'] as $field) {
     $value = $request->attributes->get('_test_mutation_'.$field);
     if (is_string($value)) {
