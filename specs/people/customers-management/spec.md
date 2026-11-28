@@ -1,6 +1,6 @@
 # People Feature 01 — Customers Management
 
-> Status: Functional specification approved on 2026-11-28, including F01-R01–R04 (user: "كدا تمام كمل"). Technical plan is separately proposed for review. No implementation, feature tests, migration or grant run.
+> Status: Functional specification approved on 2026-11-28, including F01-R01–R04 (user: "كدا تمام كمل"). Technical plan TP01–TP08 approved on 2026-11-28; implementation tasks are separately prepared for review. No implementation, feature tests, migration or grant run.
 > Baseline: develop `746f36d86a41817b9577badcefddb317fa98bfd8`, merged Core Select Registry Simplification [PR #17](https://github.com/m-hassan00096/kids-area-api/pull/17).
 > Sources: [People reference](../../../docs/03-modules/people.md), [Overview](../../../docs/00-overview/project-overview.md), [Architecture](../../../docs/01-architecture/backend-architecture.md), [API](../../../docs/02-standards/api-standards.md), [Database](../../../docs/02-standards/database-standards.md), [Code](../../../docs/02-standards/code-standards.md), [Permissions](../../../docs/02-standards/permissions-standards.md), [Errors](../../../docs/02-standards/error-handling-standards.md), [Localization](../../../docs/02-standards/localization-standards.md), [Workflow](../../../docs/02-standards/ai-workflow-rules.md), [Core Select Registry](../../foundation/select-registry-simplification/spec.md).
 
@@ -20,7 +20,7 @@ F01 delivers one Customer business table and People-owned model/enum, three prot
 | is_active | TINYINT UNSIGNED | NOT NULL, default 1; server managed |
 | created_at / updated_at | TIMESTAMP | Normal Laravel timestamps, UTC |
 
-`CustomerStatus: int`: INACTIVE = 0, ACTIVE = 1. Store/cast the integer-backed enum, use explicit enum cases in filters and Actions, and never reuse persisted numeric codes. All ordinary creates start ACTIVE; neither create nor update may set status. Use module-local integer-backed enums for other fixed-value concepts only when needed. Existing modules are unaffected. No additional business column/table. Exact migration, enum check constraint, collation and named indexes are plan-level decisions. MySQL unique constraint is mandatory; multiple NULL mobiles are valid. No cross-table matching or uniqueness.
+`CustomerStatus: int`: INACTIVE = 0, ACTIVE = 1. Store/cast the integer-backed enum, use explicit enum cases in filters and Actions, and never reuse persisted numeric codes. All ordinary creates start ACTIVE; neither create nor update may set status. Use module-local integer-backed enums for other fixed-value concepts only when needed. Existing modules are unaffected. No additional business column/table. Exact migration, enum check constraint, collation and named indexes are approved in the technical plan, subject to actual MySQL verification. MySQL unique constraint is mandatory; multiple NULL mobiles are valid. No cross-table matching or uniqueness.
 
 ## 3. Protected HTTP contract
 
@@ -30,7 +30,7 @@ F01 delivers one Customer business table and People-owned model/enum, three prot
 | POST | /api/v1/customers | people.customers.store | yes / yes |
 | PUT | /api/v1/customers/{id} | people.customers.update | yes / yes |
 
-No role-name bypass. Require current authenticated staff and effective active role/session per existing Identity contract. Permissions independent: no automatic implication between show/store/update. Provision only the three new keys through existing reviewed Identity catalogue/feature-provision mechanism; do not reset role customizations through routine seeding. Arabic aliases proposed: عرض بيانات العميل، إضافة عميل، تعديل بيانات العميل. Exact provisioning plan reviewed next.
+No role-name bypass. Require current authenticated staff and effective active role/session per existing Identity contract. Permissions independent: no automatic implication between show/store/update. Provision only the three new keys through existing reviewed Identity catalogue/feature-provision mechanism; do not reset role customizations through routine seeding. Arabic aliases: عرض بيانات العميل، إضافة عميل، تعديل بيانات العميل. Exact provisioning follows the approved technical plan.
 
 Only these writable JSON fields:
 
@@ -97,4 +97,4 @@ Missing ID -> 404, no authentication -> 401, missing effective permission -> 403
 
 Uncapped selectors have O(n) payload and memory cost; this is the already-approved V1 trade-off. No hidden truncation; measure and report concerns. Optional mobile permits legitimate same-name/no-mobile duplicates; do not pretend repeated requests without mobile can be deduplicated. No destructive actions, production data, deployment or live grants.
 
-Next: review [plan.md](plan.md) (actual module layout, migration/constraints, permission provisioning, native HTTP and concurrency strategy), then tasks.md, then explicitly approved implementation. Do not claim any tests or code complete.
+Next: review [tasks.md](tasks.md) against the approved [plan.md](plan.md); explicitly authorize documentation merge and implementation before writing runtime code. Do not claim any feature tests or code complete.

@@ -1,12 +1,12 @@
 # People F01 — Customers Management: Technical Plan
 
-> Status: Proposed for technical review after the user's approval of F01-R01–R04 on 2026-11-28. No implementation, migrations, grants, feature test execution or new CI evidence.
+> Status: TP01–TP08 approved on 2026-11-28 (user: "تمام كمل"). [Implementation tasks](tasks.md) prepared for separate review; no runtime implementation, Customer migration, grant or feature test execution. Prior documentation-head baseline CI 46088206957 succeeded; it did not exercise Customer behavior.
 > Baseline: develop `746f36d86a41817b9577badcefddb317fa98bfd8` (merged PR #17); documentation PR #18 branch docs/people-customers-management.
 > Sources: [approved spec](spec.md), [People](../../../docs/03-modules/people.md), [architecture](../../../docs/01-architecture/backend-architecture.md), [standards](../../../docs/02-standards/), [Core Select](../../foundation/select-registry-simplification/spec.md), actual Activities/Identity/Core files at the baseline. Preserve Laravel 12, PHP ^8.2, MySQL 8, stateful Sanctum and installed package versions. No new dependency.
 
-## 1. Technical decisions for review
+## 1. Approved technical decisions (subject to verification)
 
-| ID | Proposed decision |
+| ID | Approved decision |
 |---|---|
 | TP01 | Register People using existing module metadata, PSR-4 merge plugin, module status and root API route include. One focused forward migration for customers only; existing Identity marker table reused. |
 | TP02 | Exact DDL below: InnoDB, name utf8mb4_unicode_ci, mobile ASCII/ascii_bin, named unique and CHECK constraints. PK and unique mobile only initially; measure before adding a selector index. |
@@ -160,4 +160,4 @@ Run focused Customer tests, existing suites, full PHPUnit, Pint and real GitHub 
 
 ## 9. Delivery and non-goals
 
-Next: approve TP01–TP08, then prepare tasks.md mapping all 12 acceptance criteria to ordered tasks and verification. Documentation PR #18 remains unmerged pending explicit approval. Implement only from the approved develop baseline on feature/people-customers-management after the documentation/implementation gate. No production migration, data access, grants, dependencies, UI, F02, session/POS changes, new cache, or merge without separate authorization.
+Next: review [tasks.md](tasks.md), which maps all 12 acceptance criteria to ordered tasks and verification. Documentation PR #18 remains unmerged pending explicit approval. Implement only from the approved develop baseline on feature/people-customers-management after the documentation/implementation gate. No production migration, data access, grants, dependencies, UI, F02, session/POS changes, new cache, or merge without separate authorization.
