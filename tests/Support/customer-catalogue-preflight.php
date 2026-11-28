@@ -51,7 +51,7 @@ function customerPreflightRejected(string $label, Closure $operation, int|array 
         requireCustomerPreflight(in_array($actual, $expected, true), 'Unexpected MySQL rejection code for '.$label.'.');
         requireCustomerPreflight($matchesConstraint, 'Unexpected rejected constraint for '.$label.'.');
         if ($label === 'non_ascii_mobile') {
-            // Both errors are native charset/column conversion rejections.
+            // These specific errors are native charset/collation conversion rejections.
             // Do not accept unrelated errors or an actual successful write.
             requireCustomerPreflight($state === 'HY000', 'Unexpected SQLSTATE for non-ASCII mobile.');
         }
@@ -222,10 +222,11 @@ try {
         $passed[] = $label;
     }
 
-    // ASCII must reject Arabic-Indic digits. MySQL may reject the parameter
-    // conversion (3854) or the column conversion (1366), both HY000.
-    // Keep all other cases' exact codes and named constraints unchanged.
-    customerPreflightRejected('non_ascii_mobile', fn () => $db->table('customers')->insert(['name' => 'Synthetic invalid', 'mobile' => '٠٠٠٠٠٠٠٠٠٠١']), [1366, 3854]);
+    // MySQL 8.0.46 native prepared execution returned 3988 (impossible
+    // collation conversion, HY000) for this exact fixture on CI 46149728333.
+    // Only these documented conversion failures qualify for this case.
+    // Every other rejection retains its exact code and named constraint.
+    customerPreflightRejected('non_ascii_mobile', fn () => $db->table('customers')->insert(['name' => 'Synthetic invalid', 'mobile' => '٠٠٠٠٠٠٠٠٠٠١']), [1366, 3854, 3988]);
     $passed[] = 'non_ascii_mobile';
     requireCustomerPreflight($db->table('customers')->count() === 5
         && $db->table('customers')->where('id', $a)->value('name') === 'Synthetic same name'
