@@ -178,7 +178,7 @@ jobs:
         run: php artisan test
       - name: Check Laravel Pint
         run: vendor/bin/pint --test -v
-      - name: Verify modular package CLI and approved Identity and Activities only
+      - name: Verify modular package CLI and approved Identity, Activities and People only
         run: |
           php artisan module:list --no-ansi
           php artisan route:list --no-ansi
@@ -188,7 +188,8 @@ jobs:
           test -d Modules
           test -d Modules/Identity
           test -d Modules/Activities
-          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' ! -name 'Activities' -print -quit)"
+          test -d Modules/People
+          test -z "$(find Modules -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name 'Identity' ! -name 'Activities' ! -name 'People' -print -quit)"
       - name: Ensure out-of-scope artifacts were not generated
         run: |
           test -z "$(git ls-files .env)"
@@ -319,3 +320,12 @@ jobs:
           grep -q '^CUSTOMER_PREFLIGHT_DDL {' "$RUNNER_TEMP/customer-preflight.log"
           grep -q '^CUSTOMER_PREFLIGHT_CONSTRAINTS {' "$RUNNER_TEMP/customer-preflight.log"
           grep -q '^CUSTOMER_PREFLIGHT_RESULT {' "$RUNNER_TEMP/customer-preflight.log"
+      - name: Verify People module discovery and actual Customer schema test discovery
+        run: |
+          composer validate --strict
+          php artisan module:list --no-ansi
+          vendor/bin/phpunit --list-tests --filter=CustomerSchema > "$RUNNER_TEMP/customer-schema-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerSchemaTest::' "$RUNNER_TEMP/customer-schema-tests.txt"
+          cat "$RUNNER_TEMP/customer-schema-tests.txt"
+      - name: Run focused Customer migration and enum tests
+        run: php artisan test --filter=CustomerSchema

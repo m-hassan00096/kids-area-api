@@ -1,0 +1,11 @@
+{
+    "name": "People",
+    "alias": "people",
+    "description": "People module — Customers F01",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\People\\Providers\\PeopleServiceProvider"
+    ],
+    "files": []
+}
