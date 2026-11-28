@@ -329,3 +329,10 @@ jobs:
           cat "$RUNNER_TEMP/customer-schema-tests.txt"
       - name: Run focused Customer migration and enum tests
         run: php artisan test --filter=CustomerSchema
+      - name: Verify guarded populated Customer forward migration
+        run: |
+          set -o pipefail
+          vendor/bin/phpunit --list-tests --filter=CustomerForwardMigration > "$RUNNER_TEMP/customer-forward-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerForwardMigrationTest::test_customer_forward_migration_preserves_the_populated_ten_migration_baseline' "$RUNNER_TEMP/customer-forward-tests.txt"
+          php artisan test --filter=CustomerForwardMigration | tee "$RUNNER_TEMP/customer-forward.log"
+          grep -q '^CUSTOMER_FORWARD_MIGRATION {' "$RUNNER_TEMP/customer-forward.log"
