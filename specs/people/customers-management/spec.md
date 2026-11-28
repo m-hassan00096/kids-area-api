@@ -1,6 +1,6 @@
 # People Feature 01 — Customers Management
 
-> Status: Functional specification approved on 2026-11-28, including F01-R01–R04 (user: "كدا تمام كمل"). Technical plan TP01–TP08 approved on 2026-11-28; implementation tasks are separately prepared for review. No implementation, feature tests, migration or grant run.
+> Status: Functional specification R01–R04 and technical plan TP01–TP08 approved on 2026-11-28; all 32 tasks and implementation authorized. F01 backend implemented on PR #19, exact implementation head `fde4464fcd5c024e07a7eeac5e945468897c5250` ([CI 46181775152](https://github.com/m-hassan00096/kids-area-api/actions/runs/46181775152)); [tasks and evidence](tasks.md) record 12/12 backend acceptance criteria Passed. Final documentation-head CI and explicit feature merge approval remain required. No production operation.
 > Baseline: develop `746f36d86a41817b9577badcefddb317fa98bfd8`, merged Core Select Registry Simplification [PR #17](https://github.com/m-hassan00096/kids-area-api/pull/17).
 > Sources: [People reference](../../../docs/03-modules/people.md), [Overview](../../../docs/00-overview/project-overview.md), [Architecture](../../../docs/01-architecture/backend-architecture.md), [API](../../../docs/02-standards/api-standards.md), [Database](../../../docs/02-standards/database-standards.md), [Code](../../../docs/02-standards/code-standards.md), [Permissions](../../../docs/02-standards/permissions-standards.md), [Errors](../../../docs/02-standards/error-handling-standards.md), [Localization](../../../docs/02-standards/localization-standards.md), [Workflow](../../../docs/02-standards/ai-workflow-rules.md), [Core Select Registry](../../foundation/select-registry-simplification/spec.md).
 
@@ -76,7 +76,7 @@ No separate index, no extra data fields, no partial unauthorized results. Future
 
 Missing ID -> 404, no authentication -> 401, missing effective permission -> 403, invalid input -> 422, known duplicate -> 409, unexpected fault -> safe 500. Malformed JSON and other shared transport errors follow the existing API error contract. No raw SQL, stack trace, mobile/name in diagnostic logs or real customer fixtures. No additional error class unless genuinely justified.
 
-## 6. Acceptance criteria (all Not Run)
+## 6. Acceptance criteria (backend verified; see tasks.md)
 
 | ID | Required behavior |
 |---|---|
@@ -97,4 +97,4 @@ Missing ID -> 404, no authentication -> 401, missing effective permission -> 403
 
 Uncapped selectors have O(n) payload and memory cost; this is the already-approved V1 trade-off. No hidden truncation; measure and report concerns. Optional mobile permits legitimate same-name/no-mobile duplicates; do not pretend repeated requests without mobile can be deduplicated. No destructive actions, production data, deployment or live grants.
 
-Next: review [tasks.md](tasks.md) against the approved [plan.md](plan.md); explicitly authorize documentation merge and implementation before writing runtime code. Do not claim any feature tests or code complete.
+Next: verify final evidence-only documentation head CI, obtain explicit feature merge approval for PR #19 and verify resulting develop checkpoint. See [tasks.md](tasks.md) and [approved plan](plan.md). F02 remains a separate feature review.
