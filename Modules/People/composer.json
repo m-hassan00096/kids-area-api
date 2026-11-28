@@ -1,0 +1,9 @@
+{
+    "name": "kids-area/people",
+    "description": "People module",
+    "autoload": {
+        "psr-4": {
+            "Modules\\People\\": "app/"
+        }
+    }
+}

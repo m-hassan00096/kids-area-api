@@ -47,7 +47,7 @@ class ActivityProvisioningTest extends IdentityDatabaseTestCase
         $seed->execute();
         $this->assertCount(10, IdentityPermissions::keys());
         $this->assertCount(6, IdentityPermissions::ESSENTIAL);
-        $this->assertCount(15, PermissionCatalogue::keys());
+        $this->assertCount(18, PermissionCatalogue::keys());
         $this->assertEquals(PermissionCatalogue::definitions()['activities.index'], Permission::findByName('activities.index', 'web')->alias_name);
         $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), Permission::pluck('name')->all());
         $this->assertSame($oldManager, $this->grantKeys($manager));
@@ -93,7 +93,7 @@ class ActivityProvisioningTest extends IdentityDatabaseTestCase
         $manager = Role::findByName('manager', 'web');
         $reception = Role::findByName('reception', 'web');
         $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), $this->grantKeys($manager));
-        $this->assertEqualsCanonicalizing(ActivityPermissions::RECEPTION, $this->grantKeys($reception));
+        $this->assertEqualsCanonicalizing(['activities.index', 'activities.show', 'people.customers.show', 'people.customers.store', 'people.customers.update'], $this->grantKeys($reception));
         $manager->revokePermissionTo(Permission::findByName('activities.store', 'web'));
         $reception->revokePermissionTo(Permission::findByName('activities.index', 'web'));
         $before = $this->snapshot();

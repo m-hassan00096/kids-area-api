@@ -69,7 +69,7 @@ class SelectRegistryHttpTest extends AuthenticationHttpTestCase
         $expected = DB::table('permissions')->whereRaw('BINARY guard_name = ?', ['web'])
             ->whereIn('name', PermissionCatalogue::keys())->orderBy('name')
             ->get(['name', 'alias_name'])->map(fn ($row) => ['value' => $row->name, 'label' => $row->alias_name])->all();
-        $this->assertCount(15, $expected);
+        $this->assertCount(18, $expected);
         foreach (['index', 'show', 'store', 'update', 'delete'] as $capability) {
             $role = Role::create(['name' => 'fixture-permission-select-'.$capability, 'guard_name' => 'web']);
             $role->givePermissionTo(Permission::findByName('identity.roles.'.$capability, 'web'));

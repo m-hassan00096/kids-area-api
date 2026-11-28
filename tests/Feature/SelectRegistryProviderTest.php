@@ -30,7 +30,7 @@ class SelectRegistryProviderTest extends IdentityDatabaseTestCase
         DB::table('permissions')->where('name', 'identity.audit.view')->update(['name' => 'IDENTITY.AUDIT.VIEW']);
         $registry = app(SelectRegistry::class);
         $options = $registry->resolve('permissions', ['identity.roles.update'])[0]['options'];
-        $this->assertCount(14, $options);
+        $this->assertCount(17, $options);
         $this->assertNotContains('IDENTITY.AUDIT.VIEW', array_column($options, 'value'));
         $this->assertSame($options, $registry->resolve('permissions', ['identity.roles.store'])[0]['options']);
 

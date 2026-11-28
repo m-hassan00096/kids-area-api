@@ -1,6 +1,6 @@
 # People F01 — Customers Management: Technical Plan
 
-> Status: TP01–TP08 approved on 2026-11-28 (user: "تمام كمل"). [Implementation tasks](tasks.md) prepared for separate review; no runtime implementation, Customer migration, grant or feature test execution. Prior documentation-head baseline CI 46088206957 succeeded; it did not exercise Customer behavior.
+> Status: TP01–TP08 approved on 2026-11-28; approved [implementation tasks](tasks.md) executed and verified on implementation head `fde4464fcd5c024e07a7eeac5e945468897c5250` ([CI 46181775152](https://github.com/m-hassan00096/kids-area-api/actions/runs/46181775152)). Original baseline and planning descriptions below are historical design evidence; actual verification/results are in tasks.md. Final documentation-head CI and explicit feature merge approval remain required. No production operations.
 > Baseline: develop `746f36d86a41817b9577badcefddb317fa98bfd8` (merged PR #17); documentation PR #18 branch docs/people-customers-management.
 > Sources: [approved spec](spec.md), [People](../../../docs/03-modules/people.md), [architecture](../../../docs/01-architecture/backend-architecture.md), [standards](../../../docs/02-standards/), [Core Select](../../foundation/select-registry-simplification/spec.md), actual Activities/Identity/Core files at the baseline. Preserve Laravel 12, PHP ^8.2, MySQL 8, stateful Sanctum and installed package versions. No new dependency.
 
@@ -142,7 +142,7 @@ Actual query uses CustomerStatus::ACTIVE->value and explicit columns within Sens
 
 Measure 200/500/2,000/10,000 deterministic synthetic customer rows, include inactive/null mobiles, duplicate names, Arabic and English. Record actual active counts, full option cardinality, domain query counts (one per provider, GET detail one), total HTTP queries where safe, elapsed time samples, JSON response bytes, PHP peak memory and EXPLAIN on exact selector and PK queries. No synthetic data in production seeder. Compare manager-lock contention for two ordinary writes and one permission revocation; measure timeouts without arbitrary production SLA. O(n) selector payload cost is accepted; no automatic adaptive mode or hidden cap. Decide any composite index only after actual plan/measurement review.
 
-## 8. Verification and CI gates (all Not Run for F01)
+## 8. Verification and CI gates (approved plan; actual results in tasks.md)
 
 | Area | Evidence required |
 |---|---|
@@ -160,4 +160,4 @@ Run focused Customer tests, existing suites, full PHPUnit, Pint and real GitHub 
 
 ## 9. Delivery and non-goals
 
-Next: review [tasks.md](tasks.md), which maps all 12 acceptance criteria to ordered tasks and verification. Documentation PR #18 remains unmerged pending explicit approval. Implement only from the approved develop baseline on feature/people-customers-management after the documentation/implementation gate. No production migration, data access, grants, dependencies, UI, F02, session/POS changes, new cache, or merge without separate authorization.
+Next: [tasks.md](tasks.md) records executed verification and all 12 backend AC outcomes. Documentation PR #18 was merged before implementation. Feature PR #19 requires exact final documentation-head CI and separate explicit merge approval. No production migration, data access, grants, dependencies, UI, F02, session/POS changes, new cache, or merge without separate authorization.

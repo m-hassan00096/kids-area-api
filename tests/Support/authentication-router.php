@@ -21,6 +21,7 @@ use Modules\Identity\Http\Middleware\RequireStatefulBrowser;
 use Modules\Identity\Services\Avatar\AvatarStorage;
 use Modules\Identity\Services\Avatar\NormalizedAvatar;
 use Modules\Identity\Services\LoginThrottle;
+use Modules\People\Models\Customer;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\AuthenticationCommitFault;
 use Tests\Support\RolesCacheBarrier;
@@ -79,6 +80,13 @@ $mode = $request->headers->get('X-Identity-Test-Mode');
 // Activity-specific fault and barrier modes use the same guarded CI fixture.
 if (is_string($mode) && str_starts_with($mode, 'activity-')
     && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1')) {
+    http_response_code(503);
+    exit;
+}
+// Customer fault and barrier modes are confined to the existing disposable CI fixture.
+if (is_string($mode) && str_starts_with($mode, 'customer-')
+    && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1'
+        || (string) $connection->getConfig('port') !== '3306' || $connection->getConfig('unix_socket'))) {
     http_response_code(503);
     exit;
 }
@@ -304,6 +312,9 @@ if ($inspect) {
         $fields = [...$fields, 'email', 'phone'];
         $secrets = [...$secrets, UsersBoundaryProbe::KEY, UsersBoundaryProbe::PATH, UsersBoundaryProbe::RAW];
     }
+    if ($request->is('api/v1/customers', 'api/v1/customers/*')) {
+        $fields = [...$fields, 'name', 'mobile'];
+    }
     foreach ($fields as $field) {
         $value = $request->input($field);
         if (is_string($value) && strlen($value) >= 8) {
@@ -345,6 +356,20 @@ if ($mode === 'activity-fault-after-delete') {
     Activity::deleted(static fn () => throw new RuntimeException('Synthetic activity failure: synthetic-redaction-sentinel'));
 }
 
+// Guarded test-only model hooks fire after actual Customer DML.
+if ($mode === 'customer-fault-after-insert') {
+    Customer::created(static fn () => throw new RuntimeException('Synthetic Customer failure: synthetic-redaction-sentinel'));
+}
+if ($mode === 'customer-fault-after-update') {
+    Customer::updated(static fn () => throw new RuntimeException('Synthetic Customer failure: synthetic-redaction-sentinel'));
+}
+if ($mode === 'customer-fault-other-constraint') {
+    Customer::created(static function (Customer $customer): void {
+        // A real named CHECK failure, not a synthetic duplicate or generic mapper.
+        DB::table('customers')->where('id', $customer->id)->update(['is_active' => 2]);
+    });
+}
+
 $count = 0;
 $credentialReads = 0;
 $usersTargetReads = 0;
@@ -364,11 +389,13 @@ $roleGenerationWrites = 0;
 $roleSessionDeletes = 0;
 $selectReads = 0;
 $selectHasLimit = false;
+$customerReads = 0;
+$customerWrites = 0;
 $timing = ['first_throttle_sql' => null, 'after_throttle_sql' => null, 'manager_start' => null];
 $armed = true;
 $restoreStatements = 0;
 $staffTouches = 0;
-$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$activityReads, &$activityTargetReads, &$activityWrites, &$activityPageLimit, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectHasLimit, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
+$connection->beforeExecuting(static function (string $query) use ($mode, $pause, &$armed, &$count, &$credentialReads, &$usersTargetReads, &$usersSensitiveReads, &$usersCountReads, &$usersPageReads, &$usersRoleReads, &$usersPageLimit, &$usersSnapshot, &$rolesReads, &$rolesTargetReads, &$activityReads, &$activityTargetReads, &$activityWrites, &$activityPageLimit, &$roleGenerationWrites, &$roleSessionDeletes, &$selectReads, &$selectHasLimit, &$customerReads, &$customerWrites, &$secrets, &$timing, &$restoreStatements, &$staffTouches, $request, $connection): void {
     $count++;
     $sql = strtolower(str_replace(chr(96), '', $query));
     if (str_starts_with($sql, 'select') && str_contains($sql, 'from users') && str_contains($sql, 'avatar_key') && str_contains($sql, 'where users.id =')) {
@@ -410,6 +437,21 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
     if ($request->is('api/v1/selects') && str_starts_with($sql, 'select p.name, p.alias_name from permissions as p')) {
         $selectReads++;
         $selectHasLimit = $selectHasLimit || preg_match('/\blimit\b/', $sql) === 1;
+    }
+    // Shape-only counters; never capture Customer SQL bindings or values.
+    // beforeExecuting remains active even inside SensitiveQueryScope.
+    $customerSelect = str_starts_with($sql, 'select') && preg_match('/\bfrom customers\b/', $sql) === 1;
+    if ($customerSelect) {
+        $customerReads++;
+        if ($request->is('api/v1/selects')) {
+            $selectReads++;
+            $selectHasLimit = $selectHasLimit || preg_match('/\blimit\b/', $sql) === 1;
+        }
+    }
+    $customerInsert = str_starts_with($sql, 'insert into customers ');
+    $customerUpdate = str_starts_with($sql, 'update customers set ');
+    if ($customerInsert || $customerUpdate || str_starts_with($sql, 'delete from customers ')) {
+        $customerWrites++;
     }
     $activitySelect = str_starts_with($sql, 'select') && str_contains($sql, ' from activities');
     $activityAdmission = $activitySelect && preg_match('/\Aselect id from activities where\b/', $sql) === 1;
@@ -455,7 +497,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
             app()->forgetInstance(PermissionRegistrar::class);
             app()->bind(PermissionRegistrar::class, static fn () => throw new RuntimeException('Synthetic postcommit cache failure.'));
         }
-        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore', 'roles-action-timeout-restore', 'activity-timeout-restore'], true)) {
+        if ($restoreStatements === 2 && in_array($mode, ['fault-restore-after-commit', 'fault-restore-with-timeout', 'users-probe-mutation-restore', 'users-probe-mutation-rollback-restore', 'users-action-timeout-restore', 'roles-action-timeout-restore', 'activity-timeout-restore', 'customer-timeout-restore'], true)) {
             throw new RuntimeException('Synthetic timeout restoration failure.');
         }
     }
@@ -504,6 +546,15 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
 
         return;
     }
+    if ($mode === 'customer-fault-before-insert' && $customerInsert) {
+        $armed = false;
+        throw new RuntimeException('Synthetic Customer failure: synthetic-redaction-sentinel');
+    }
+    if ($mode === 'customer-native-save-fault' && $request->attributes->get('customers_outcome') === 'committed'
+        && ($nativeSave || $nativeInsert)) {
+        $armed = false;
+        throw new RuntimeException('Synthetic Customer session save failure: synthetic-redaction-sentinel');
+    }
     if ($mode === 'activity-native-save-fault' && $request->attributes->get('activities_outcome') === 'committed'
         && ($nativeSave || $nativeInsert)) {
         $armed = false;
@@ -523,6 +574,8 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         'activity-hold-update', 'activity-performance-hold-update' => $activityUpdate,
         'activity-hold-delete' => $activityDelete,
         'activity-hold-manager' => $managerLock,
+        'customer-hold-insert' => $customerInsert,
+        'customer-hold-update', 'customer-performance-hold-update' => $customerUpdate,
         'hold-role-insert' => $roleCreate,
         'hold-role-write', 'fault-role-write' => $roleWrite,
         'hold-role-delete', 'fault-role-delete' => $roleDelete,
@@ -572,7 +625,7 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
-if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore', 'activity-observe-mysql', 'activity-timeout-restore'], true)) {
+if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore', 'activity-observe-mysql', 'activity-timeout-restore', 'customer-observe-mysql', 'customer-timeout-restore', 'customer-fault-other-constraint', 'customer-performance', 'customer-performance-hold-update'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
 }
 if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
@@ -589,17 +642,22 @@ if (in_array($mode, ['activity-performance', 'activity-performance-hold-update']
     && in_array($request->getMethod(), ['POST', 'PUT', 'DELETE'], true)) {
     $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
 }
+if (in_array($mode, ['customer-performance', 'customer-performance-hold-update'], true)
+    && ($request->is('api/v1/customers', 'api/v1/customers/*') || $request->is('api/v1/roles/*'))
+    && in_array($request->getMethod(), ['POST', 'PUT'], true)) {
+    $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
+}
 $commitFault = null;
-if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack', 'activity-commit-ack'], true)) {
+if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack', 'activity-commit-ack', 'customer-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }
 
-if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update'], true)) {
+if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'customer-performance', 'customer-performance-hold-update'], true)) {
     memory_reset_peak_usage();
 }
 $response = $kernel->handle($request);
-if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update'], true)) {
+if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'customer-performance', 'customer-performance-hold-update'], true)) {
     $response->headers->set('X-Test-Php-Peak-Bytes', (string) memory_get_peak_usage(true));
     $usage = getrusage();
     if (is_array($usage) && isset($usage['ru_maxrss'])) {
@@ -611,6 +669,7 @@ if (in_array($mode, ['users-performance', 'roles-performance', 'activity-perform
             $prefix = match ($mode) {
                 'roles-performance' => 'X-Test-Roles-',
                 'activity-performance', 'activity-performance-hold-update' => 'X-Test-Activity-',
+                'customer-performance', 'customer-performance-hold-update' => 'X-Test-Customer-',
                 default => 'X-Test-Users-',
             };
             $response->headers->set($prefix.$header, (string) round($value, 3));
@@ -669,6 +728,17 @@ $response->headers->set('X-Test-Roles-Generation-Writes', (string) $roleGenerati
 $response->headers->set('X-Test-Roles-Session-Deletes', (string) $roleSessionDeletes);
 $response->headers->set('X-Test-Select-Reads', (string) $selectReads);
 $response->headers->set('X-Test-Select-Has-Limit', $selectHasLimit ? '1' : '0');
+$response->headers->set('X-Test-Customer-Reads', (string) $customerReads);
+$response->headers->set('X-Test-Customer-Writes', (string) $customerWrites);
+$customerOutcome = $request->attributes->get('customers_outcome');
+if (is_string($customerOutcome)) {
+    $response->headers->set('X-Test-Customer-Outcome', $customerOutcome);
+}
+if ($request->attributes->has('_test_customer_mysql_code')) {
+    $response->headers->set('X-Test-Customer-MySQL-Code', (string) $request->attributes->get('_test_customer_mysql_code'));
+    $response->headers->set('X-Test-Customer-MySQL-Count', (string) $request->attributes->get('_test_customer_mysql_count'));
+}
+$response->headers->set('X-Test-Customer-Timeout-Statements', (string) $restoreStatements);
 foreach (['state', 'file_outcome', 'calls', 'wait'] as $field) {
     $value = $request->attributes->get('_test_mutation_'.$field);
     if (is_string($value)) {
@@ -711,6 +781,14 @@ if ($inspect) {
     $response->headers->set('X-Test-Activity-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
         && is_string($activityOutcome) && ($log[1]['mutation_outcome'] ?? null) === $activityOutcome) ? '1' : '0');
+    $response->headers->set('X-Test-Customer-Outcome-Reported', collect($logs)->contains(fn ($log) => $log[0] === 'API operation failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')
+        && is_string($customerOutcome) && ($log[1]['mutation_outcome'] ?? null) === $customerOutcome) ? '1' : '0');
+    $response->headers->set('X-Test-Customer-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Customer lock timeout restoration failed.'
+        && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
+    $customerVisible = collect($queries)->contains(fn ($query) => preg_match('/\bcustomers\b/i', $query[0]) === 1)
+        || collect($queryLog)->contains(fn ($query) => preg_match('/\bcustomers\b/i', $query['query']) === 1);
+    $response->headers->set('X-Test-Customer-Query-Visible', $customerVisible ? '1' : '0');
     $response->headers->set('X-Test-Activity-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Activity lock timeout restoration failed.'
         && ($log[1]['request_id'] ?? null) === $response->headers->get('X-Request-ID')) ? '1' : '0');
     $response->headers->set('X-Test-Roles-Restore-Warning', collect($logs)->contains(fn ($log) => $log[0] === 'Roles lock timeout restoration failed.'

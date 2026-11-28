@@ -5,16 +5,21 @@ namespace Modules\Identity\Support;
 use Illuminate\Database\Query\Builder;
 use LogicException;
 use Modules\Activities\Support\ActivityPermissions;
+use Modules\People\Support\CustomerPermissions;
 
 final class PermissionCatalogue
 {
     public static function definitions(): array
     {
-        if (array_intersect_key(IdentityPermissions::CATALOGUE, ActivityPermissions::CATALOGUE) !== []) {
-            throw new LogicException('Duplicate permission catalogue key.');
+        $definitions = [];
+        foreach ([IdentityPermissions::CATALOGUE, ActivityPermissions::CATALOGUE, CustomerPermissions::CATALOGUE] as $catalogue) {
+            if (array_intersect_key($definitions, $catalogue) !== []) {
+                throw new LogicException('Duplicate permission catalogue key.');
+            }
+            $definitions += $catalogue;
         }
 
-        return IdentityPermissions::CATALOGUE + ActivityPermissions::CATALOGUE;
+        return $definitions;
     }
 
     public static function keys(): array
