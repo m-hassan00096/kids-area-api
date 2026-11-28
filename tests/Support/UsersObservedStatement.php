@@ -42,6 +42,11 @@ class UsersObservedStatement extends PDOStatement
                 request()->attributes->set('_test_activity_mysql_code', $code);
                 request()->attributes->set('_test_activity_mysql_count', 1 + (int) request()->attributes->get('_test_activity_mysql_count', 0));
             }
+            if (in_array(request()->headers->get('X-Identity-Test-Mode'), ['customer-observe-mysql', 'customer-timeout-restore', 'customer-fault-other-constraint'], true)
+                && in_array($code, [1062, 1205, 1213, 3819], true)) {
+                request()->attributes->set('_test_customer_mysql_code', $code);
+                request()->attributes->set('_test_customer_mysql_count', 1 + (int) request()->attributes->get('_test_customer_mysql_count', 0));
+            }
             if ($code === 1213) {
                 request()->attributes->set('_test_users_deadlock_code', 1213);
                 request()->attributes->set('_test_users_deadlock_count', 1 + (int) request()->attributes->get('_test_users_deadlock_count', 0));

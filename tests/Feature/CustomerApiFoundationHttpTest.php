@@ -112,6 +112,30 @@ class CustomerApiFoundationHttpTest extends AuthenticationHttpTestCase
         $this->assertSame(419, $admin->request('PUT', $path, ['name' => 'No CSRF'], ['csrf' => 'bad'])->status);
         $guest = $this->browser($server);
         $this->assertSame(401, $guest->request('GET', $path)->status);
+        foreach (['null', 'true', '"x"', '{}'] as $raw) {
+            $this->assertSame(422, $admin->request('POST', '/api/v1/customers', options: ['raw' => $raw])->status);
+        }
+        $this->assertSame(400, $admin->request('POST', '/api/v1/customers', options: ['raw' => '{"name":"'.chr(255).'"}'])->status);
+        $this->assertSame(422, $admin->request('POST', '/api/v1/customers', options: [
+            'raw' => 'name=Synthetic', 'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+        ])->status);
+        $this->assertSame(422, $admin->request('POST', '/api/v1/customers', options: [
+            'raw' => "--fixture\r\nContent-Disposition: form-data; name=\"name\"\r\n\r\nSynthetic\r\n--fixture\r\nContent-Disposition: form-data; name=\"file\"; filename=\"fixture.txt\"\r\nContent-Type: text/plain\r\n\r\nSynthetic\r\n--fixture--\r\n",
+            'headers' => ['Content-Type' => 'multipart/form-data; boundary=fixture'],
+        ])->status);
+        foreach (['0', '01', '-1', 'abc'] as $invalidId) {
+            $this->assertSame(404, $admin->request('GET', '/api/v1/customers/'.$invalidId)->status);
+        }
+        $this->assertSame(422, $admin->request('PUT', '/api/v1/customers/999999', ['name' => ''])->status);
+        foreach ([
+            ['/api/v1/customers', ['name' => 'Synthetic', '_method' => 'PUT'], []],
+            [$path, ['name' => 'Synthetic'], ['headers' => ['X-HTTP-Method-Override' => 'PUT']]],
+        ] as [$url, $payload, $options]) {
+            $response = $admin->request('POST', $url, $payload, $options);
+            $this->assertSame(422, $response->status);
+            $this->assertSame('0', $response->header('X-Test-Customer-Reads'));
+            $this->assertSame('0', $response->header('X-Test-Customer-Writes'));
+        }
         $this->assertSame(1, Customer::count());
         $this->assertSame($before, $customer->fresh()->getRawOriginal());
 

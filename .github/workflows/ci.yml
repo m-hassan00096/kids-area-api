@@ -358,3 +358,10 @@ jobs:
           grep -Fq 'Tests\Feature\CustomerAuthorizationHttpTest::' "$RUNNER_TEMP/customer-select-tests.txt"
       - name: Run focused Customer Select and authorization tests
         run: php artisan test --filter='CustomerSelectHttp|CustomerAuthorizationHttp'
+      - name: Verify Customer concurrency and fault test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter='CustomerRaceHttp|CustomerFaultHttp' > "$RUNNER_TEMP/customer-race-fault-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerRaceHttpTest::' "$RUNNER_TEMP/customer-race-fault-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerFaultHttpTest::' "$RUNNER_TEMP/customer-race-fault-tests.txt"
+      - name: Run guarded Customer HTTP concurrency and fault tests
+        run: php artisan test --filter='CustomerRaceHttp|CustomerFaultHttp'
