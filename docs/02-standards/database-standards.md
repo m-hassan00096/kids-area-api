@@ -110,7 +110,7 @@ Schema::create('activity_subscriptions', function (Blueprint $table): void {
 | Description/notes | `text` when unbounded short-string fields are unsuitable |
 | Money | `decimal('amount', 12, 2)` |
 | Fixed business state | `unsignedTinyInteger` or `unsignedSmallInteger` for integer-backed enum values |
-| Active flag | `boolean('is_active')` with an intentional default |
+| Active flag | Normally `boolean('is_active')` with an intentional default; approved feature-specific integer-backed enum flags use an appropriate unsigned integer and enum casting |
 | Calendar date | `date(...)` (no timezone) |
 | Weekly wall-clock time | `time(...)` plus an IANA timezone determined by the location |
 | Event instant | `dateTime(...)` or deliberate `timestamp(...)`, consistently read/written as UTC |
@@ -125,7 +125,7 @@ Schema::create('activity_subscriptions', function (Blueprint $table): void {
 - Define suitable **check constraints** in MySQL 8 where they materially protect a domain invariant, after confirming the deployed MySQL patch version and legacy data compatibility. Application checks remain required for cross-row/time-sensitive rules.
 - Fixed statuses use **PHP integer-backed enums**, persisted as numbers, with explicit Eloquent casting and stable integer assignments. Numeric values and transitions are owned by feature specs.
 - Avoid native MySQL `ENUM` for changeable PHP workflow statuses and avoid localized text as persisted status.
-- `is_active` is a normal boolean for simple enable/disable behavior; user-managed activities, jobs, coaches, price lists and categories are **rows**, not hard-coded enum cases.
+- `is_active` is normally a boolean for simple enable/disable behavior unless the owning feature explicitly approves an integer-backed enum. People F01 `customers.is_active` uses unsigned TINYINT, `CustomerStatus` values 0/1 and default 1. Other existing modules are unchanged. User-managed activities, jobs, coaches, price lists and categories are **rows**, not hard-coded enum cases.
 - Never silently reuse a persisted enum's numeric value for a new meaning.
 - Do not store formatted Arabic money/date/time text as the authoritative field.
 - JSON is not an acceptable substitute for transactional child rows, attendance, timer segments or financial movements.
