@@ -1,14 +1,14 @@
 # People F01 — Customers Management: Implementation Tasks
 
-> Status: Draft for execution review, 2026-11-28. Scope/spec R01–R04 and technical plan TP01–TP08 explicitly approved. Tasks are not yet approved for execution; 0/32 tasks verified, all 12 Customer acceptance criteria Not Run.
+> Status: Approved execution tasks, 2026-11-28. Scope/spec R01–R04, technical plan TP01–TP08 and all 32 tasks approved; documentation merge and implementation authorized. T01/T02 verified; 2/32 tasks, all 12 Customer acceptance criteria Not Run.
 > Sources: [approved specification](spec.md), [approved technical plan](plan.md), [People reference](../../../docs/03-modules/people.md), [workflow](../../../docs/02-standards/ai-workflow-rules.md), [handoff](../../../docs/00-overview/kids-area-conversation-handoff.md).
-> Baseline: develop `746f36d86a41817b9577badcefddb317fa98bfd8` (merged Core PR #17). Documentation PR #18, branch docs/people-customers-management. Proposed implementation branch feature/people-customers-management only after documentation/implementation gates.
+> Baseline: develop `746f36d86a41817b9577badcefddb317fa98bfd8` (merged Core PR #17). Documentation PR #18 merged at 3347d046465eb0d946fee68b1786dd7ad495a4bb. Implementation branch feature/people-customers-management created from that verified merged commit.
 > Prior baseline CI: [46088206957](https://github.com/m-hassan00096/kids-area-api/actions/runs/46088206957) completed success on exact documentation head b29f1b60fc1b05bca51c5ed53ff836b1728ffb4b; Foundation job 140802698182 and Activity preflight job 140802698385 both completed success. Verified run/job metadata (not individual log assertion counts). This proves only existing baseline checks, not Customers.
 
 ## 1. Execution rules
 
 - Complete each dependency before its dependent task. Source authored, CI queued and CI verified are distinct states. Check a task only after actual verification with an exact commit/run/job or equivalent evidence. Failed/blocked checks remain unchecked; record reason, not invented results. Keep AC outcomes separate from task completion.
-- Documentation PR #18 needs explicit approval to merge; implementation requires explicit authorization after approved spec/plan/tasks. No merge to develop or main, no deployment, production database migration, live grant, protected reset, package addition or scope expansion without separate approval.
+- Documentation PR #18 merged with the user's explicit approval; implementation authorized within approved spec/plan/tasks. Feature merge remains a separate approval gate. No merge to develop or main, no deployment, production database migration, live grant, protected reset, package addition or scope expansion without separate approval.
 - Preserve Laravel 12/PHP 8.2/MySQL 8, installed dependencies, one location, stateful Sanctum, six essential Identity capabilities and all existing business behavior. Runtime changes must not implement F02, Sessions, POS, frontend, status/delete/index, new Audit, or speculative tables.
 - Real schema, race, grant, HTTP and performance checks use only the existing verified disposable CI environment: GITHUB_ACTIONS=true, testing, DB_URL empty, localhost 127.0.0.1, kids_area_test/kids_area_ci, MySQL 8/InnoDB; validate actual server principal and database before reset. Use only synthetic customer data. Do not extend existing reset privileges or copy production data.
 - Reuse existing authentication/race/fault fixtures; test-only instrumentation must remain guarded and not leak into runtime. No raw SQL binding/PII logs. When privacy suppresses query events, count metadata by safe test-only connection instrumentation, not by weakening suppression.
@@ -19,8 +19,8 @@
 
 | Task | Dependency | Work and required evidence |
 |---|---|---|
-| [ ] T01 | — | Review the 32 tasks and trace all ACs to spec/plan; verify current develop SHA, PR #18 diff limited to documentation, exact-head required CI jobs, current branch/merge state and any new conflicts. Record actual evidence and outstanding decisions. |
-| [ ] T02 | T01 | Obtain explicit documentation merge approval; verify exact reviewed docs head and CI before merging; verify merged tree and develop HEAD. Obtain explicit implementation approval, create feature/people-customers-management from verified develop. Do not infer either approval from task review. |
+| [x] T01 | — | Review the 32 tasks and trace all ACs to spec/plan; verify current develop SHA, PR #18 diff limited to documentation, exact-head required CI jobs, current branch/merge state and any new conflicts. Record actual evidence and outstanding decisions. |
+| [x] T02 | T01 | Obtain explicit documentation merge approval; verify exact reviewed docs head and CI before merging; verify merged tree and develop HEAD. Obtain explicit implementation approval, create feature/people-customers-management from verified develop. Do not infer either approval from task review. |
 | [ ] T03 | T02 | Inventory installed Laravel/nwidart/Spatie versions, module/autoload/routes, all ten migrations, provision markers, permission catalogue and actual test consumers (hard-coded counts/routes/schema fixtures). Record inventory and test-only environment guard; no dependencies changed. |
 
 ### Phase B — People module and database (T04–T08)
@@ -103,8 +103,8 @@ All outcomes are Not Run until execution. Prior baseline CI cannot mark these Pa
 
 ## 4. Verification record
 
-- Tasks verified: **0/32**. Acceptance criteria verified: **0/12**.
-- Current documentation review: PR #18 still draft/unmerged at the start of this checkpoint. TP01–TP08 approved, tasks ready for user review. No feature branch or application code created in this checkpoint.
-- Baseline evidence only: CI 46088206957 (exact earlier documentation head b29f1b6), both jobs success according to GitHub run/job metadata. Latest tasks-doc head CI must be checked independently. No Customer DDL probe, test, grant or benchmark executed.
+- Tasks verified: **2/32** (T01/T02). Acceptance criteria verified: **0/12**.
+- T01: reviewed exact documentation head `64f9697507d597c0e63d7b4aa1d0359f1ed32c85` vs prior develop; eight Markdown files, three commits, all 32 ordered dependency IDs and 12 AC trace mappings checked. [CI 46141833603](https://github.com/m-hassan00096/kids-area-api/actions/runs/46141833603) completed success on that exact head; both jobs (140969244378 and 140969244541) passed. Actual logs reviewed: 252 tests / 20,623 assertions, Pint 223 files, 24 routes before/after route cache, locked Composer audit no advisories, MySQL 8.0.46 InnoDB/strict/UTC, existing forward migration preservation and Activity preflight passed. Baseline only, not Customer tests.
+- T02: user authorized tasks, documentation merge after successful CI and implementation. [PR #18](https://github.com/m-hassan00096/kids-area-api/pull/18) merged at `3347d046465eb0d946fee68b1786dd7ad495a4bb`; develop HEAD and identical reviewed/merged tree `6563996839481e886f4a57a6fd5a5181c9e2c0dc` verified. Branch `feature/people-customers-management` created from verified merged commit and ref read back. No runtime code, Customer DDL probe, migration, test, grant or benchmark executed.
 - When implementing, append exact commit SHA, CI run/job links, measured results and blockers per task; never update historical baseline evidence to today's expanded catalogue. Preserve the canonical handoff, not a parallel progress tracker.
-- Next action: review tasks; obtain explicit approval for documentation merge after exact-head CI, then explicit implementation authorization. If DDL feasibility or measured contention requires a contract change, bring only that affected decision back for review.
+- Next action: T03 complete actual baseline inventory (including hard-coded live vs historical test consumers), then T04 guarded Customer DDL preflight. If DDL feasibility or measured contention requires a contract change, bring only that affected decision back for review. Current checkpoint is documentation-only; no new CI claimed.
