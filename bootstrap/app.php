@@ -31,15 +31,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
         $middleware->prependToPriorityList(AuthenticatesRequests::class, RequireStatefulBrowser::class);
         $middleware->redirectGuestsTo(static fn () => null);
-        $middleware->trimStrings(except: ['username', 'password', 'currentPassword', 'passwordConfirmation', fn (Request $request) => $request->is('api/v1/users', 'api/v1/users/*', 'api/v1/roles', 'api/v1/roles/*', 'api/v1/activities', 'api/v1/activities/*', 'api/v1/selects')]);
-        $middleware->convertEmptyStringsToNull(except: [fn (Request $request) => $request->is('api/v1/auth/login', 'api/v1/profile/password', 'api/v1/users', 'api/v1/users/*', 'api/v1/roles', 'api/v1/roles/*', 'api/v1/activities', 'api/v1/activities/*', 'api/v1/selects')]);
+        $middleware->trimStrings(except: ['username', 'password', 'currentPassword', 'passwordConfirmation', fn (Request $request) => $request->is('api/v1/users', 'api/v1/users/*', 'api/v1/roles', 'api/v1/roles/*', 'api/v1/activities', 'api/v1/activities/*', 'api/v1/customers', 'api/v1/customers/*', 'api/v1/selects')]);
+        $middleware->convertEmptyStringsToNull(except: [fn (Request $request) => $request->is('api/v1/auth/login', 'api/v1/profile/password', 'api/v1/users', 'api/v1/users/*', 'api/v1/roles', 'api/v1/roles/*', 'api/v1/activities', 'api/v1/activities/*', 'api/v1/customers', 'api/v1/customers/*', 'api/v1/selects')]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Laravel normally ignores HttpException, including HTTP 503.
         $exceptions->stopIgnoring(HttpException::class);
         $exceptions->dontReportWhen(fn (Throwable $exception) => $exception instanceof HttpException
             && (! app()->bound('request') || ! ApiErrors::applies(request()) || ApiErrors::status($exception) < 500));
-        $exceptions->dontFlash(['username', 'password', 'password_confirmation', 'current_password', 'currentPassword', 'passwordConfirmation', 'email', 'phone', 'avatar', 'avatar_key', 'avatarUrl']);
+        $exceptions->dontFlash(['username', 'password', 'password_confirmation', 'current_password', 'currentPassword', 'passwordConfirmation', 'email', 'phone', 'name', 'mobile', 'avatar', 'avatar_key', 'avatarUrl']);
         $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $exception) => ApiErrors::applies($request) || $request->expectsJson());
         $exceptions->report(fn (Throwable $exception) => ApiErrors::report($exception));
         $exceptions->render(fn (Throwable $exception, Request $request) => ApiErrors::render($exception, $request));

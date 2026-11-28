@@ -343,3 +343,11 @@ jobs:
           grep -Fq 'Tests\Feature\IdentityConcurrencyTest::test_overlapping_customer_provisions_serialize_once' "$RUNNER_TEMP/customer-provisioning-tests.txt"
       - name: Verify guarded Customer permissions and one-time grants
         run: php artisan test --filter='CustomerProvisioning|overlapping_customer_provisions'
+      - name: Verify Customer API foundation test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter='CustomerConstraintErrors|CustomerApiFoundationHttp|CustomerPrivacy' > "$RUNNER_TEMP/customer-api-foundation-tests.txt"
+          for class in CustomerConstraintErrorsTest CustomerApiFoundationHttpTest CustomerPrivacyTest; do
+            grep -Fq "Tests\\Feature\\${class}::" "$RUNNER_TEMP/customer-api-foundation-tests.txt"
+          done
+      - name: Run focused Customer API foundation and privacy tests
+        run: php artisan test --filter='CustomerConstraintErrors|CustomerApiFoundationHttp|CustomerPrivacy'
