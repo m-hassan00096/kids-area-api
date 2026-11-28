@@ -259,3 +259,63 @@ jobs:
           grep -q '^ACTIVITY_PREFLIGHT_PRICE_GRAMMAR {' "$RUNNER_TEMP/activity-preflight.log"
           grep -q '^ACTIVITY_PREFLIGHT_CONSTRAINTS {' "$RUNNER_TEMP/activity-preflight.log"
           grep -q '^ACTIVITY_PREFLIGHT_RESULT {' "$RUNNER_TEMP/activity-preflight.log"
+
+  customer-preflight:
+    name: Customer guarded MySQL preflight
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: kids_area_test
+          MYSQL_USER: kids_area_ci
+          MYSQL_PASSWORD: isolated_ci_only
+          MYSQL_ROOT_PASSWORD: isolated_root_ci_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_URL: ''
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: kids_area_test
+      DB_USERNAME: kids_area_ci
+      DB_PASSWORD: isolated_ci_only
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      CUSTOMER_PREFLIGHT_ISOLATED_JOB: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, dom, simplexml, pdo_mysql, intl, bcmath, curl, zip, fileinfo, gd
+          coverage: none
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Set up isolated application key
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Inventory existing module, permissions, routes and test consumers
+        run: |
+          git ls-files 'Modules/*/module.json' 'Modules/*/composer.json' 'Modules/*/database/migrations/*' 'tests/Feature/*Test.php' 'tests/Support/*'
+          git grep -n -E 'IdentityPermissions::|ActivityPermissions::|PermissionCatalogue::|identity_feature_provisions|assert(Same|Count)\((10|15|24),|fixtureMigrationPaths|approvedRoutes|modules_statuses|TABLE_NAME|module:list|migrate:fresh' -- Modules app routes database tests .github/workflows/ci.yml
+          echo 'CUSTOMER_PREFLIGHT_INVENTORY verified tracked source consumers'
+      - name: Verify exact approved Customer DDL in guarded MySQL
+        run: |
+          set -o pipefail
+          php tests/Support/customer-catalogue-preflight.php | tee "$RUNNER_TEMP/customer-preflight.log"
+          grep -q '^CUSTOMER_PREFLIGHT_ENV {' "$RUNNER_TEMP/customer-preflight.log"
+          grep -q '^CUSTOMER_PREFLIGHT_BASELINE {' "$RUNNER_TEMP/customer-preflight.log"
+          grep -q '^CUSTOMER_PREFLIGHT_DDL {' "$RUNNER_TEMP/customer-preflight.log"
+          grep -q '^CUSTOMER_PREFLIGHT_CONSTRAINTS {' "$RUNNER_TEMP/customer-preflight.log"
+          grep -q '^CUSTOMER_PREFLIGHT_RESULT {' "$RUNNER_TEMP/customer-preflight.log"
