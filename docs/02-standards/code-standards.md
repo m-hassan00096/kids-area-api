@@ -127,7 +127,7 @@ This is illustrative, **not** a command to generate all files or folders. Preser
 | **Policy / Gate** | Enforce actor's permission for a capability or **this record** | Replacing the Action's current-state business checks |
 | **Resource** | Explicitly serialize allowed data fields/relationships and public labels | Database mutations or hidden recalculation of authoritative totals |
 | **Query Class** | Nontrivial or repeated read-only queries that merit extraction | Abstracting every simple `index` or `show` query without benefit |
-| **Select Provider** | Authorized small/bounded dropdown options for its owning module | Exposing unbounded tables or bypassing read permissions |
+| **Select Provider** | Authorized, purpose-specific minimal dropdown projection for its owning module (all eligible options under API Standards §8) | Bypassing permissions or exposing unrelated records/fields |
 
 ### Mutation pattern — required
 
@@ -183,12 +183,12 @@ The POS owns invoice/payment state; Finance owns posted financial movements. Rep
 
 ### Central Select Registry
 
-- A single, shared `GET /api/v1/selects?selects=...` endpoint aggregates **bounded option lists**, following the approved `printingApi` model.
+- A single, shared `GET /api/v1/selects?selects=...` endpoint aggregates **all eligible authorized option rows** for 1–5 distinct requested keys, following the approved Core Select Registry simplification. No per-provider limit, pagination or server-side search.
 - The **Core** application owns registry/dispatch; **individual modules** register their allowed keys/providers.
 - Each provider owns its read query, eligibility constraints, Arabic labels and **per-key authorization**.
 - Validate requested keys and allowed parameters. Reject unknown keys and unauthorized requests rather than silently exposing or skipping data.
 - Return the already-agreed `data` **array of {label, options} objects**, with `options` containing `{value, label}`. Do not silently substitute the differently shaped reference sample that returns an object keyed by select names.
-- Use normal paginated/search endpoints for large business lists. Don't send all children, guardians, customers, or transactions as unbounded dropdowns.
+- Use normal paginated/search endpoints for ordinary business tables when the feature requires one. Approved selectors (including Customers F01) use complete eligible minimal options and local frontend search; never silently truncate or expose unrelated fields. Measure growth and review any future adaptive contract separately.
 - The precise transport, error cases, and option value types are owned by `api-standards.md` and the relevant feature specs.
 
 ## 6. Naming, Types & Enums
@@ -214,7 +214,7 @@ The POS owns invoice/payment state; Finance owns posted financial movements. Rep
 ### Fixed statuses and enums — approved
 
 - **Fixed business states use integer-backed PHP enums**. Persist stable numeric values and expose human-readable Arabic labels through the Resource/localization boundary as specified in API Standards.
-- **Simple on/off flags** (e.g., `is_active`) are database booleans with normal casts.
+- **Simple on/off flags** (e.g., `is_active`) are normally database booleans with normal casts unless an explicitly approved owning-feature contract specifies an integer-backed enum. People F01 `customers.is_active` is such an exception (`CustomerStatus: int`, 0/1). Do not change existing modules' flags.
 - **User-managed catalogues** (e.g., job types or activity records) are relational tables, **not enums**.
 - Enum case names should be expressive and stable, using `UPPER_SNAKE_CASE`; avoid scattering raw integers across Actions and Controllers.
 - Once persisted, **never reassign an existing numeric enum value to a new meaning** without an explicit migration/data preservation plan.
