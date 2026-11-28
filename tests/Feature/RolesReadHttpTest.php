@@ -82,8 +82,8 @@ class RolesReadHttpTest extends AuthenticationHttpTestCase
         $managerRole = Role::findByName('manager', 'web');
         $protected = $browser->request('GET', '/api/v1/roles/'.$managerRole->id)->json()['data'];
         $this->assertTrue($protected['isProtected']);
-        $this->assertSame(15, $protected['permissionsCount']);
-        $this->assertCount(15, $protected['permissions']);
+        $this->assertSame(18, $protected['permissionsCount']);
+        $this->assertCount(18, $protected['permissions']);
 
         $response = $browser->request('GET', '/api/v1/roles?'.http_build_query(['filter' => ['search' => '%_!', 'isActive' => '0']]));
         $this->assertSame(200, $response->status);

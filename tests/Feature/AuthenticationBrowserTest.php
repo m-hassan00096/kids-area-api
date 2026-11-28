@@ -52,7 +52,7 @@ class AuthenticationBrowserTest extends AuthenticationHttpTestCase
         $this->assertSame(401, $other->login('CASE.Admin')->status);
         $this->assertSame(200, $other->login('case.admin', 'different-synthetic-password')->status);
         $this->assertSame($reception->username, $other->me()->json()['data']['username']);
-        $this->assertSame(['activities.index', 'activities.show'], $other->me()->json()['data']['permissions']);
+        $this->assertSame(['activities.index', 'activities.show', 'people.customers.show', 'people.customers.store', 'people.customers.update'], $other->me()->json()['data']['permissions']);
     }
 
     public function test_login_denials_are_uniform_and_do_not_create_authority(): void
@@ -198,9 +198,9 @@ class AuthenticationBrowserTest extends AuthenticationHttpTestCase
         $this->assertSame(401, $idle->me()->status);
 
         $active->timeMs = $start + 43200000;
-        $this->assertSame(['activities.index', 'activities.show'], $active->me()->json()['data']['permissions']);
+        $this->assertSame(['activities.index', 'activities.show', 'people.customers.show', 'people.customers.store', 'people.customers.update'], $active->me()->json()['data']['permissions']);
         Role::findByName('reception', 'web')->givePermissionTo(Permission::where('name', 'identity.users.view')->sole());
-        $this->assertSame(['activities.index', 'activities.show', 'identity.users.view'], $active->me()->json()['data']['permissions']);
+        $this->assertSame(['activities.index', 'activities.show', 'identity.users.view', 'people.customers.show', 'people.customers.store', 'people.customers.update'], $active->me()->json()['data']['permissions']);
         $staff->update(['is_active' => false]);
         $this->assertSame(403, $active->me()->status);
         $this->assertSame(401, $active->me()->status);

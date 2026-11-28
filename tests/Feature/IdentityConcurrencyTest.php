@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Modules\Identity\Actions\ProvisionActivityCatalogueAction;
+use Modules\Identity\Actions\ProvisionCustomerCatalogueAction;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
@@ -28,10 +29,10 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $this->assertSame('ok', $first['code']);
         $this->assertSame('ok', $second['code']);
         $this->assertSame(2, Role::count());
-        $this->assertSame(15, Permission::count());
+        $this->assertSame(18, Permission::count());
         $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), Role::findByName('manager', 'web')->permissions()->pluck('name')->all());
-        $this->assertEqualsCanonicalizing(['activities.index', 'activities.show'], Role::findByName('reception', 'web')->permissions()->pluck('name')->all());
-        $this->assertSame(1, DB::table('identity_feature_provisions')->count());
+        $this->assertEqualsCanonicalizing(['activities.index', 'activities.show', 'people.customers.show', 'people.customers.store', 'people.customers.update'], Role::findByName('reception', 'web')->permissions()->pluck('name')->all());
+        $this->assertSame(['activities.catalogue.v1', 'people.customers.v1'], DB::table('identity_feature_provisions')->orderBy('feature_key')->pluck('feature_key')->all());
         $this->assertSame(0, User::count());
     }
 
@@ -45,6 +46,22 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
         $this->assertCount(14, $this->grantKeys($manager));
         $this->assertSame(['activities.index', 'activities.show'], $this->grantKeys($reception));
         $this->assertNotContains('identity.audit.view', $this->grantKeys($manager));
+    }
+
+    public function test_overlapping_customer_provisions_serialize_once(): void
+    {
+        [$manager, $reception] = $this->legacyActivityRoles();
+        $this->assertTrue(app(ProvisionActivityCatalogueAction::class)->execute());
+        [$first, $second] = $this->race(['mode' => 'customer-provision'], ['mode' => 'customer-provision']);
+        $this->assertTrue($first['applied']);
+        $this->assertFalse($second['applied']);
+        $this->assertSame(['activities.catalogue.v1', 'people.customers.v1'], DB::table('identity_feature_provisions')->orderBy('feature_key')->pluck('feature_key')->all());
+        $this->assertCount(17, $this->grantKeys($manager));
+        $this->assertSame(['activities.index', 'activities.show', 'people.customers.show', 'people.customers.store', 'people.customers.update'], $this->grantKeys($reception));
+        $this->assertNotContains('identity.audit.view', $this->grantKeys($manager));
+        $reception->fresh()->revokePermissionTo(Permission::findByName('people.customers.update', 'web'));
+        $this->assertFalse(app(ProvisionCustomerCatalogueAction::class)->execute());
+        $this->assertNotContains('people.customers.update', $this->grantKeys($reception));
     }
 
     public function test_provision_and_routine_seed_serialize_without_replacing_grants(): void
@@ -352,7 +369,7 @@ class IdentityConcurrencyTest extends IdentityDatabaseTestCase
                 $contested = match ($mode) {
                     'seed' => str_starts_with($query, 'insert into roles'),
                     'unique' => str_starts_with($query, 'insert into users'),
-                    'access', 'bootstrap', 'provision' => str_contains($query, 'from roles') && str_contains($query, 'for update'),
+                    'access', 'bootstrap', 'provision', 'customer-provision' => str_contains($query, 'from roles') && str_contains($query, 'for update'),
                 };
                 if ($contested) {
                     $this->assertTrue($process->isRunning());

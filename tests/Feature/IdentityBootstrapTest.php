@@ -110,6 +110,7 @@ class IdentityBootstrapTest extends IdentityDatabaseTestCase
                 'permission-missing' => $permission->delete(),
                 'permission-wrong-guard' => $permission->update(['guard_name' => 'other']),
                 'marker-missing' => DB::table('identity_feature_provisions')->where('feature_key', 'activities.catalogue.v1')->delete(),
+                'customer-marker-missing' => DB::table('identity_feature_provisions')->where('feature_key', 'people.customers.v1')->delete(),
                 'grant-missing' => $manager->revokePermissionTo($permission),
             };
         }
@@ -125,7 +126,7 @@ class IdentityBootstrapTest extends IdentityDatabaseTestCase
         return array_map(fn ($problem) => [$problem], [
             'unseeded', 'manager-missing', 'reception-missing', 'manager-inactive',
             'reception-inactive', 'role-wrong-guard', 'permission-missing',
-            'permission-wrong-guard', 'grant-missing', 'marker-missing',
+            'permission-wrong-guard', 'grant-missing', 'marker-missing', 'customer-marker-missing',
         ]);
     }
 

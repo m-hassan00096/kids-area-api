@@ -17,7 +17,7 @@ class IdentityScopeTest extends IdentityDatabaseTestCase
         app(SeedIdentityCatalogueAction::class)->execute();
 
         $this->assertEqualsCanonicalizing(PermissionCatalogue::keys(), Permission::pluck('name')->all());
-        $this->assertSame(15, Permission::count());
+        $this->assertSame(18, Permission::count());
         $this->assertEqualsCanonicalizing([
             'migrations', 'users', 'roles', 'permissions', 'model_has_roles',
             'model_has_permissions', 'role_has_permissions', 'sessions', 'identity_login_throttles',

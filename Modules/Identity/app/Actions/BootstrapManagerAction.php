@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Models\User;
 use Modules\Identity\Services\ActivityCatalogueGrants;
+use Modules\Identity\Services\CustomerCatalogueGrants;
 use Modules\Identity\Services\FounderSequence;
 use Modules\Identity\Services\IdentityAccess;
 use Modules\Identity\Services\IdentityMutex;
@@ -22,6 +23,7 @@ final class BootstrapManagerAction
         private readonly FounderSequence $sequence,
         private readonly IdentityAccess $access,
         private readonly ActivityCatalogueGrants $activityGrants,
+        private readonly CustomerCatalogueGrants $customerGrants,
     ) {}
 
     public function execute(#[SensitiveParameter] array $credentials): User
@@ -89,7 +91,7 @@ final class BootstrapManagerAction
             || $reception->guard_name !== 'web' || ! (bool) $reception->is_active
             || $permissions->pluck('name')->unique()->count() !== count(PermissionCatalogue::keys())
             || array_diff($ids, $granted) !== [] || array_diff($granted, $ids) !== []
-            || ! $this->activityGrants->completed()) {
+            || ! $this->activityGrants->completed() || ! $this->customerGrants->completed()) {
             throw new BusinessException(__('identity.seed_prerequisites'), errorCode: 'IDENTITY_SEED_REQUIRED');
         }
     }

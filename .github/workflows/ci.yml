@@ -336,3 +336,10 @@ jobs:
           grep -Fq 'Tests\Feature\CustomerForwardMigrationTest::test_customer_forward_migration_preserves_the_populated_ten_migration_baseline' "$RUNNER_TEMP/customer-forward-tests.txt"
           php artisan test --filter=CustomerForwardMigration | tee "$RUNNER_TEMP/customer-forward.log"
           grep -q '^CUSTOMER_FORWARD_MIGRATION {' "$RUNNER_TEMP/customer-forward.log"
+      - name: Verify focused Customer provisioning test discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter='CustomerProvisioning|overlapping_customer_provisions' > "$RUNNER_TEMP/customer-provisioning-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerProvisioningTest::' "$RUNNER_TEMP/customer-provisioning-tests.txt"
+          grep -Fq 'Tests\Feature\IdentityConcurrencyTest::test_overlapping_customer_provisions_serialize_once' "$RUNNER_TEMP/customer-provisioning-tests.txt"
+      - name: Verify guarded Customer permissions and one-time grants
+        run: php artisan test --filter='CustomerProvisioning|overlapping_customer_provisions'

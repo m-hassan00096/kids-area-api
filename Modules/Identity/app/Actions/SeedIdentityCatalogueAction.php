@@ -7,13 +7,18 @@ use Illuminate\Support\Facades\DB;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
 use Modules\Identity\Services\ActivityCatalogueGrants;
+use Modules\Identity\Services\CustomerCatalogueGrants;
 use Modules\Identity\Services\IdentityMutex;
 use Modules\Identity\Support\PermissionCatalogue;
 use Spatie\Permission\PermissionRegistrar;
 
 final class SeedIdentityCatalogueAction
 {
-    public function __construct(private readonly IdentityMutex $mutex, private readonly ActivityCatalogueGrants $grants) {}
+    public function __construct(
+        private readonly IdentityMutex $mutex,
+        private readonly ActivityCatalogueGrants $grants,
+        private readonly CustomerCatalogueGrants $customerGrants,
+    ) {}
 
     public function execute(): void
     {
@@ -54,6 +59,7 @@ final class SeedIdentityCatalogueAction
                 if ($fresh) {
                     // Fresh-only defaults and the completion row are one DML transaction.
                     $this->grants->complete($manager, $reception, $permissions, fresh: true);
+                    $this->customerGrants->complete($manager, $reception, $permissions, fresh: true);
                 }
             }, 3); // Only this entirely replay-safe additive transaction may retry a deadlock.
         } finally {

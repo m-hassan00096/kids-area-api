@@ -6,6 +6,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Identity\Actions\ProvisionActivityCatalogueAction;
+use Modules\Identity\Actions\ProvisionCustomerCatalogueAction;
 use Modules\Identity\Actions\SeedIdentityCatalogueAction;
 use Modules\Identity\Models\Permission;
 use Modules\Identity\Models\Role;
@@ -44,7 +45,7 @@ try {
         throw new RuntimeException('Unsafe worker connection');
     }
 
-    $server = $connection->selectOne('SELECT DATABASE() AS db, VERSION() AS version, @@default_storage_engine AS engine, CONNECTION_ID() AS connection_id');
+    $server = $connection->selectOne('SELECT DATABASE() AS db, CURRENT_USER() AS principal, VERSION() AS version, @@default_storage_engine AS engine, CONNECTION_ID() AS connection_id');
     if ($server->db !== 'kids_area_test' || ! str_starts_with($server->version, '8.') || $server->engine !== 'InnoDB') {
         throw new RuntimeException('Unsafe worker database');
     }
@@ -55,7 +56,7 @@ try {
 
     $input = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR);
     $mode = $input['mode'];
-    if (in_array($mode, ['provision', 'provision-cache-probe'], true) && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1')) {
+    if (in_array($mode, ['provision', 'provision-cache-probe', 'customer-provision'], true) && (getenv('GITHUB_ACTIONS') !== 'true' || $connection->getConfig('host') !== '127.0.0.1' || ! str_starts_with($server->principal, 'kids_area_ci@'))) {
         throw new RuntimeException('Unsafe provisioning worker.');
     }
     $barrier = $input['barrier'];
@@ -98,7 +99,7 @@ try {
     };
 
     // Warm each independent process's package cache before the serialized write.
-    if (in_array($mode, ['seed', 'bootstrap', 'access', 'provision'], true)) {
+    if (in_array($mode, ['seed', 'bootstrap', 'access', 'provision', 'customer-provision'], true)) {
         app(PermissionRegistrar::class)->getPermissions();
     }
 
@@ -109,7 +110,7 @@ try {
         $managerLock = str_contains($sql, 'from roles') && str_contains($sql, 'for update');
         $attempt = match ($mode) {
             'seed' => str_starts_with($sql, 'insert into roles'),
-            'bootstrap', 'access', 'provision' => $managerLock,
+            'bootstrap', 'access', 'provision', 'customer-provision' => $managerLock,
             'unique' => str_starts_with($sql, 'insert into users'),
             'provision-cache-probe' => false,
         };
@@ -122,7 +123,7 @@ try {
         $holdPoint = match ($mode) {
             'seed' => str_starts_with($sql, 'insert into permissions'),
             'bootstrap' => str_starts_with($sql, 'insert into users'),
-            'provision' => str_starts_with($sql, 'insert into identity_feature_provisions'),
+            'provision', 'customer-provision' => str_starts_with($sql, 'insert into identity_feature_provisions'),
             default => false,
         };
 
@@ -152,6 +153,10 @@ try {
             exit(0);
         case 'provision':
             $applied = app(ProvisionActivityCatalogueAction::class)->execute();
+            identityWorkerEvent('result', ['code' => 'ok', 'applied' => $applied]);
+            exit(0);
+        case 'customer-provision':
+            $applied = app(ProvisionCustomerCatalogueAction::class)->execute();
             identityWorkerEvent('result', ['code' => 'ok', 'applied' => $applied]);
             exit(0);
         case 'bootstrap':
