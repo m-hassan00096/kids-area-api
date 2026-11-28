@@ -129,10 +129,14 @@ class CustomerApiFoundationHttpTest extends AuthenticationHttpTestCase
         $this->assertSame(422, $admin->request('PUT', '/api/v1/customers/999999', ['name' => ''])->status);
         foreach ([
             ['/api/v1/customers', ['name' => 'Synthetic', '_method' => 'PUT'], []],
+            [$path, ['name' => 'Synthetic', '_method' => 'PUT'], []],
+            [$path.'?_method=PUT', ['name' => 'Synthetic'], []],
+            ['/api/v1/customers?_method=PUT', ['name' => 'Synthetic'], []],
             [$path, ['name' => 'Synthetic'], ['headers' => ['X-HTTP-Method-Override' => 'PUT']]],
+            ['/api/v1/customers', ['name' => 'Synthetic'], ['headers' => ['X-HTTP-Method-Override' => 'PUT']]],
         ] as [$url, $payload, $options]) {
             $response = $admin->request('POST', $url, $payload, $options);
-            $this->assertSame(422, $response->status);
+            $this->assertSame(422, $response->status, 'Customer method override must be refused before dispatch: '.$url);
             $this->assertSame('0', $response->header('X-Test-Customer-Reads'));
             $this->assertSame('0', $response->header('X-Test-Customer-Writes'));
         }

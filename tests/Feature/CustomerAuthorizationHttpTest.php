@@ -73,6 +73,21 @@ class CustomerAuthorizationHttpTest extends AuthenticationHttpTestCase
             $this->assertSame('0', $response->header('X-Test-Customer-Writes'));
             $this->assertArrayNotHasKey('data', $response->json());
         }
+        $manager = $this->user('Customer.Live.BrowserManager');
+        $admin = $this->browser($server);
+        $this->assertSame(200, $admin->login($manager->username)->status);
+        foreach ([
+            ['Origin' => 'https://untrusted.example'],
+            ['Origin' => null, 'Referer' => null],
+            ['Authorization' => 'Bearer synthetic-not-a-token'],
+        ] as $headers) {
+            foreach ([['GET', $path, null], ['POST', '/api/v1/customers', ['name' => 'Synthetic denied']], ['PUT', $path, ['name' => 'Synthetic denied']]] as [$method, $uri, $payload]) {
+                $denied = $admin->request($method, $uri, $payload, ['headers' => $headers]);
+                $this->assertSame(403, $denied->status);
+                $this->assertSame('0', $denied->header('X-Test-Customer-Reads'));
+                $this->assertSame('0', $denied->header('X-Test-Customer-Writes'));
+            }
+        }
         $guest = $this->browser($server);
         $response = $guest->request('GET', $path);
         $this->assertSame(401, $response->status);

@@ -365,3 +365,20 @@ jobs:
           grep -Fq 'Tests\Feature\CustomerFaultHttpTest::' "$RUNNER_TEMP/customer-race-fault-tests.txt"
       - name: Run guarded Customer HTTP concurrency and fault tests
         run: php artisan test --filter='CustomerRaceHttp|CustomerFaultHttp'
+      - name: Verify Customer performance discovery
+        run: |
+          vendor/bin/phpunit --list-tests --filter=CustomerPerformance > "$RUNNER_TEMP/customer-performance-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerPerformanceTest::test_measure_complete_customer_options_pk_reads_and_writes' "$RUNNER_TEMP/customer-performance-tests.txt"
+          grep -Fq 'Tests\Feature\CustomerPerformanceTest::test_measure_two_customer_writes_and_permission_revocation_contention' "$RUNNER_TEMP/customer-performance-tests.txt"
+      - name: Measure guarded Customer performance
+        run: |
+          set -o pipefail
+          php artisan test --filter=CustomerPerformance | tee "$RUNNER_TEMP/customer-performance.log"
+          for size in 200 500 2000 10000; do
+            grep -q "^CUSTOMER_SELECT_PERF {\"size\":$size," "$RUNNER_TEMP/customer-performance.log"
+            grep -q "^CUSTOMER_DETAIL_PERF {\"size\":$size," "$RUNNER_TEMP/customer-performance.log"
+            grep -q "^CUSTOMER_WRITE_PERF {\"size\":$size,\"kind\":\"create\"," "$RUNNER_TEMP/customer-performance.log"
+            grep -q "^CUSTOMER_WRITE_PERF {\"size\":$size,\"kind\":\"update\"," "$RUNNER_TEMP/customer-performance.log"
+          done
+          test "$(grep -c '^CUSTOMER_CONTENTION_PERF {' "$RUNNER_TEMP/customer-performance.log")" -eq 2
+          grep -q '^CUSTOMER_PERF_ENV {' "$RUNNER_TEMP/customer-performance.log"

@@ -575,7 +575,7 @@ $connection->beforeExecuting(static function (string $query) use ($mode, $pause,
         'activity-hold-delete' => $activityDelete,
         'activity-hold-manager' => $managerLock,
         'customer-hold-insert' => $customerInsert,
-        'customer-hold-update' => $customerUpdate,
+        'customer-hold-update', 'customer-performance-hold-update' => $customerUpdate,
         'hold-role-insert' => $roleCreate,
         'hold-role-write', 'fault-role-write' => $roleWrite,
         'hold-role-delete', 'fault-role-delete' => $roleDelete,
@@ -625,7 +625,7 @@ if ($mode === 'cleanup') {
 
 // Simulate a lost acknowledgement only after a real MySQL COMMIT, without
 // changing production code, using a guarded disposable test connection.
-if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore', 'activity-observe-mysql', 'activity-timeout-restore', 'customer-observe-mysql', 'customer-timeout-restore', 'customer-fault-other-constraint'], true)) {
+if (in_array($mode, ['observe-deadlock', 'users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'roles-action-deadlock', 'roles-action-duplicate', 'roles-action-timeout-restore', 'activity-observe-mysql', 'activity-timeout-restore', 'customer-observe-mysql', 'customer-timeout-restore', 'customer-fault-other-constraint', 'customer-performance', 'customer-performance-hold-update'], true)) {
     $connection->getPdo()->setAttribute(PDO::ATTR_STATEMENT_CLASS, [UsersObservedStatement::class, []]);
 }
 if ($mode === 'users-performance' && $request->isMethod('POST') && $request->is('api/v1/users')) {
@@ -642,17 +642,22 @@ if (in_array($mode, ['activity-performance', 'activity-performance-hold-update']
     && in_array($request->getMethod(), ['POST', 'PUT', 'DELETE'], true)) {
     $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
 }
+if (in_array($mode, ['customer-performance', 'customer-performance-hold-update'], true)
+    && ($request->is('api/v1/customers', 'api/v1/customers/*') || $request->is('api/v1/roles/*'))
+    && in_array($request->getMethod(), ['POST', 'PUT'], true)) {
+    $connection->setPdo(new UsersMeasuredCommit($connection->getPdo()));
+}
 $commitFault = null;
 if (in_array($mode, ['fault-commit-ack', 'users-probe-mutation-ack', 'users-action-commit-ack', 'roles-action-commit-ack', 'activity-commit-ack', 'customer-commit-ack'], true)) {
     $commitFault = new AuthenticationCommitFault($connection->getPdo(), $connection);
     $connection->setPdo($commitFault);
 }
 
-if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update'], true)) {
+if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'customer-performance', 'customer-performance-hold-update'], true)) {
     memory_reset_peak_usage();
 }
 $response = $kernel->handle($request);
-if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update'], true)) {
+if (in_array($mode, ['users-performance', 'roles-performance', 'activity-performance', 'activity-performance-hold-update', 'customer-performance', 'customer-performance-hold-update'], true)) {
     $response->headers->set('X-Test-Php-Peak-Bytes', (string) memory_get_peak_usage(true));
     $usage = getrusage();
     if (is_array($usage) && isset($usage['ru_maxrss'])) {
@@ -664,6 +669,7 @@ if (in_array($mode, ['users-performance', 'roles-performance', 'activity-perform
             $prefix = match ($mode) {
                 'roles-performance' => 'X-Test-Roles-',
                 'activity-performance', 'activity-performance-hold-update' => 'X-Test-Activity-',
+                'customer-performance', 'customer-performance-hold-update' => 'X-Test-Customer-',
                 default => 'X-Test-Users-',
             };
             $response->headers->set($prefix.$header, (string) round($value, 3));
