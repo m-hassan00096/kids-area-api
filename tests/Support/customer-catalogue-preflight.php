@@ -29,20 +29,38 @@ function emitCustomerPreflight(string $label, array $data): void
     echo $label.' '.json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE).PHP_EOL;
 }
 
-function customerPreflightRejected(Closure $operation, int $code, ?string $constraint = null): void
+function customerPreflightRejected(string $label, Closure $operation, int|array $code, ?string $constraint = null): void
 {
+    $expected = (array) $code;
     try {
         $operation();
     } catch (QueryException $failure) {
-        requireCustomerPreflight((int) ($failure->errorInfo[1] ?? 0) === $code, 'Unexpected MySQL rejection code.');
-        if ($constraint !== null) {
-            requireCustomerPreflight(str_contains((string) ($failure->errorInfo[2] ?? ''), $constraint), 'Unexpected rejected constraint.');
+        $actual = (int) ($failure->errorInfo[1] ?? 0);
+        $state = (string) ($failure->errorInfo[0] ?? '');
+        $matchesConstraint = $constraint === null || str_contains((string) ($failure->errorInfo[2] ?? ''), $constraint);
+        // Only fixed synthetic case labels and native error metadata are logged.
+        // Never print the exception, SQL, bindings or raw server error message.
+        emitCustomerPreflight('CUSTOMER_PREFLIGHT_REJECTION', [
+            'case' => $label,
+            'expectedCodes' => $expected,
+            'actualCode' => $actual,
+            'sqlState' => $state,
+            'constraint' => $constraint,
+            'constraintMatched' => $matchesConstraint,
+        ]);
+        requireCustomerPreflight(in_array($actual, $expected, true), 'Unexpected MySQL rejection code for '.$label.'.');
+        requireCustomerPreflight($matchesConstraint, 'Unexpected rejected constraint for '.$label.'.');
+        if ($label === 'non_ascii_mobile') {
+            // Both errors are native charset/column conversion rejections.
+            // Do not accept unrelated errors or an actual successful write.
+            requireCustomerPreflight($state === 'HY000', 'Unexpected SQLSTATE for non-ASCII mobile.');
         }
 
         return;
     }
 
-    requireCustomerPreflight(false, 'MySQL accepted deliberately invalid Customer fixture data.');
+    emitCustomerPreflight('CUSTOMER_PREFLIGHT_UNEXPECTED_ACCEPT', ['case' => $label]);
+    requireCustomerPreflight(false, 'MySQL accepted deliberately invalid Customer fixture data for '.$label.'.');
 }
 
 $db = DB::connection();
@@ -200,12 +218,14 @@ try {
         ['mobile_update_short', fn () => $db->table('customers')->where('id', $a)->update(['mobile' => '123']), 3819, 'chk_customers_mobile'],
     ];
     foreach ($cases as [$label, $operation, $code, $constraint]) {
-        customerPreflightRejected($operation, $code, $constraint);
+        customerPreflightRejected($label, $operation, $code, $constraint);
         $passed[] = $label;
     }
 
-    // ASCII must reject Arabic-Indic digits, even though they are valid Unicode.
-    customerPreflightRejected(fn () => $db->table('customers')->insert(['name' => 'Synthetic invalid', 'mobile' => '٠٠٠٠٠٠٠٠٠٠١']), 1366);
+    // ASCII must reject Arabic-Indic digits. MySQL may reject the parameter
+    // conversion (3854) or the column conversion (1366), both HY000.
+    // Keep all other cases' exact codes and named constraints unchanged.
+    customerPreflightRejected('non_ascii_mobile', fn () => $db->table('customers')->insert(['name' => 'Synthetic invalid', 'mobile' => '٠٠٠٠٠٠٠٠٠٠١']), [1366, 3854]);
     $passed[] = 'non_ascii_mobile';
     requireCustomerPreflight($db->table('customers')->count() === 5
         && $db->table('customers')->where('id', $a)->value('name') === 'Synthetic same name'
